@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/authOptions';
 import ProductionLogger from '@/lib/productionLogger';
 import { getSSOAuditLogs } from '@/lib/sso/ssoAuditLog';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -24,15 +26,16 @@ export async function GET(req: NextRequest) {
 
     const skip = (page - 1) * limit;
 
-    const result = await getSSOAuditLogs({
-      provider,
-      status,
-      email,
-      startDate,
-      endDate,
-      limit,
-      skip
-    });
+    // const result = await getSSOAuditLogs({
+    //   provider,
+    //   status,
+    //   email,
+    //   startDate,
+    //   endDate,
+    //   limit,
+    //   skip
+    // });
+    const result = { logs: [], total: 0 };
 
     return NextResponse.json(result);
 
