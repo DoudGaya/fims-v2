@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import { PERMISSIONS } from '@/lib/permissions';
 
+export const dynamic = 'force-dynamic';
+
 // Helper to check permissions
 const checkPermission = (permissions: string[] | undefined, permission: string) => {
   return permissions?.includes(permission) || false;
