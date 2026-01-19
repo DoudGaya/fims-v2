@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
+export const dynamic = "force-dynamic";
 import prisma from '@/lib/prisma';
 import { farmerSchema } from '@/lib/validation';
 import { PERMISSIONS } from '@/lib/permissions';
