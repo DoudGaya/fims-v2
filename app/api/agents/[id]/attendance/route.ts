@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import { PERMISSIONS } from '@/lib/permissions';
 
+export const dynamic = 'force-dynamic';
+
 // Helper to check permissions
 const checkPermission = (permissions: string[] | undefined, permission: string) => {
   return permissions?.includes(permission) || false;
@@ -23,7 +25,7 @@ export async function GET(
     // Allow agents to view their own attendance, or admins to view any
     const { id } = await params;
     const isSelf = (session.user as any).id === id;
-    
+
     if (!isSelf && !checkPermission(userPermissions, PERMISSIONS.AGENTS_READ)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
@@ -59,18 +61,18 @@ export async function GET(
 
     const checkIns = attendanceRecords.filter(r => r.type === 'check_in').length;
     const checkOuts = attendanceRecords.filter(r => r.type === 'check_out').length;
-    
+
     // Calculate unique days present
     const uniqueDays = new Set(
       attendanceRecords.map(r => new Date(r.timestamp).toDateString())
     );
     const presentDays = uniqueDays.size;
-    
+
     // Calculate working days (excluding weekends)
     let workingDays = 0;
     const current = new Date(thirtyDaysAgo);
     const today = new Date();
-    
+
     while (current <= today) {
       const day = current.getDay();
       if (day !== 0 && day !== 6) { // 0 is Sunday, 6 is Saturday
@@ -78,9 +80,9 @@ export async function GET(
       }
       current.setDate(current.getDate() + 1);
     }
-    
-    const attendanceRate = workingDays > 0 
-      ? Math.round((presentDays / workingDays) * 100) 
+
+    const attendanceRate = workingDays > 0
+      ? Math.round((presentDays / workingDays) * 100)
       : 0;
 
     return NextResponse.json({
