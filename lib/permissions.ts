@@ -18,7 +18,7 @@ export const PERMISSIONS = {
   FARMERS_UPDATE: 'farmers.update',
   FARMERS_DELETE: 'farmers.delete',
   FARMERS_EXPORT: 'farmers.export',
-
+  
   // Farms
   FARMS_CREATE: 'farms.create',
   FARMS_READ: 'farms.read',
@@ -53,7 +53,7 @@ export const PERMISSIONS = {
   // Settings
   SETTINGS_READ: 'settings.read',
   SETTINGS_UPDATE: 'settings.update',
-
+  
   // System Administration
   SYSTEM_MANAGE_PERMISSIONS: 'system.manage_permissions',
   SYSTEM_MANAGE_ROLES: 'system.manage_roles',
@@ -82,39 +82,18 @@ export async function getUserPermissions(userId: string): Promise<string[]> {
       }
     });
 
-    // Check for Super Admin emails
-    const SUPER_ADMINS = ['admin@cosmopolitan.edu.ng', 'rislan@cosmopolitan.edu.ng'];
-
-    // We need to fetch the user's email first if we only have the ID
-    let userEmail = '';
-    if (userWithRoles) {
-      userEmail = userWithRoles.email.toLowerCase();
-    } else {
-      // Fallback if userWithRoles is null (though we just found it) or if we need to fetch separately
-      const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
-      if (user) userEmail = user.email.toLowerCase();
-    }
-
-    if (SUPER_ADMINS.includes(userEmail)) {
-      return Object.values(PERMISSIONS);
-    }
-
     if (!userWithRoles) {
       return [];
     }
 
     // Collect all permissions from all assigned roles
     const permissions = new Set<string>();
-
-    // Also include the role directly assigned to the user (legacy support)
-    // Map the string role to permissions using ROLE_PERMISSIONS fallback logic if needed
-    // But ideally we rely on the DB roles.
-
+    
     userWithRoles.userRoles.forEach(userRole => {
       // In Prisma, JSON fields are typed as JsonValue, which can be anything.
       // We need to cast or check it.
       const rolePermissions = userRole.role.permissions as string[] | null;
-
+      
       if (rolePermissions && Array.isArray(rolePermissions)) {
         rolePermissions.forEach(permission => {
           permissions.add(permission);

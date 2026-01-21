@@ -46,16 +46,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log('GET /api/farms/[id] called');
     const session = await getServerSession(authOptions);
     if (!session) {
-      console.log('Unauthorized access attempt');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await params;
-    console.log(`Fetching farm with ID: ${id}`);
-
     const farm = await prisma.farm.findUnique({
       where: { id },
       include: {
@@ -71,11 +67,9 @@ export async function GET(
     });
 
     if (!farm) {
-      console.log(`Farm not found for ID: ${id}`);
       return NextResponse.json({ error: 'Farm not found' }, { status: 404 });
     }
 
-    console.log(`Farm found: ${farm.id}`);
     return NextResponse.json({ farm });
   } catch (error) {
     console.error('Error fetching farm:', error);
@@ -98,7 +92,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-
+    
     // Remove fields that shouldn't be updated
     delete body.farmerId;
     delete body.id;
@@ -108,7 +102,6 @@ export async function PUT(
     const validation = farmUpdateSchema.safeParse(body);
 
     if (!validation.success) {
-      console.error('Validation failed:', JSON.stringify(validation.error.format(), null, 2));
       return NextResponse.json(
         { error: 'Validation failed', details: validation.error.format() },
         { status: 400 }
@@ -166,7 +159,7 @@ export async function DELETE(
     }
 
     const { id } = await params;
-
+    
     // Check if farm exists
     const farm = await prisma.farm.findUnique({
       where: { id }
@@ -180,9 +173,9 @@ export async function DELETE(
       where: { id }
     });
 
-    return NextResponse.json({
-      success: true,
-      message: 'Farm deleted successfully'
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Farm deleted successfully' 
     });
   } catch (error) {
     console.error('Error deleting farm:', error);

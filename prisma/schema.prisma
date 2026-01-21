@@ -8,33 +8,34 @@ datasource db {
 }
 
 model User {
-  id                     String           @id @default(cuid())
-  email                  String           @unique
+  id                     String       @id @default(cuid())
+  email                  String       @unique
   displayName            String?
-  role                   String           @default("agent")
-  createdAt              DateTime         @default(now())
-  updatedAt              DateTime         @updatedAt
+  role                   String       @default("agent")
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
   firstName              String?
-  isActive               Boolean          @default(true)
+  isActive               Boolean      @default(true)
   lastLogin              DateTime?
   lastName               String?
   password               String?
   phoneNumber            String?
-  isVerified             Boolean          @default(false)
-  passwordChangeRequired Boolean          @default(false)
-  passwordResetExpiry    DateTime?
+  isVerified             Boolean      @default(false)
+  passwordChangeRequired Boolean      @default(false)
   passwordResetToken     String?
-  ssoProviderId          String?
-  ssoProvider            String?
-  ssoEmail               String?
-  lastSSOLogin           DateTime?
-  isSSOEnabled           Boolean          @default(false)
-  createdAgents          Agent[]          @relation("CreatedByUser")
+  passwordResetExpiry    DateTime?
+  // SSO Fields
+  ssoProviderId          String?      // e.g., "google_123456789"
+  ssoProvider            String?      // "google" or "microsoft"
+  ssoEmail               String?      // email from SSO provider
+  lastSSOLogin           DateTime?    // track SSO login history
+  isSSOEnabled           Boolean      @default(false) // flag to allow SSO for user
+  createdAgents          Agent[]      @relation("CreatedByUser")
   agent                  Agent?
   farmers                Farmer[]
-  ssoAuditLogs           SSOAuditLog[]
-  userPermissions        UserPermission[]
   userRoles              user_roles[]
+  userPermissions        UserPermission[]
+  ssoAuditLogs           SSOAuditLog[]
 
   @@map("users")
 }
@@ -96,50 +97,47 @@ model Agent {
 }
 
 model Farmer {
-  id                String        @id @default(cuid())
-  nin               String        @unique
-  firstName         String
-  middleName        String?
-  lastName          String
-  dateOfBirth       DateTime?
-  gender            String?
-  state             String?
-  lga               String?
-  maritalStatus     String?
-  employmentStatus  String?
-  phone             String        @unique
-  email             String?       @unique
-  whatsAppNumber    String?
-  address           String?
-  ward              String?
-  latitude          Float?
-  longitude         Float?
-  bankName          String?
-  accountNumber     String?
-  bvn               String?       @unique
-  registrationDate  DateTime      @default(now())
-  status            String        @default("Enrolled")
-  agentId           String?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  photoUrl          String?
-  accountName       String?
-  clusterId         String?
-  pollingUnit       String?
-  farmSize          Float?
-  farmingExperience Int?
-  primaryCrop       String?
-  certificates      Certificate[]
-  agent             User?         @relation(fields: [agentId], references: [id])
-  cluster           Cluster?      @relation(fields: [clusterId], references: [id])
-  farms             Farm[]
-  referees          Referee[]
+  id               String        @id @default(cuid())
+  nin              String        @unique
+  firstName        String
+  middleName       String?
+  lastName         String
+  dateOfBirth      DateTime?
+  gender           String?
+  state            String?
+  lga              String?
+  maritalStatus    String?
+  employmentStatus String?
+  phone            String        @unique
+  email            String?       @unique
+  whatsAppNumber   String?
+  address          String?
+  ward             String?
+  pollingUnit      String?
+  latitude         Float?
+  longitude        Float?
+  bankName         String?
+  accountNumber    String?
+  bvn              String?       @unique
+  registrationDate DateTime      @default(now())
+  status           String        @default("Enrolled")
+  agentId          String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  photoUrl         String?
+  accountName      String?
+  clusterId        String?
+  certificates     Certificate[]
+  agent            User?         @relation(fields: [agentId], references: [id])
+  cluster          Cluster?      @relation(fields: [clusterId], references: [id])
+  farms            Farm[]
+  referees         Referee[]
 
-  @@index([agentId, createdAt(sort: Desc)])
-  @@index([status, createdAt(sort: Desc)])
-  @@index([state, lga])
-  @@index([clusterId])
-  @@index([createdAt(sort: Desc)])
+  @@index([agentId, createdAt(sort: Desc)]) // Optimize agent queries with date sorting
+  @@index([status, createdAt(sort: Desc)]) // Optimize status filtering
+  @@index([state, lga]) // Optimize location filtering
+  @@index([clusterId]) // Optimize cluster filtering
+  @@index([createdAt(sort: Desc)]) // Optimize general listing
   @@map("farmers")
 }
 
@@ -147,6 +145,7 @@ model Farm {
   id                  String   @id @default(cuid())
   farmSize            Float?
   primaryCrop         String?
+  secondaryCrop       String[]
   produceCategory     String?
   farmOwnership       String?
   farmState           String?
@@ -154,7 +153,6 @@ model Farm {
   farmingSeason       String?
   farmWard            String?
   farmPollingUnit     String?
-  secondaryCrop       String[]
   farmingExperience   Int?
   farmLatitude        Float?
   farmLongitude       Float?
@@ -170,11 +168,11 @@ model Farm {
   yieldSeason         String?
   crop                String?
   quantity            Float?
+  cropVariety         String?
+  landforms           String?
   farmerId            String
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
-  cropVariety         String?
-  landforms           String?
   farmer              Farmer   @relation(fields: [farmerId], references: [id], onDelete: Cascade)
 
   @@map("farms")
@@ -286,55 +284,55 @@ model PollingUnit {
 }
 
 model Cluster {
-  id                          String    @id @default(cuid())
-  title                       String    @unique
-  description                 String?
-  clusterLeadFirstName        String
-  clusterLeadLastName         String
-  clusterLeadEmail            String
-  clusterLeadPhone            String
-  isActive                    Boolean   @default(true)
-  createdAt                   DateTime  @default(now())
-  updatedAt                   DateTime  @default(now()) @updatedAt
-  clusterLeadAccountName      String?
-  clusterLeadAccountNumber    String?
-  clusterLeadAddress          String?
-  clusterLeadAlternativePhone String?
-  clusterLeadBVN              String?
-  clusterLeadBankName         String?
-  clusterLeadDateOfBirth      DateTime?
-  clusterLeadEmploymentStatus String?
-  clusterLeadGender           String?
-  clusterLeadLGA              String?
-  clusterLeadMaritalStatus    String?
-  clusterLeadNIN              String?
-  clusterLeadPollingUnit      String?
-  clusterLeadPosition         String?
-  clusterLeadState            String?
-  clusterLeadWard             String?
-  clusterLeadWhatsAppNumber   String?
-  subCluster                  String?
-  totalFarmSize               Float     @default(0)
-  totalFarmers                Int       @default(0)
-  totalFarms                  Int       @default(0)
-  farmers                     Farmer[]
+  id                            String    @id @default(cuid())
+  title                         String    @unique
+  subCluster                    String?
+  description                   String?
+  clusterLeadFirstName          String
+  clusterLeadLastName           String
+  clusterLeadEmail              String
+  clusterLeadPhone              String
+  clusterLeadNIN                String?
+  clusterLeadState              String?
+  clusterLeadLGA                String?
+  clusterLeadWard               String?
+  clusterLeadPollingUnit        String?
+  clusterLeadPosition           String?
+  clusterLeadAddress            String?
+  clusterLeadDateOfBirth        DateTime?
+  clusterLeadGender             String?
+  clusterLeadMaritalStatus      String?
+  clusterLeadEmploymentStatus   String?
+  clusterLeadBVN                String?
+  clusterLeadBankName           String?
+  clusterLeadAccountNumber      String?
+  clusterLeadAccountName        String?
+  clusterLeadAlternativePhone   String?
+  clusterLeadWhatsAppNumber     String?
+  totalFarmers                  Int       @default(0)
+  totalFarms                    Int       @default(0)
+  totalFarmSize                 Float     @default(0)
+  isActive                      Boolean   @default(true)
+  createdAt                     DateTime  @default(now())
+  updatedAt                     DateTime  @default(now()) @updatedAt
+  farmers                       Farmer[]
 
   @@map("clusters")
 }
 
 model roles {
-  id              String           @id @default(cuid())
-  name            String           @unique
+  id              String          @id @default(cuid())
+  name            String          @unique
   description     String?
   permissions     Json?
-  isSystem        Boolean          @default(false)
-  isActive        Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @default(now()) @updatedAt
+  isSystem        Boolean         @default(false)
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @default(now()) @updatedAt
   createdBy       String?
+  userRoles       user_roles[]
   rolePermissions RolePermission[]
   scopeConfigs    ScopeConfig[]
-  userRoles       user_roles[]
 
   @@map("roles")
 }
@@ -356,11 +354,11 @@ model user_roles {
 model Attendance {
   id        String   @id @default(cuid())
   agentId   String
-  type      String
+  type      String   // 'check_in' or 'check_out'
   timestamp DateTime
-  location  Json
-  date      String
-  duration  Int?
+  location  Json     // {latitude, longitude, accuracy, timestamp}
+  date      String   // Date string for grouping
+  duration  Int?     // Duration in minutes (for check_out records)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
@@ -368,32 +366,33 @@ model Attendance {
   @@map("attendance")
 }
 
+// SSO Models
 model SSOAuditLog {
   id        String   @id @default(cuid())
-  userId    String?
+  userId    String?  // null if user not found
+  user      User?    @relation(fields: [userId], references: [id])
   email     String
-  provider  String
-  status    String
-  reason    String?
-  metadata  Json?
+  provider  String   // "google" or "microsoft"
+  status    String   // "success" | "user_not_found" | "sso_disabled" | "error"
+  reason    String?  // why it failed
+  metadata  Json?    // raw SSO response (sanitized)
   ipAddress String?
   userAgent String?
   createdAt DateTime @default(now())
-  user      User?    @relation(fields: [userId], references: [id])
 
   @@map("sso_audit_logs")
 }
 
 model Permission {
-  id              String           @id @default(cuid())
-  name            String           @unique
-  action          String?
+  id              String          @id @default(cuid())
+  name            String          @unique        // e.g. "farmers.read"
   description     String?
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  category        String?
-  isActive        Boolean          @default(true)
-  isSystem        Boolean          @default(false)
+  category        String?                        // e.g., "farmers", "farms", "agents"
+  action          String?                        // e.g., "read", "write", "delete", "create"
+  isSystem        Boolean         @default(false)
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
   rolePermissions RolePermission[]
   userPermissions UserPermission[]
 
@@ -405,9 +404,9 @@ model RolePermission {
   id           String     @id @default(cuid())
   roleId       String
   permissionId String
-  createdAt    DateTime   @default(now())
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
   role         roles      @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
 
   @@unique([roleId, permissionId])
   @@map("role_permissions")
@@ -417,9 +416,9 @@ model UserPermission {
   id           String     @id @default(cuid())
   userId       String
   permissionId String
-  createdAt    DateTime   @default(now())
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
 
   @@unique([userId, permissionId])
   @@map("user_permissions")
@@ -428,11 +427,11 @@ model UserPermission {
 model ScopeConfig {
   id         String   @id @default(cuid())
   roleId     String
-  scope      String
-  scopeValue String?
+  scope      String   // e.g. "global" | "cluster" | "state" | "lga"
+  scopeValue String?  // e.g. clusterId or state code
+  role       roles    @relation(fields: [roleId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  role       roles    @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([roleId, scope, scopeValue])
   @@map("scope_configs")
@@ -440,7 +439,7 @@ model ScopeConfig {
 
 model PermissionAuditLog {
   id           String   @id @default(cuid())
-  action       String
+  action       String   // grant | revoke
   changedBy    String
   userId       String?
   roleId       String?

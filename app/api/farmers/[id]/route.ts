@@ -33,21 +33,7 @@ export async function GET(
       include: {
         cluster: true,
         farms: true,
-        agent: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phoneNumber: true,
-          }
-        },
-        certificates: {
-          where: { status: 'active' },
-          orderBy: { issuedDate: 'desc' },
-          take: 1
-        },
-        referees: true
+        // Include other relations if needed
       }
     });
 
@@ -87,11 +73,11 @@ export async function PUT(
     // or just assume the client sends the full object.
     // Zod has .partial() method.
     const validationResult = farmerSchema.partial().safeParse(body);
-
+    
     if (!validationResult.success) {
-      return NextResponse.json({
-        error: 'Validation failed',
-        details: validationResult.error.format()
+      return NextResponse.json({ 
+        error: 'Validation failed', 
+        details: validationResult.error.format() 
       }, { status: 400 });
     }
 
