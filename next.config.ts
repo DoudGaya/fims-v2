@@ -3,14 +3,22 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   experimental: {
-    serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
+    serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs', 'firebase-admin'],
   },
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals = [...(config.externals || []), '@prisma/client', 'bcryptjs'];
-    }
-    return config;
+  // Turbopack configuration (Next.js 16+)
+  turbopack: {
+    resolveExtensions: [
+      '.mdx',
+      '.tsx',
+      '.ts',
+      '.jsx',
+      '.js',
+      '.mjs',
+      '.json',
+    ],
   },
+  // Suppress webpack deprecation warning
+  outputFileTracing: true,
 };
 
 export default nextConfig;
