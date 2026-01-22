@@ -33,19 +33,17 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status') || '';
+    const state = searchParams.get('state') || '';
+    const lga = searchParams.get('lga') || '';
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
 
     const skip = (page - 1) * limit;
 
     // Build where clause
-    // In the legacy code, agents are Users with role='agent'.
-    // However, there is also an 'Agent' model in Prisma schema which seems to be a profile for the user.
-    // The legacy API queries `prisma.user.findMany({ where: { role: 'agent' } })`.
-    // Let's stick to querying Users with role='agent' as per legacy implementation, 
-    // but we should also consider if we need to join with the Agent model if it exists.
-    // Looking at the schema, User has `agent Agent?`.
-
+    // We want to fetch all users with role 'agent', even if they don't have a complete agent profile yet
     const where: Prisma.UserWhereInput = {
-      role: 'agent'
+      role: 'agent',
     };
 
     if (search) {
@@ -58,13 +56,51 @@ export async function GET(req: NextRequest) {
       ];
     }
 
+    // Initialize agent conditions if not already present
+    // Since we set agent: { isNot: null } above, we need to be careful with subsequent assignments
+    // We should build the agent where input object separately
+    const agentWhere: Prisma.AgentWhereInput = {};
+
     if (status === 'active') {
       where.isActive = true;
-      where.agent = { status: 'active' }; // Ensure they are fully active
+      agentWhere.status = 'active'; 
     } else if (status === 'inactive') {
       where.isActive = false;
-    } else if (['Applied', 'CallForInterview', 'Accepted', 'Rejected', 'Enrolled'].includes(status)) {
-      where.agent = { status: status };
+    } else if (['Applied', 'CallForInterview', 'Accepted', 'Rejected', 'Enrolled', 'pending'].includes(status)) {
+      agentWhere.status = status;
+    }
+
+    if (state) {
+      agentWhere.assignedState = { contains: state, mode: 'insensitive' };
+    }
+    
+    if (lga) {
+      agentWhere.assignedLGA = { contains: lga, mode: 'insensitive' };
+    }
+
+    // Assign collected agent filters to the main where clause
+    if (Object.keys(agentWhere).length > 0) {
+      where.agent = agentWhere;
+    }
+
+    // Date filtering for farmers count
+    const farmersWhere: Prisma.FarmerWhereInput = {};
+    if (startDate || endDate) {
+      farmersWhere.createdAt = {};
+      
+      if (startDate) {
+        const date = new Date(startDate);
+        if(!isNaN(date.getTime())) {
+          farmersWhere.createdAt.gte = date;
+        }
+      }
+      
+      if (endDate) {
+        const date = new Date(endDate);
+        if(!isNaN(date.getTime())) {
+          farmersWhere.createdAt.lte = date;
+        }
+      }
     }
 
     // Execute query
@@ -87,7 +123,9 @@ export async function GET(req: NextRequest) {
           createdAt: true,
           _count: {
             select: {
-              farmers: true
+              farmers: {
+                where: farmersWhere
+              }
             }
           },
           agent: {
@@ -96,7 +134,9 @@ export async function GET(req: NextRequest) {
               localGovernment: true,
               assignedState: true,
               assignedLGA: true,
-              status: true
+              status: true,
+              nin: true,
+              gender: true
             }
           }
         }
@@ -116,7 +156,10 @@ export async function GET(req: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching agents:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    if (error instanceof Error) {
+        console.error('Error stack:', error.stack);
+    }
+    return NextResponse.json({ error: 'Internal server error', details: String(error) }, { status: 500 });
   }
 }
 

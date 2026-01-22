@@ -37,15 +37,17 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
         }
 
-        const where: Prisma.UserWhereInput = {
-            role: 'agent'
-        };
-
-        // Include filters from query params if needed, but usually export implies "all" or "all matching current filter"
-        // For now, let's support the same search params as the listing API for consistency
         const searchParams = req.nextUrl.searchParams;
         const search = searchParams.get('search') || '';
         const status = searchParams.get('status') || '';
+        const state = searchParams.get('state') || '';
+        const lga = searchParams.get('lga') || '';
+        const startDate = searchParams.get('startDate');
+        const endDate = searchParams.get('endDate');
+
+        const where: Prisma.UserWhereInput = {
+            role: 'agent',
+        };
 
         if (search) {
             where.OR = [
@@ -57,13 +59,45 @@ export async function GET(req: NextRequest) {
             ];
         }
 
+        const agentWhere: Prisma.AgentWhereInput = {};
+
         if (status === 'active') {
             where.isActive = true;
-            where.agent = { status: 'active' };
+            agentWhere.status = 'active';
         } else if (status === 'inactive') {
             where.isActive = false;
-        } else if (['Applied', 'CallForInterview', 'Accepted', 'Rejected', 'Enrolled'].includes(status)) {
-            where.agent = { status: status };
+        } else if (['Applied', 'CallForInterview', 'Accepted', 'Rejected', 'Enrolled', 'pending'].includes(status)) {
+            agentWhere.status = status;
+        }
+
+        if (state) {
+            agentWhere.assignedState = { contains: state, mode: 'insensitive' };
+        }
+        
+        if (lga) {
+            agentWhere.assignedLGA = { contains: lga, mode: 'insensitive' };
+        }
+
+        if (Object.keys(agentWhere).length > 0) {
+            where.agent = agentWhere;
+        }
+
+        // Date filtering for farmers count
+        const farmersWhere: Prisma.FarmerWhereInput = {};
+        if (startDate || endDate) {
+            farmersWhere.createdAt = {};
+            if (startDate) {
+                const date = new Date(startDate);
+                if (!isNaN(date.getTime())) {
+                    farmersWhere.createdAt.gte = date;
+                }
+            }
+            if (endDate) {
+                const date = new Date(endDate);
+                if (!isNaN(date.getTime())) {
+                    farmersWhere.createdAt.lte = date;
+                }
+            }
         }
 
         const agents = await prisma.user.findMany({
@@ -82,7 +116,9 @@ export async function GET(req: NextRequest) {
                 createdAt: true,
                 _count: {
                     select: {
-                        farmers: true
+                        farmers: {
+                          where: farmersWhere
+                        }
                     }
                 },
                 agent: {

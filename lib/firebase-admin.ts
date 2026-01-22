@@ -23,25 +23,34 @@ if (!admin.apps.length) {
   // Optional: Add other fields if strictly required by your setup, 
   // but usually projectId, privateKey, and clientEmail are sufficient for admin SDK.
   
-  console.log('Initializing Firebase Admin with project ID:', process.env.FIREBASE_PROJECT_ID);
+  console.log('Initializing Firebase Admin with project ID:', process.env.FIREBASE_PROJECT_ID || 'undefined');
   
   try {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      databaseURL: process.env.FIREBASE_DATABASE_URL
-    });
-    console.log('Firebase Admin initialized successfully');
+    if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        databaseURL: process.env.FIREBASE_DATABASE_URL
+      });
+      console.log('Firebase Admin initialized successfully');
+    } else {
+      console.warn('Firebase Admin initialization skipped: Missing credentials (normal during build)');
+    }
   } catch (error) {
     console.error('Firebase Admin initialization error:', error);
   }
 }
 
-export const auth = admin.auth();
-export const firestore = admin.firestore();
+// Export safely - prevents build crashes if credentials are missing
+export const auth = admin.apps.length > 0 ? admin.auth() : {} as admin.auth.Auth;
+export const firestore = admin.apps.length > 0 ? admin.firestore() : {} as admin.firestore.Firestore;
 
 export const verifyFirebaseToken = async (token: string) => {
+  if (!admin.apps.length) {
+    throw new Error('Firebase Admin not initialized. Check environment variables.');
+  }
   try {
-    const decodedToken = await auth.verifyIdToken(token);
+    const instance = admin.auth();
+    const decodedToken = await instance.verifyIdToken(token);
     return decodedToken;
   } catch (error) {
     console.error('Error verifying Firebase token:', error);

@@ -65,6 +65,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { format } from "date-fns"
+import { CalendarIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface Agent {
   id: string;
@@ -83,6 +92,8 @@ interface Agent {
     assignedState: string;
     assignedLGA: string;
     status: string;
+    nin?: string;
+    gender?: string;
   } | null;
 }
 
@@ -115,6 +126,7 @@ export default function AgentsClient() {
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Filter States
   const [pagination, setPagination] = useState<Pagination>({
@@ -125,6 +137,36 @@ export default function AgentsClient() {
   });
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
+  const [filterState, setFilterState] = useState('');
+  const [filterLGA, setFilterLGA] = useState('');
+  const [locations, setLocations] = useState<{ states: string[], lgas: Record<string, string[]> }>({ states: [], lgas: {} });
+
+  // Fetch Locations
+  useEffect(() => {
+    // This is a placeholder. In a real app, you'd fetch this from the API
+    // For now, we will just use a hardcoded list or empty
+    // Ideally call /api/locations/states and similar
+     const fetchLocations = async () => {
+        try {
+          const res = await fetch('/api/locations/states');
+          if (res.ok) {
+            const data = await res.json();
+            
+            let statesList: string[] = [];
+            
+            if (Array.isArray(data)) {
+                statesList = data.map((s: any) => typeof s === 'string' ? s : s.name);
+            } else if (data.states && Array.isArray(data.states)) {
+                statesList = data.states.map((s: any) => typeof s === 'string' ? s : s.name);
+            }
+
+            setLocations(prev => ({ ...prev, states: statesList }));
+          }
+        } catch (e) { console.error(e) }
+     };
+     fetchLocations();
+  }, []);
 
   // Fetch Analytics
   const fetchAnalytics = useCallback(async () => {
@@ -153,19 +195,30 @@ export default function AgentsClient() {
       params.append('limit', pagination.limit.toString());
       if (search) params.append('search', search);
       if (filterStatus && filterStatus !== 'all') params.append('status', filterStatus);
+      if (filterState && filterState !== 'all') params.append('state', filterState);
+      if (filterLGA) params.append('lga', filterLGA);
+      
+      if (dateRange.from) params.append('startDate', dateRange.from.toISOString());
+      if (dateRange.to) params.append('endDate', dateRange.to.toISOString());
 
       const res = await fetch(`/api/agents?${params.toString()}`);
-      if (!res.ok) throw new Error('Failed to fetch agents');
+      
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.details || errData.error || 'Failed to fetch agents');
+      }
 
       const data = await res.json();
       setAgents(data.agents);
       setPagination(prev => ({ ...prev, ...data.pagination }));
-    } catch (err) {
+      setError(null);
+    } catch (err: any) {
       console.error('Error loading agents', err);
+      setError(err.message || 'An error occurred while fetching agents');
     } finally {
       setLoading(false);
     }
-  }, [status, pagination.page, pagination.limit, search, filterStatus]);
+  }, [status, pagination.page, pagination.limit, search, filterStatus, filterState, filterLGA, dateRange]);
 
   // Initial Load
   useEffect(() => {
@@ -182,6 +235,9 @@ export default function AgentsClient() {
   const handleReset = () => {
     setSearch('');
     setFilterStatus('all');
+    setFilterState('all');
+    setFilterLGA('');
+    setDateRange({ from: undefined, to: undefined });
     setPagination(prev => ({ ...prev, page: 1 }));
   };
 
@@ -217,6 +273,10 @@ export default function AgentsClient() {
       const params = new URLSearchParams();
       if (search) params.append('search', search);
       if (filterStatus && filterStatus !== 'all') params.append('status', filterStatus);
+      if (filterState && filterState !== 'all') params.append('state', filterState);
+      if (filterLGA) params.append('lga', filterLGA);
+      if (dateRange.from) params.append('startDate', dateRange.from.toISOString());
+      if (dateRange.to) params.append('endDate', dateRange.to.toISOString());
 
       const response = await fetch(`/api/agents/export?${params.toString()}`);
 
@@ -451,8 +511,24 @@ export default function AgentsClient() {
       {/* Filters & Actions */}
       <Card>
         <CardContent className="p-4">
-          <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
+          {error && (
+            <div className="mb-4 p-4 text-red-700 bg-red-100 rounded-md border border-red-200 flex justify-between items-center">
+              <div>
+                <p className="font-medium">Error loading agents</p>
+                <p className="text-sm">{error}</p>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="bg-white border-red-300 text-red-700 hover:bg-red-50"
+                onClick={() => { setError(null); fetchAgents(); }}
+              >
+                Retry
+              </Button>
+            </div>
+          )}
+          <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4 flex-wrap">
+            <div className="flex-1 relative min-w-[200px]">
               <MagnifyingGlassIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search agents..."
@@ -461,6 +537,69 @@ export default function AgentsClient() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
+            
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-[170px] justify-start text-left font-normal",
+                    !dateRange.from && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange.from ? format(dateRange.from, "LLL dd, y") : <span>Start Date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateRange.from}
+                  onSelect={(date) => setDateRange(prev => ({ ...prev, from: date }))}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={"outline"}
+                  className={cn(
+                    "w-[170px] justify-start text-left font-normal",
+                    !dateRange.to && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange.to ? format(dateRange.to, "LLL dd, y") : <span>End Date</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateRange.to}
+                  onSelect={(date) => setDateRange(prev => ({ ...prev, to: date }))}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
+            <div className="w-full md:w-[180px]">
+              <Select value={filterState} onValueChange={setFilterState}>
+                <SelectTrigger>
+                  <SelectValue placeholder="State" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All States</SelectItem>
+                  {locations.states.map((state) => (
+                    <SelectItem key={state} value={state}>
+                      {state}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="w-full md:w-[200px]">
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger>
@@ -492,6 +631,8 @@ export default function AgentsClient() {
           <TableHeader>
             <TableRow className="bg-gray-50/50">
               <TableHead>Agent</TableHead>
+              <TableHead>NIN</TableHead>
+              <TableHead>Gender</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Performance</TableHead>
@@ -502,7 +643,7 @@ export default function AgentsClient() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={8} className="h-24 text-center">
                   <div className="flex justify-center items-center">
                     <ArrowPathIcon className="h-6 w-6 animate-spin text-gray-500" />
                     <span className="ml-2">Loading agents...</span>
@@ -511,7 +652,7 @@ export default function AgentsClient() {
               </TableRow>
             ) : agents.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
                   No agents found.
                 </TableCell>
               </TableRow>
@@ -528,20 +669,28 @@ export default function AgentsClient() {
                           {agent.displayName}
                         </Link>
                         <div className="text-xs text-gray-500">{agent.email}</div>
-                        <div className="text-xs text-gray-500">{agent.phoneNumber}</div>
+                        <div className="text-xs text-gray-400 font-mono mt-0.5">
+                          {agent.phoneNumber && !agent.phoneNumber.startsWith('temp_') ? agent.phoneNumber : <span className="italic opacity-50">No Phone</span>}
+                        </div>
                       </div>
                     </div>
+                  </TableCell>
+                  <TableCell className="text-xs font-mono text-gray-600">
+                    {agent.agent?.nin ? agent.agent.nin : <span className="text-gray-300">-</span>}
+                  </TableCell>
+                   <TableCell className="text-sm">
+                    {agent.agent?.gender || <span className="text-gray-300">-</span>}
                   </TableCell>
                   <TableCell>
                     {agent.agent?.assignedState ? (
                       <div>
                         <div className="text-sm font-medium">{agent.agent.assignedState}</div>
-                        <div className="text-xs text-gray-500">{agent.agent.assignedLGA || 'No LGA'}</div>
+                        <div className="text-xs text-gray-500">{agent.agent.assignedLGA || '-'}</div>
                       </div>
                     ) : (
-                      <div>
-                        <div className="text-sm font-medium">{agent.agent?.state || <span className="text-gray-400 italic">N/A</span>}</div>
-                        <div className="text-xs text-gray-500">{agent.agent?.localGovernment || ''}</div>
+                      <div className="opacity-60">
+                         <div className="text-sm">{agent.agent?.state || 'Unassigned'}</div>
+                         <div className="text-xs text-gray-400">{agent.agent?.localGovernment}</div>
                       </div>
                     )}
                   </TableCell>
