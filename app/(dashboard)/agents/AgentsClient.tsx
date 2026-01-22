@@ -528,7 +528,7 @@ export default function AgentsClient() {
             </div>
           )}
           <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4 flex-wrap">
-            <div className="flex-1 relative min-w-[200px]">
+            <div className="flex-1 relative min-w-52">
               <MagnifyingGlassIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search agents..."

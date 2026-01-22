@@ -17,8 +17,6 @@ const nextConfig: NextConfig = {
       '.json',
     ],
   },
-  // Suppress webpack deprecation warning
-  outputFileTracing: true,
 };
 
 export default nextConfig;
