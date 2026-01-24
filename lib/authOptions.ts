@@ -193,7 +193,17 @@ export const authOptions: NextAuthOptions = {
         }
       }
       return true;
-    }
+    },
+    async redirect({ url, baseUrl }) {
+      // Use NEXTAUTH_URL if set, otherwise use baseUrl from request
+      const validBaseUrl = process.env.NEXTAUTH_URL || baseUrl;
+      
+      // Allows relative callback URLs
+      if (url.startsWith('/')) return `${validBaseUrl}${url}`;
+      // Allows callback URLs on the same origin
+      else if (new URL(url).origin === validBaseUrl) return url;
+      return `${validBaseUrl}/dashboard`;
+    },
   },
   pages: {
     signIn: '/auth/signin',

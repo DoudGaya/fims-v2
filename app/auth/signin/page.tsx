@@ -80,10 +80,19 @@ function SignInContent() {
     setLoading(true);
     setSSOError('');
     try {
-      await signIn('google', { redirect: false });
+      // Redirect to dashboard after successful Google sign-in
+      const result = await signIn('google', { 
+        callbackUrl: '/dashboard',
+        redirect: true // Let NextAuth handle the redirect
+      });
+      
+      // If we get here with an error (shouldn't happen with redirect: true)
+      if (result?.error) {
+        setSSOError('An error occurred during Google sign-in.');
+        setLoading(false);
+      }
     } catch (error) {
       setSSOError('An error occurred during Google sign-in.');
-    } finally {
       setLoading(false);
     }
   };
