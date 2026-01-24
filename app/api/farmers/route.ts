@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Execute query
-    const [farmers, total] = await Promise.all([
+    const [farmers, total, stats] = await Promise.all([
       prisma.farmer.findMany({
         where,
         skip,
@@ -96,7 +96,24 @@ export async function GET(req: NextRequest) {
           }
         }
       }),
-      prisma.farmer.count({ where })
+      prisma.farmer.count({ where }),
+      // Get stats for dashboard cards
+      prisma.farmer.aggregate({
+        _count: { id: true },
+        where: {}
+      }).then(async (result) => {
+        const [verifiedCount, totalFarms, totalClusters] = await Promise.all([
+          prisma.farmer.count({ where: { status: 'Verified' } }),
+          prisma.farm.count(),
+          prisma.cluster.count()
+        ]);
+        return {
+          totalFarmers: result._count.id,
+          verifiedFarmers: verifiedCount,
+          totalFarms,
+          totalClusters
+        };
+      })
     ]);
 
     return NextResponse.json({
@@ -106,7 +123,8 @@ export async function GET(req: NextRequest) {
         limit,
         total,
         pages: Math.ceil(total / limit)
-      }
+      },
+      stats
     });
 
   } catch (error) {
