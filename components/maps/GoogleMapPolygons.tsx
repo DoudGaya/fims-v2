@@ -21,6 +21,7 @@ interface GoogleMapPolygonsProps {
   loading?: boolean;
   onReload?: () => void;
   onBack?: () => void;
+  onFarmSelect?: (farm: Farm | null) => void;
 }
 
 const containerStyle = { width: '100%', height: '100%' };
@@ -42,13 +43,27 @@ function colorForFarm(farm: Farm) {
   return '#6B7280';
 }
 
-export default function GoogleMapPolygons({ center, farms, loading, onReload, onBack, analysisTileUrl, analysisStats }: GoogleMapPolygonsProps & { analysisTileUrl?: string | null, analysisStats?: any }) {
+export default function GoogleMapPolygons({ center, farms, loading, onReload, onBack, onFarmSelect, analysisTileUrl, analysisStats }: GoogleMapPolygonsProps & { analysisTileUrl?: string | null, analysisStats?: any }) {
   const mapRef = useRef<google.maps.Map | null>(null);
   const overlayRef = useRef<google.maps.ImageMapType | null>(null);
   const [selectedFarm, setSelectedFarm] = useState<Farm | null>(null);
   const [infoWindowPosition, setInfoWindowPosition] = useState<{ lat: number; lng: number } | null>(null);
+  const [authError, setAuthError] = useState(false);
 
-  const { isLoaded } = useJsApiLoader({
+  useEffect(() => {
+      const originalFailure = (window as any).gm_authFailure;
+      (window as any).gm_authFailure = () => {
+          console.error("Google Maps Authentication Error: BillingNotEnabled or InvalidKey");
+          setAuthError(true);
+          if (originalFailure) originalFailure();
+      };
+      
+      return () => {
+          (window as any).gm_authFailure = originalFailure;
+      }
+  }, []);
+
+  const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
   });
@@ -137,6 +152,38 @@ export default function GoogleMapPolygons({ center, farms, loading, onReload, on
     }
   }, [polygons]);
 
+  if (loadError) {
+    return <div className="h-full w-full flex items-center justify-center bg-red-50 text-red-600 p-4">
+      Map Error: {loadError.message}
+    </div>;
+  }
+
+  if (authError) {
+    return (
+        <div className="h-full w-full flex flex-col items-center justify-center bg-gray-50 p-6 text-center z-50 absolute top-0 left-0">
+             <div className="max-w-md bg-white p-6 rounded-xl shadow-2xl border border-red-100">
+                <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="text-2xl">💳</span>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Google Maps Billing Required</h3>
+                <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+                   The Google Maps Platform API requires an active billing account, even for the free tier. 
+                   <br/>Error code: <code>BillingNotEnabledMapError</code>
+                </p>
+                <a
+                  href="https://console.cloud.google.com/projectselector2/billing/enable"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Enable Billing in Cloud Console
+                  <svg className="ml-2 -mr-1 w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd"></path></svg>
+                </a>
+             </div>
+        </div>
+    );
+  }
+
   if (!isLoaded) {
     return <div className="h-full w-full flex items-center justify-center bg-gray-100">Loading Maps...</div>;
   }
@@ -161,6 +208,7 @@ export default function GoogleMapPolygons({ center, farms, loading, onReload, on
             options={polygon.options}
             onClick={(e) => {
               setSelectedFarm(polygon.farm);
+              if (onFarmSelect) onFarmSelect(polygon.farm);
               if (e.latLng) {
                 setInfoWindowPosition({ lat: e.latLng.lat(), lng: e.latLng.lng() });
               }
@@ -173,6 +221,7 @@ export default function GoogleMapPolygons({ center, farms, loading, onReload, on
             position={infoWindowPosition}
             onCloseClick={() => {
               setSelectedFarm(null);
+              if (onFarmSelect) onFarmSelect(null);
               setInfoWindowPosition(null);
             }}
           >

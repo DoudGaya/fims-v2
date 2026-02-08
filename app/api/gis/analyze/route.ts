@@ -1,78 +1,152 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
+import { NextRequest, NextResponse } from 'next/server';
+import ee from '@google/earthengine';
+import { getPrivateKey } from '@/lib/gee';
 
-// Helper to generate random stats based on type
-const generateStats = (type: string) => {
-    switch (type) {
-        case 'NDVI':
-            return {
-                mean: (0.4 + Math.random() * 0.4).toFixed(3), // 0.4 - 0.8 (Healthy)
-                min: (0.2 + Math.random() * 0.2).toFixed(3),
-                max: (0.8 + Math.random() * 0.1).toFixed(3),
-                unit: 'Index'
-            };
-        case 'SOIL_MOISTURE':
-            return {
-                mean: (0.2 + Math.random() * 0.15).toFixed(3),
-                min: 0.1,
-                max: 0.45,
-                unit: 'cm³/cm³'
-            };
-        case 'PRECIPITATION':
-            return {
-                total: (50 + Math.random() * 100).toFixed(1),
-                unit: 'mm'
-            };
-        case 'ELEVATION':
-            return {
-                mean: (150 + Math.random() * 50).toFixed(0),
-                unit: 'm'
-            };
-        default:
-            return {};
-    }
-};
+// Function to initialize Google Earth Engine
+async function initializeEE() {
+    const privateKey = await getPrivateKey();
+    return new Promise((resolve, reject) => {
+        ee.data.authenticateViaPrivateKey(
+            privateKey,
+            () => {
+                console.log('GEE Authentication successful.');
+                ee.initialize(
+                    null,
+                    null,
+                    () => {
+                        console.log('GEE Initialized.');
+                        resolve(true);
+                    },
+                    (err: any) => {
+                        console.error('GEE initialization error:', err);
+                        reject(new Error('Failed to initialize GEE.'));
+                    }
+                );
+            },
+            (err: any) => {
+                console.error('GEE authentication error:', err);
+                reject(new Error('Failed to authenticate with GEE.'));
+            }
+        );
+    });
+}
 
-export async function POST(request: Request) {
+// Initialize GEE once and reuse the promise
+const eeInitialized = initializeEE();
+
+export async function POST(req: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        // Wait for GEE to be initialized
+        await eeInitialized;
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    try {
+        const { polygon, type, dateRange } = await req.json();
+
+        if (!polygon || !type || !dateRange) {
+            return NextResponse.json({ error: 'Missing required parameters: polygon, type, and dateRange are required.' }, { status: 400 });
         }
 
-        const { polygon, type, dateRange } = await request.json();
+        const region = ee.Geometry.Polygon(polygon);
 
-        if (!type) {
-            return NextResponse.json({ error: 'Analysis type is required' }, { status: 400 });
+        let dataset: any;
+        let visParams: any;
+        let reducer = ee.Reducer.mean();
+        let scale = 10; // Default scale, will be updated per dataset
+
+        switch (type) {
+            case 'NDVI':
+                const s2 = ee.ImageCollection('COPERNICUS/S2_SR');
+                dataset = s2.filterBounds(region)
+                            .filterDate(dateRange.start, dateRange.end)
+                            .median()
+                            .normalizedDifference(['B8', 'B4'])
+                            .rename('NDVI');
+                visParams = { min: 0, max: 1, palette: ['red', 'yellow', 'green'] };
+                scale = 10; // 10m for Sentinel-2
+                break;
+
+            case 'SOIL_MOISTURE':
+                const smap = ee.ImageCollection('NASA_USDA/HSL/SMAP10KM_soil_moisture');
+                dataset = smap.filterBounds(region)
+                              .filterDate(dateRange.start, dateRange.end)
+                              .select('ssm')
+                              .mean();
+                visParams = { min: 0, max: 25, palette: ['brown', 'blue'] };
+                scale = 10000; // 10km for SMAP
+                break;
+            
+            case 'ELEVATION':
+                const dem = ee.Image('USGS/SRTMGL1_003');
+                dataset = dem.select('elevation');
+                visParams = {min: 0, max: 4000, palette: ['#000004', '#2C105C', '#711A81', '#B63679', '#EE605E', '#FDAE78', '#FCFDBF']};
+                scale = 30; // 30m for SRTM
+                break;
+
+            case 'PRECIPITATION':
+                // CHIRPS Daily: https://developers.google.com/earth-engine/datasets/catalog/UCSB-CHG_CHIRPS_DAILY
+                const chirps = ee.ImageCollection('UCSB-CHG/CHIRPS/DAILY');
+                dataset = chirps.filterBounds(region)
+                                .filterDate(dateRange.start, dateRange.end)
+                                .select('precipitation')
+                                .sum(); // Total rainfall over period
+                visParams = { min: 0, max: 100, palette: ['white', 'blue', 'darkblue'] };
+                scale = 5566; // ~5km
+                break;
+
+            case 'EVAPOTRANSPIRATION':
+                 // MODIS ET: https://developers.google.com/earth-engine/datasets/catalog/MODIS_006_MOD16A2
+                 const mod16 = ee.ImageCollection('MODIS/006/MOD16A2');
+                 dataset = mod16.filterBounds(region)
+                                .filterDate(dateRange.start, dateRange.end)
+                                .select('ET')
+                                .mean();
+                 visParams = { min: 0, max: 60, palette: ['#f5e4a9', '#fff4ad', '#c3e697', '#69b058', '#2a7c39'] };
+                 scale = 500;
+                 break;
+
+            case 'LAND_SURFACE_TEMP':
+                 // MODIS LST: https://developers.google.com/earth-engine/datasets/catalog/MODIS_006_MOD11A1
+                 const mod11 = ee.ImageCollection('MODIS/006/MOD11A1');
+                 dataset = mod11.filterBounds(region)
+                                .filterDate(dateRange.start, dateRange.end)
+                                .select('LST_Day_1km')
+                                .mean()
+                                .multiply(0.02) // Scale factor
+                                .subtract(273.15); // Kelvin to Celsius
+                 visParams = { min: 10, max: 45, palette: ['blue', 'yellow', 'red'] };
+                 scale = 1000;
+                 break;
+
+            default:
+                return NextResponse.json({ error: 'Invalid analysis type specified.' }, { status: 400 });
         }
 
-        // SIMULATED GEE DELAY
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // Asynchronously get stats and mapId
+        const statsPromise = dataset.reduceRegion({
+            reducer: reducer,
+            geometry: region,
+            scale: scale,
+            maxPixels: 1e9
+        }).getInfo();
 
-        // MOCK RESPONSE
-        // In a real implementation:
-        // 1. Authenticate with GEE Private Key
-        // 2. ee.Initialize()
-        // 3. Run computation on 'polygon'
-        // 4. Return mapId.urlFormat and reduceRegion stats
+        const mapIdPromise = dataset.getMap(visParams);
 
-        const stats = generateStats(type);
+        const [stats, mapId] = await Promise.all([statsPromise, mapIdPromise]);
 
         return NextResponse.json({
             success: true,
             data: {
-                stats,
-                // Mocking a tile URL. In reality this comes from GEE.
-                // We'll return null for now to avoid broken map tiles, 
-                // but the frontend is ready to accept a URL format like:
-                // "https://earthengine.googleapis.com/v1alpha/projects/earthengine-legacy/maps/1234abcd/tiles/{z}/{x}/{y}"
-                tileUrl: null
+                stats: stats,
+                tileUrl: mapId.urlFormat,
             }
         });
 
-    } catch (error) {
-        console.error('GIS Analyze Error:', error);
-        return NextResponse.json({ error: 'Analysis failed' }, { status: 500 });
+    } catch (error: any) {
+        console.error('Error in GEE analysis:', error);
+        return NextResponse.json({ error: 'An error occurred during GEE analysis.', details: error.message }, { status: 500 });
     }
 }
+

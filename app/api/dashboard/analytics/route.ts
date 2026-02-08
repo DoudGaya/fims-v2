@@ -30,49 +30,52 @@ export async function GET() {
     // Defined separated cached function for data fetching
     const getCachedAnalytics = unstable_cache(
       async () => {
-        // Execute independent queries in parallel
-        const [
-          totalFarmers,
-          totalAgents,
-          totalClusters,
-          totalFarms,
-          farmAggregates,
-          primaryCropGroups,
-          secondaryCropsRaw,
-          farmersByStateRaw,
-          farmersByLGA,
-          farmersByGenderRaw,
-          clustersWithFarmers,
-          recentRegistrations,
-          monthlyCounts
-        ] = await Promise.all([
+        // Execute queries sequentially in BATCHES
+        
+        // Batch 1: Core Counts (Fast)
+        const [totalFarmers, totalAgents, totalClusters, totalFarms] = await Promise.all([
           prisma.farmer.count(),
           prisma.user.count({ where: { role: 'agent' } }),
           prisma.cluster.count(),
           prisma.farm.count(),
-          prisma.farm.aggregate({ _sum: { farmSize: true } }),
-          prisma.farm.groupBy({ by: ['primaryCrop'], _count: { id: true }, where: { primaryCrop: { not: null } } }),
-          prisma.farm.findMany({ select: { secondaryCrop: true }, where: { NOT: { secondaryCrop: { equals: [] } } } }),
-          prisma.farmer.groupBy({ by: ['state'], _count: { id: true } }),
-          prisma.farmer.groupBy({ by: ['state', 'lga'], _count: { id: true }, orderBy: { _count: { id: 'desc' } }, take: 20 }),
-          prisma.farmer.groupBy({ by: ['gender'], _count: { id: true } }),
-          prisma.cluster.findMany({ include: { _count: { select: { farmers: true } } }, orderBy: { farmers: { _count: 'desc' } } }),
-          // Recent (30 days)
-          prisma.farmer.count({ where: { createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }),
-          // 12 Months trends (Simplified for cache function to single query if possible, but loop is fine here as it runs on server)
-          // Note: Loops inside cache function are fine.
-          Promise.all(
-            Array.from({ length: 12 }).map((_, i) => {
-              const start = new Date();
-              start.setMonth(start.getMonth() - (11 - i));
-              start.setDate(1);
-              start.setHours(0, 0, 0, 0);
-              const end = new Date(start);
-              end.setMonth(end.getMonth() + 1);
-              return prisma.farmer.count({ where: { createdAt: { gte: start, lt: end } } });
-            })
-          )
         ]);
+
+        // Batch 2: Aggregations (Medium)
+        const [farmAggregates, primaryCropGroups, farmersByStateRaw, farmersByGenderRaw] = await Promise.all([
+           prisma.farm.aggregate({ _sum: { farmSize: true } }),
+           prisma.farm.groupBy({ by: ['primaryCrop'], _count: { id: true }, where: { primaryCrop: { not: null } } }),
+           prisma.farmer.groupBy({ by: ['state'], _count: { id: true } }),
+           prisma.farmer.groupBy({ by: ['gender'], _count: { id: true } }),
+        ]);
+
+        // Batch 3: Heavy/Complex Queries (Sequential or small parallel)
+        const [farmersByLGA, clustersWithFarmers, recentRegistrations] = await Promise.all([
+             prisma.farmer.groupBy({ by: ['state', 'lga'], _count: { id: true }, orderBy: { _count: { id: 'desc' } }, take: 20 }),
+             prisma.cluster.findMany({ include: { _count: { select: { farmers: true } } }, orderBy: { farmers: { _count: 'desc' } } }),
+             prisma.farmer.count({ where: { createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }),
+        ]);
+
+        // Batch 4: Potentially Large Dataset (Standalone)
+        const secondaryCropsRaw = await prisma.farm.findMany({ 
+            select: { secondaryCrop: true }, 
+            where: { NOT: { secondaryCrop: { equals: [] } } },
+            take: 20000 
+        });
+
+        // Batch 5: Monthly Trends (Sequential Loop)
+        const monthlyCounts = [];
+        for (let i = 0; i < 12; i++) {
+            const start = new Date();
+            start.setMonth(start.getMonth() - (11 - i));
+            start.setDate(1);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(start);
+            end.setMonth(end.getMonth() + 1);
+            
+            // Execute one by one
+            const count = await prisma.farmer.count({ where: { createdAt: { gte: start, lt: end } } });
+            monthlyCounts.push(count);
+        }
 
         return {
           totalFarmers,

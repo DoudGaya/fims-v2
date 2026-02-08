@@ -12,6 +12,8 @@ const ANALYSIS_OPTIONS = [
   { id: 'NDVI', name: 'Vegetation Health (NDVI)', icon: '🌱' },
   { id: 'SOIL_MOISTURE', name: 'Soil Moisture', icon: '💧' },
   { id: 'PRECIPITATION', name: 'Precipitation', icon: '🌧️' },
+  { id: 'EVAPOTRANSPIRATION', name: 'Evapotranspiration', icon: '🌫️' },
+  { id: 'LAND_SURFACE_TEMP', name: 'Land Surface Temp', icon: '🌡️' },
   { id: 'ELEVATION', name: 'Elevation (DEM)', icon: '⛰️' },
 ];
 
@@ -22,6 +24,8 @@ export default function GISMapGoogle() {
   const [loading, setLoading] = useState(true);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [selectedFarm, setSelectedFarm] = useState<any | null>(null);
 
   // GIS Analysis State
   const [activeLayer, setActiveLayer] = useState<string | null>(null);
@@ -45,9 +49,63 @@ export default function GISMapGoogle() {
     }
   }, []);
 
+  const runAnalysis = async (layerId: string, farm: any) => {
+    if (!layerId || !farm) return;
+
+    setAnalysisLoading(true);
+    setAnalysisStats(null);
+    setAnalysisTileUrl(null);
+
+    try {
+       // Format coordinates for GEE (GeoJSON Polygon: [[[lng, lat], ...]])
+       let polygonCoords: any[] = [];
+       if (farm.coordinates && Array.isArray(farm.coordinates)) {
+          // Assuming stored as [[lng, lat]] or similar. Need to ensure closure.
+          polygonCoords = [farm.coordinates];
+       } else if (farm.coordinatesLatLng) {
+          polygonCoords = [farm.coordinatesLatLng.map((c: any) => [c.lng, c.lat])];
+       }
+
+       if (!polygonCoords.length) {
+         console.warn("No coordinates for farm");
+         setAnalysisLoading(false);
+         return;
+       }
+
+      const response = await fetch('/api/gis/analyze', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          polygon: polygonCoords,
+          type: layerId,
+          dateRange: {
+              start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Last 30 days
+              end: new Date().toISOString().split('T')[0]
+          }
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success || result.stats) {
+        setAnalysisStats(result.stats || result.data.stats);
+        setAnalysisTileUrl(result.tileUrl || result.data.tileUrl);
+      } else {
+        console.error(result.error);
+        setError(result.error || "Analysis failed");
+      }
+    } catch (err) {
+      console.error("GIS Analysis failed", err);
+      setError("Analysis failed to run");
+    } finally {
+      setAnalysisLoading(false);
+    }
+  };
+
   const handleLayerChange = async (layerId: string) => {
     if (activeLayer === layerId) {
-      // Toggle off
       setActiveLayer(null);
       setAnalysisStats(null);
       setAnalysisTileUrl(null);
@@ -55,33 +113,24 @@ export default function GISMapGoogle() {
     }
 
     setActiveLayer(layerId);
-    setAnalysisLoading(true);
-
-    try {
-      // In a real app, we'd pass the specific farm polygon or viewport bounds.
-      // For this demo, we mock analyzing the "current view" or "selected region".
-      const response = await fetch('/api/gis/analyze', {
-        method: 'POST',
-        body: JSON.stringify({
-          polygon: [], // Mocking "whole viewport"
-          type: layerId
-        })
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setAnalysisStats(result.data.stats);
-        setAnalysisTileUrl(result.data.tileUrl);
-      } else {
-        console.error(result.error);
-      }
-    } catch (err) {
-      console.error("GIS Analysis failed", err);
-    } finally {
-      setAnalysisLoading(false);
+    
+    // If a farm is already selected, run analysis immediately
+    if (selectedFarm) {
+        runAnalysis(layerId, selectedFarm);
     }
   };
+
+  const handleFarmSelect = (farm: any) => {
+      setSelectedFarm(farm);
+      if (farm && activeLayer) {
+          runAnalysis(activeLayer, farm);
+      } else if (!farm) {
+          // Clear stats if deselected
+          setAnalysisStats(null);
+          setAnalysisTileUrl(null);
+      }
+  };
+
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -96,6 +145,20 @@ export default function GISMapGoogle() {
       <div className="absolute top-4 left-4 z-10 bg-white p-4 rounded-lg shadow-lg max-w-sm">
         <h1 className="text-xl font-bold mb-1">Precision Ag Platform</h1>
         <p className="text-xs text-gray-500 mb-4">Total Farms Monitored: {farms.length}</p>
+
+        {selectedFarm ? (
+           <div className="mb-4 p-2 bg-green-50 rounded border border-green-200">
+               <p className="font-bold text-sm">{selectedFarm.farmerName || 'Farm Selected'}</p>
+               <p className="text-xs text-gray-600">{selectedFarm.lga}, {selectedFarm.state}</p>
+               {activeLayer ? (
+                 <p className="text-xs text-blue-600 mt-1">Analyzing {activeLayer}...</p>
+               ) : (
+                 <p className="text-xs text-gray-500 mt-1">Select a layer below to analyze</p>
+               )}
+           </div>
+        ) : (
+           <p className="text-xs text-orange-600 mb-4 font-medium">Click a farm on the map to analyze</p>
+        )}
 
         {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
 
@@ -148,6 +211,7 @@ export default function GISMapGoogle() {
         loading={loading || analysisLoading}
         onReload={loadData}
         onBack={handleBack}
+        onFarmSelect={handleFarmSelect}
         analysisTileUrl={analysisTileUrl}
         analysisStats={analysisStats}
       />
