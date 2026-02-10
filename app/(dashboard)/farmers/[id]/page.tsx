@@ -53,6 +53,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import FarmPolygonMap from '@/components/maps/FarmPolygonMap';
+import { AnalysisModal } from '@/components/analysis/AnalysisModal';
 
 export default function FarmerDetailsPage() {
   const { data: session, status } = useSession();
@@ -275,6 +276,9 @@ export default function FarmerDetailsPage() {
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="px-4 pb-4">
+                        <div className="flex justify-end py-2">
+                            <AnalysisModal farmId={farm.id} farmName={`${farm.primaryCrop || 'Farm'} (${farm.farmSize || 0} ha)`} />
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                           {/* 1. General Info */}
                           <div className="space-y-3">

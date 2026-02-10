@@ -132,6 +132,52 @@ export async function PUT(
   }
 }
 
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userPermissions = (session.user as any).permissions as string[];
+    if (!checkPermission(userPermissions, PERMISSIONS.FARMERS_UPDATE)) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const body = await req.json();
+
+    // Check if farmer exists
+    const existingFarmer = await prisma.farmer.findUnique({
+      where: { id }
+    });
+
+    if (!existingFarmer) {
+      return NextResponse.json({ error: 'Farmer not found' }, { status: 404 });
+    }
+
+    // For PATCH, we allow minimal updates like status
+    const updatedFarmer = await prisma.farmer.update({
+      where: { id },
+      data: body
+    });
+
+    ProductionLogger.info(`Farmer status updated: ${id} to ${body.status} by ${session.user.email}`);
+
+    return NextResponse.json(updatedFarmer);
+
+  } catch (error) {
+    console.error('Error updating farmer:', error);
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
+  }
+}
+
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }

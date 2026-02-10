@@ -29,6 +29,21 @@ export default function FarmPolygonMap({ polygonData }: FarmPolygonMapProps) {
     });
 
     const [map, setMap] = useState<google.maps.Map | null>(null);
+    const [authError, setAuthError] = useState(false);
+
+    React.useEffect(() => {
+        // Global handler for Google Maps auth errors (Billing, Invalid Key)
+        const originalAuthFailure = (window as any).gm_authFailure; 
+        (window as any).gm_authFailure = () => {
+            console.error("Google Maps Authentication Failure (Check Billing/Key)");
+            setAuthError(true);
+            if (originalAuthFailure) originalAuthFailure();
+        };
+
+        return () => {
+            (window as any).gm_authFailure = originalAuthFailure;
+        };
+    }, []);
 
     const paths = useMemo(() => {
         if (!polygonData || !Array.isArray(polygonData)) return [];
@@ -61,12 +76,18 @@ export default function FarmPolygonMap({ polygonData }: FarmPolygonMapProps) {
         setMap(null);
     }, []);
 
-    if (loadError) {
-        return <div className="h-[400px] bg-red-50 rounded flex items-center justify-center p-4 text-center">
+    if (loadError || authError) {
+        return <div className="h-[400px] bg-red-50 rounded flex items-center justify-center p-4 text-center border border-red-200">
             <div className="text-red-600">
-                <p className="font-semibold">Map Error</p>
-                <p className="text-sm">{loadError.message}</p>
-                <p className="text-xs mt-2 text-muted-foreground">Check API Key configuration.</p>
+                <p className="font-semibold">{authError ? 'Authorization Error' : 'Map Error'}</p>
+                <p className="text-sm">
+                    {authError 
+                        ? 'Google Maps API billing is not enabled or key is invalid.' 
+                        : loadError?.message}
+                </p>
+                <p className="text-xs mt-2 text-muted-foreground">
+                    {authError ? 'Please enable billing in the Google Cloud Console.' : 'Check API Key configuration.'}
+                </p>
             </div>
         </div>;
     }

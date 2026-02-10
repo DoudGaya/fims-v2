@@ -109,9 +109,10 @@ export class CertificateGenerator {
                 const logoData = fs.readFileSync(logoPath).toString('base64');
                 const imgWidth = 25;
                 const imgHeight = 25;
-                const x = (this.pageWidth - imgWidth) / 2;
+                // Justify between: Logo on Left, QR on Right (QR added in footer/separately)
+                const x = this.margin; 
                 pdf.addImage(logoData, 'PNG', x, 15, imgWidth, imgHeight);
-                y = 45; // Move Y down
+                y = 52; // Move text down to clear Logo and QR code area
             }
         } catch (e) {
             console.error("Failed to load logo", e);
@@ -154,7 +155,7 @@ export class CertificateGenerator {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private addCertificateTitle(pdf: any): number {
-        const y = 80; // Adjusted down to avoid header overlap
+        const y = 95; // Adjusted down to avoid header overlap (Logo/QR/Text)
 
         pdf.setFont('times', 'bold'); // Using Times for more formal look
         pdf.setFontSize(26);
@@ -177,7 +178,7 @@ export class CertificateGenerator {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private addFarmerInformation(pdf: any, farmerData: Farmer & { farms: Farm[] }): number {
-        let y = 105;
+        let y = 120;
 
         // "This is to certify that"
         pdf.setFont('times', 'italic');
@@ -362,10 +363,11 @@ export class CertificateGenerator {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private async addQRCode(pdf: any, farmerId: string) {
-        // Top Right Positioning
+        // Top Right Positioning (Justify Between with Logo on Left)
         const qrSize = 25;
         const y = 15;
-        const x = this.pageWidth - 20 - qrSize;
+        // Align to right margin
+        const x = this.pageWidth - this.margin - qrSize;
         try {
             const certificateId = `CCSA-${new Date().getFullYear()}-${farmerId.slice(-6).toUpperCase()}`;
             const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
@@ -374,7 +376,11 @@ export class CertificateGenerator {
             // Use external API to avoid 'canvas' dependency issues in serverless/windows environments
             const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&margin=10&data=${encodeURIComponent(verifyUrl)}`;
 
-            const response = await fetch(qrApiUrl);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            const response = await fetch(qrApiUrl, { signal: controller.signal });
+            clearTimeout(timeoutId);
+
             if (!response.ok) throw new Error('Failed to fetch QR code image');
 
             const buffer = await response.arrayBuffer();
