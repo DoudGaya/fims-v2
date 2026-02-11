@@ -36,10 +36,19 @@ const eeInitialized = initializeEE();
 
 export async function POST(req: NextRequest) {
     try {
-        // Wait for GEE to be initialized
-        await eeInitialized;
+        // Wait for GEE to be initialized with timeout
+        await Promise.race([
+            eeInitialized,
+            new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('GEE initialization timeout')), 10000)
+            )
+        ]);
     } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('GEE initialization failed:', error);
+        return NextResponse.json({ 
+            error: 'Failed to initialize GEE. Please check your credentials.',
+            details: error.message 
+        }, { status: 500 });
     }
 
     try {
@@ -124,7 +133,7 @@ export async function POST(req: NextRequest) {
                 return NextResponse.json({ error: 'Invalid analysis type specified.' }, { status: 400 });
         }
 
-        // Asynchronously get stats and mapId
+        // Asynchronously get stats and mapId with timeout
         const statsPromise = dataset.reduceRegion({
             reducer: reducer,
             geometry: region,
@@ -134,7 +143,12 @@ export async function POST(req: NextRequest) {
 
         const mapIdPromise = dataset.getMap(visParams);
 
-        const [stats, mapId] = await Promise.all([statsPromise, mapIdPromise]);
+        const [stats, mapId] = await Promise.race([
+            Promise.all([statsPromise, mapIdPromise]),
+            new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Analysis timeout')), 30000)
+            )
+        ]) as [any, any];
 
         return NextResponse.json({
             success: true,

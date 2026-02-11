@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useEffect, useState } from 'react';
-import { GoogleMap, LoadScript, Polygon, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
+import { GoogleMap, LoadScript, Polygon, InfoWindow, Marker, useJsApiLoader } from '@react-google-maps/api';
 
 interface Farm {
   id: string;
@@ -49,6 +49,7 @@ export default function GoogleMapPolygons({ center, farms, loading, onReload, on
   const [selectedFarm, setSelectedFarm] = useState<Farm | null>(null);
   const [infoWindowPosition, setInfoWindowPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [authError, setAuthError] = useState(false);
+  const [showCoordinateMarkers, setShowCoordinateMarkers] = useState(false);
 
   useEffect(() => {
       const originalFailure = (window as any).gm_authFailure;
@@ -216,6 +217,33 @@ export default function GoogleMapPolygons({ center, farms, loading, onReload, on
           />
         ))}
 
+        {/* Show coordinate markers when a farm is selected */}
+        {selectedFarm && showCoordinateMarkers && polygons
+          .filter(p => p.farm.id === selectedFarm.id)
+          .flatMap((polygon, polyIndex) => 
+            polygon.path.map((coord, index) => (
+              <Marker
+                key={`${polygon.farm.id}-point-${index}`}
+                position={coord}
+                label={{
+                  text: (index + 1).toString(),
+                  color: 'white',
+                  fontSize: '10px',
+                  fontWeight: 'bold'
+                }}
+                icon={{
+                  path: google.maps.SymbolPath.CIRCLE,
+                  fillColor: '#22c55e',
+                  fillOpacity: 1,
+                  strokeColor: 'white',
+                  strokeWeight: 2,
+                  scale: 6,
+                }}
+              />
+            ))
+          )
+        }
+
         {selectedFarm && infoWindowPosition && (
           <InfoWindow
             position={infoWindowPosition}
@@ -223,6 +251,7 @@ export default function GoogleMapPolygons({ center, farms, loading, onReload, on
               setSelectedFarm(null);
               if (onFarmSelect) onFarmSelect(null);
               setInfoWindowPosition(null);
+              setShowCoordinateMarkers(false);
             }}
           >
             <div className="p-3 w-64">
@@ -231,6 +260,15 @@ export default function GoogleMapPolygons({ center, farms, loading, onReload, on
                 <p><strong>Crop:</strong> {selectedFarm.crop || 'N/A'}</p>
                 <p><strong>Size:</strong> {selectedFarm.farmSize || 'N/A'} Ha</p>
                 <p><strong>Location:</strong> {selectedFarm.lga}, {selectedFarm.state}</p>
+                
+                {/* Toggle coordinate markers */}
+                <button
+                  onClick={() => setShowCoordinateMarkers(!showCoordinateMarkers)}
+                  className="mt-2 w-full px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                >
+                  {showCoordinateMarkers ? '📍 Hide Points' : '📍 Show Points'}
+                </button>
+                
                 {analysisStats && (
                   <div className="mt-2 pt-2 border-t border-gray-200">
                     <p className="font-semibold text-blue-700 mb-1">Analysis Results:</p>

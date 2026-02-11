@@ -302,25 +302,30 @@ export default function AgentsClient() {
   };
 
   const handleStatusChange = async (id: string, newStatus: string) => {
-    // Optimistic updat or simple loading? simple loading for now
     if (!confirm(`Are you sure you want to change status to "${newStatus}"? This will send an email to the agent.`)) return;
 
     try {
       const res = await fetch(`/api/agents/${id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus, isActive: newStatus === 'Enrolled' || newStatus === 'active' })
+        body: JSON.stringify({ 
+          status: newStatus, 
+          isActive: newStatus === 'Enrolled' || newStatus === 'active' 
+        })
       });
 
-      if (!res.ok) throw new Error('Failed to update status');
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to update status');
+      }
 
-      // Refresh
-      fetchAgents();
-      fetchAnalytics();
+      // Refresh data
+      await fetchAgents();
+      await fetchAnalytics();
       alert(`Status updated to ${newStatus}`);
-    } catch (error) {
-      console.error(error);
-      alert('Failed to update status');
+    } catch (error: any) {
+      console.error('Status update error:', error);
+      alert(error.message || 'Failed to update status');
     }
   };
 
