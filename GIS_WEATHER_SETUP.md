@@ -56,7 +56,7 @@ Precise farm boundary visualization:
 4. Create credentials (API Key)
 5. Add to `.env`:
    ```env
-   NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_maps_api_key
+   GOOGLE_MAPS_API_KEY=your_maps_api_key
    ```
 
 **Important:** Enable billing in Google Cloud (required even for free tier)

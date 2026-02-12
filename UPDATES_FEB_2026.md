@@ -39,7 +39,7 @@ This update includes comprehensive fixes and enhancements across GIS analysis, a
 ### Environment Variables Required
 ```env
 OPENWEATHER_API_KEY=your_key_here
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_maps_key
+GOOGLE_MAPS_API_KEY=your_maps_key
 GEE_PRIVATE_KEY_JSON='...' # Optional
 ```
 
@@ -195,7 +195,7 @@ Copy `.env.example` to `.env` and fill in:
 ```bash
 # Required
 OPENWEATHER_API_KEY=
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
+GOOGLE_MAPS_API_KEY=
 
 # Optional
 GEE_PRIVATE_KEY_JSON=

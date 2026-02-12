@@ -25,7 +25,7 @@ interface FarmPolygonMapProps {
 export default function FarmPolygonMap({ polygonData }: FarmPolygonMapProps) {
     const { isLoaded, loadError } = useJsApiLoader({
         id: 'google-map-script',
-        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
+        googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || ''
     });
 
     const [map, setMap] = useState<google.maps.Map | null>(null);
