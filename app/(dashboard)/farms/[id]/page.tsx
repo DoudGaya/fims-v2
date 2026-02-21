@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 import FarmPolygonMap from '@/components/maps/FarmPolygonMap';
+import { AnalysisModal } from '@/components/analysis/AnalysisModal';
 
 interface Farm {
   id: string;
@@ -171,6 +172,8 @@ export default function FarmDetailsPage() {
           <Button variant="outline" asChild>
             <Link href="/farms"><ArrowLeftIcon className="mr-2 size-4" /> Back</Link>
           </Button>
+
+          <AnalysisModal farmId={farm.id} farmName={`${farm.primaryCrop || 'Farm'} (${farm.farmSize || 0} ha)`} />
 
           <Button variant="secondary" asChild>
             <Link href={`/farms/${id}/edit`}>

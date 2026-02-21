@@ -103,6 +103,10 @@ function FarmersContent() {
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Batch Selection States
+  const [selectedFarmers, setSelectedFarmers] = useState<Set<string>>(new Set());
+  const [batchLoading, setBatchLoading] = useState(false);
+
   // Filter States
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -179,27 +183,88 @@ function FarmersContent() {
     setPagination(prev => ({ ...prev, page: 1 }));
   };
 
+  // Batch Selection Handlers
+  const toggleSelectAll = () => {
+    if (selectedFarmers.size === farmers.length) {
+      setSelectedFarmers(new Set());
+    } else {
+      setSelectedFarmers(new Set(farmers.map(f => f.id)));
+    }
+  };
+
+  const toggleSelectFarmer = (id: string) => {
+    const newSelected = new Set(selectedFarmers);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedFarmers(newSelected);
+  };
+
   const updateFarmerStatus = async (id: string, newStatus: string) => {
     setActionLoading(id);
     try {
       const res = await fetch(`/api/farmers/${id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
       });
 
       if (res.ok) {
-        // Update local state
-        setFarmers(prev => prev.map(f => f.id === id ? { ...f, status: newStatus } : f));
-        fetchAnalytics(); // Refresh stats
+        // Fetch fresh data to ensure consistency
+        await fetchFarmers();
+        await fetchAnalytics();
       } else {
-        console.error('Failed to update status');
-        // Ideally show toast here
+        const error = await res.json();
+        console.error('Failed to update status:', error);
+        alert(`Failed to update status: ${error.message || 'Unknown error'}`);
       }
     } catch (err) {
       console.error('Error updating status', err);
+      alert('Error updating farmer status. Please try again.');
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const batchUpdateStatus = async (newStatus: string) => {
+    if (selectedFarmers.size === 0) {
+      alert('Please select at least one farmer');
+      return;
+    }
+
+    if (!confirm(`Update ${selectedFarmers.size} farmer(s) to status: ${newStatus}?`)) {
+      return;
+    }
+
+    setBatchLoading(true);
+    try {
+      const res = await fetch('/api/farmers/batch-update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          farmerIds: Array.from(selectedFarmers),
+          status: newStatus 
+        })
+      });
+
+      if (res.ok) {
+        // Fetch fresh data
+        await fetchFarmers();
+        await fetchAnalytics();
+        setSelectedFarmers(new Set());
+        alert(`Successfully updated ${selectedFarmers.size} farmer(s)`);
+      } else {
+        const error = await res.json();
+        console.error('Batch update failed:', error);
+        alert(`Failed to update farmers: ${error.message || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error('Error in batch update', err);
+      alert('Error updating farmers. Please try again.');
+    } finally {
+      setBatchLoading(false);
     }
   };
 
@@ -399,11 +464,84 @@ function FarmersContent() {
         </CardContent>
       </Card>
 
+      {/* Batch Actions */}
+      {selectedFarmers.size > 0 && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Badge variant="default" className="bg-blue-600">
+                  {selectedFarmers.size} farmer{selectedFarmers.size !== 1 ? 's' : ''} selected
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedFarmers(new Set())}
+                  className="h-8"
+                >
+                  Clear Selection
+                </Button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => batchUpdateStatus('Validated')}
+                  disabled={batchLoading}
+                  className="bg-white hover:bg-indigo-50 border-indigo-300"
+                >
+                  <CheckBadgeIcon className="mr-1 h-4 w-4 text-indigo-600" />
+                  Validate
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => batchUpdateStatus('Verified')}
+                  disabled={batchLoading}
+                  className="bg-white hover:bg-green-50 border-green-300"
+                >
+                  <CheckBadgeIcon className="mr-1 h-4 w-4 text-green-600" />
+                  Verify
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => batchUpdateStatus('Enrolled')}
+                  disabled={batchLoading}
+                  className="bg-white hover:bg-blue-50 border-blue-300"
+                >
+                  <ClockIcon className="mr-1 h-4 w-4 text-blue-600" />
+                  Reset
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => batchUpdateStatus('Rejected')}
+                  disabled={batchLoading}
+                  className="bg-white hover:bg-red-50 border-red-300"
+                >
+                  <XCircleIcon className="mr-1 h-4 w-4 text-red-600" />
+                  Reject
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Table */}
       <div className="rounded-md border bg-white overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50/50">
+              <TableHead className="w-[50px]">
+                <input
+                  type="checkbox"
+                  checked={selectedFarmers.size === farmers.length && farmers.length > 0}
+                  onChange={toggleSelectAll}
+                  className="h-4 w-4 rounded border-gray-300 cursor-pointer"
+                />
+              </TableHead>
               <TableHead className="w-[300px]">Farmer</TableHead>
               <TableHead>ID / NIN</TableHead>
               <TableHead>Location</TableHead>
@@ -415,7 +553,7 @@ function FarmersContent() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   <div className="flex justify-center items-center">
                     <ArrowPathIcon className="h-6 w-6 animate-spin text-gray-500" />
                     <span className="ml-2">Loading farmers...</span>
@@ -424,7 +562,7 @@ function FarmersContent() {
               </TableRow>
             ) : farmers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                   No farmers found.
                 </TableCell>
               </TableRow>
@@ -432,10 +570,17 @@ function FarmersContent() {
               farmers.map((farmer) => (
                 <TableRow
                   key={farmer.id}
-                  className="cursor-pointer hover:bg-blue-50/50"
-                  onClick={() => router.push(`/farmers/${farmer.id}`)}
+                  className={`cursor-pointer hover:bg-blue-50/50 ${selectedFarmers.has(farmer.id) ? 'bg-blue-50' : ''}`}
                 >
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedFarmers.has(farmer.id)}
+                      onChange={() => toggleSelectFarmer(farmer.id)}
+                      className="h-4 w-4 rounded border-gray-300 cursor-pointer"
+                    />
+                  </TableCell>
+                  <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)}>
                     <div className="flex items-center gap-3">
                       <div className="h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600">
                         {farmer.firstName[0]}{farmer.lastName[0]}
@@ -446,15 +591,15 @@ function FarmersContent() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)}>
                     <div className="text-sm">{farmer.nin || 'N/A'}</div>
                     <div className="text-xs text-gray-500 font-mono">ID: {farmer.id.substring(0, 8)}...</div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)}>
                     <div className="text-sm font-medium">{farmer.state}</div>
                     <div className="text-xs text-gray-500">{farmer.cluster?.title || 'No Cluster'}</div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)}>
                     <Badge variant="outline"
                       className={`
                       ${farmer.status === 'Verified' ? 'bg-green-100 text-green-800 border-green-200' : ''}
@@ -468,7 +613,7 @@ function FarmersContent() {
                       {farmer.status}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-gray-500">
+                  <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)} className="text-gray-500">
                     {new Date(farmer.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>

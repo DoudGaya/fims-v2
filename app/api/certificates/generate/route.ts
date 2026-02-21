@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 import { CertificateGenerator } from '@/lib/certificate-generator';
 
 export async function POST(req: NextRequest) {
+  console.log('API: Certificate generation request started');
   try {
     const session = await getServerSession(authOptions);
 

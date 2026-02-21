@@ -174,8 +174,23 @@ model Farm {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
   farmer              Farmer   @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  analysisResults     FarmAnalysisResult[]
 
   @@map("farms")
+}
+
+model FarmAnalysisResult {
+  id        String   @id @default(cuid())
+  farmId    String
+  variable  String   // "ph", "moisture", "ndvi", "weather", "temperature", "rainfall"
+  dateRange String?  // "2023-01-01_2023-12-31" or "latest"
+  result    Json     // Computed data
+  createdAt DateTime @default(now())
+  
+  farm      Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  @@index([farmId, variable])
+  @@map("farm_analysis_results")
 }
 
 model Referee {

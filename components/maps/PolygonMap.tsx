@@ -167,18 +167,37 @@ const PolygonMap: React.FC<PolygonMapProps> = ({
     // Draw grid
     drawGrid(ctx);
     
-    // Calculate scaling
-    const padding = 30;
+    // Calculate scaling with proper padding
+    const padding = 40;
     const drawWidth = width - padding * 2;
     const drawHeight = height - padding * 2;
     
     const latRange = boundsData.maxLat - boundsData.minLat || 0.001;
     const lngRange = boundsData.maxLng - boundsData.minLng || 0.001;
     
-    // Convert coordinates to canvas coordinates
+    // Calculate aspect ratio to maintain proper proportions
+    const latLngRatio = latRange / lngRange;
+    const canvasRatio = drawHeight / drawWidth;
+    
+    let effectiveWidth = drawWidth;
+    let effectiveHeight = drawHeight;
+    let offsetX = 0;
+    let offsetY = 0;
+    
+    if (latLngRatio > canvasRatio) {
+      // Constrained by height
+      effectiveWidth = drawHeight / latLngRatio;
+      offsetX = (drawWidth - effectiveWidth) / 2;
+    } else {
+      // Constrained by width
+      effectiveHeight = drawWidth * latLngRatio;
+      offsetY = (drawHeight - effectiveHeight) / 2;
+    }
+    
+    // Convert coordinates to canvas coordinates with proper scaling
     const canvasCoords = coords.map(([lng, lat]) => {
-      const x = padding + ((lng - boundsData.minLng) / lngRange) * drawWidth;
-      const y = padding + ((boundsData.maxLat - lat) / latRange) * drawHeight; // Flip Y
+      const x = padding + offsetX + ((lng - boundsData.minLng) / lngRange) * effectiveWidth;
+      const y = padding + offsetY + ((boundsData.maxLat - lat) / latRange) * effectiveHeight; // Flip Y
       return [x, y];
     });
     
@@ -199,26 +218,89 @@ const PolygonMap: React.FC<PolygonMapProps> = ({
       ctx.lineWidth = 2;
       ctx.stroke();
       
-      // Draw points
+      // Draw coordinate points with precise markers
       canvasCoords.forEach(([x, y], index) => {
-        // Point circle
+        // Outer circle (white border)
         ctx.beginPath();
-        ctx.arc(x, y, 5, 0, Math.PI * 2);
-        ctx.fillStyle = '#22c55e';
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = 'white';
         ctx.fill();
-        ctx.strokeStyle = 'white';
+        ctx.strokeStyle = '#22c55e';
         ctx.lineWidth = 2;
         ctx.stroke();
         
-        // Point label
-        ctx.fillStyle = '#374151';
-        ctx.font = '12px monospace';
-        ctx.fillText((index + 1).toString(), x + 8, y - 8);
+        // Inner circle (green)
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#22c55e';
+        ctx.fill();
+        
+        // Point label with background
+        const label = (index + 1).toString();
+        ctx.font = 'bold 11px monospace';
+        const metrics = ctx.measureText(label);
+        const labelX = x + 10;
+        const labelY = y - 8;
+        
+        // Label background
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.fillRect(labelX - 2, labelY - 10, metrics.width + 4, 14);
+        
+        // Label border
+        ctx.strokeStyle = '#22c55e';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(labelX - 2, labelY - 10, metrics.width + 4, 14);
+        
+        // Label text
+        ctx.fillStyle = '#15803d';
+        ctx.fillText(label, labelX, labelY);
       });
+      
+      // Draw connecting lines with direction arrows
+      ctx.strokeStyle = '#86efac';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 3]);
+      
+      for (let i = 0; i < canvasCoords.length; i++) {
+        const [x1, y1] = canvasCoords[i];
+        const [x2, y2] = canvasCoords[(i + 1) % canvasCoords.length];
+        
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        
+        // Draw small arrow in the middle of the line
+        const midX = (x1 + x2) / 2;
+        const midY = (y1 + y2) / 2;
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        
+        ctx.save();
+        ctx.translate(midX, midY);
+        ctx.rotate(angle);
+        ctx.fillStyle = '#22c55e';
+        ctx.beginPath();
+        ctx.moveTo(3, 0);
+        ctx.lineTo(-3, -3);
+        ctx.lineTo(-3, 3);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+      
+      ctx.setLineDash([]);
     }
     
     // Draw compass
     drawCompass(ctx);
+    
+    // Draw scale indicator
+    const scaleText = `Scale: ${(lngRange * 111).toFixed(2)} km (approx)`;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.fillRect(10, height - 30, ctx.measureText(scaleText).width + 10, 20);
+    ctx.fillStyle = '#374151';
+    ctx.font = '10px Arial';
+    ctx.fillText(scaleText, 15, height - 15);
   }, [width, height, drawGrid, drawCompass]);
 
   useEffect(() => {
@@ -290,19 +372,41 @@ const PolygonMap: React.FC<PolygonMapProps> = ({
         />
         
         {showCoordinates && coordinates.length > 0 && bounds && (
-          <div className="mt-3 text-xs text-gray-600 space-y-1">
-            <div className="grid grid-cols-2 gap-2">
+          <div className="mt-3 space-y-3">
+            <div className="text-xs text-gray-600 grid grid-cols-2 gap-2 pb-2 border-b">
               <div>
-                <span className="font-medium">Bounds:</span>
+                <span className="font-semibold">Bounds:</span>
               </div>
               <div></div>
-              <div>North: {formatCoordinate(bounds.maxLat)}°</div>
-              <div>East: {formatCoordinate(bounds.maxLng)}°</div>
-              <div>South: {formatCoordinate(bounds.minLat)}°</div>
-              <div>West: {formatCoordinate(bounds.minLng)}°</div>
+              <div>North: <span className="font-mono">{formatCoordinate(bounds.maxLat)}°</span></div>
+              <div>East: <span className="font-mono">{formatCoordinate(bounds.maxLng)}°</span></div>
+              <div>South: <span className="font-mono">{formatCoordinate(bounds.minLat)}°</span></div>
+              <div>West: <span className="font-mono">{formatCoordinate(bounds.minLng)}°</span></div>
             </div>
-            <div className="pt-1 border-t">
-              <span className="font-medium">Points:</span> {coordinates.length}
+            
+            <div className="text-xs">
+              <div className="font-semibold text-gray-700 mb-2">
+                Coordinate Points ({coordinates.length}):
+              </div>
+              <div className="max-h-40 overflow-y-auto space-y-1 bg-gray-50 p-2 rounded">
+                {coordinates.map((coord, index) => (
+                  <div key={index} className="flex items-center gap-2 text-xs font-mono">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-100 text-green-700 flex items-center justify-center text-xs font-bold">
+                      {index + 1}
+                    </span>
+                    <span className="text-gray-600">
+                      Lat: <span className="text-gray-900">{formatCoordinate(coord[1])}</span>
+                    </span>
+                    <span className="text-gray-600">
+                      Lng: <span className="text-gray-900">{formatCoordinate(coord[0])}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="text-xs text-gray-500 pt-2 border-t">
+              <div>Area: ~{((bounds.maxLat - bounds.minLat) * (bounds.maxLng - bounds.minLng) * 111 * 111).toFixed(2)} km²</div>
             </div>
           </div>
         )}

@@ -9,12 +9,15 @@ import { useSession } from 'next-auth/react';
 const LeafletPolygonMap = dynamic(() => import('@/components/maps/LeafletPolygonMap'), { ssr: false });
 
 const ANALYSIS_OPTIONS = [
-  { id: 'NDVI', name: 'Vegetation Health (NDVI)', icon: '🌱' },
-  { id: 'SOIL_MOISTURE', name: 'Soil Moisture', icon: '💧' },
-  { id: 'PRECIPITATION', name: 'Precipitation', icon: '🌧️' },
-  { id: 'EVAPOTRANSPIRATION', name: 'Evapotranspiration', icon: '🌫️' },
-  { id: 'LAND_SURFACE_TEMP', name: 'Land Surface Temp', icon: '🌡️' },
-  { id: 'ELEVATION', name: 'Elevation (DEM)', icon: '⛰️' },
+  { id: 'WEATHER', name: 'Current Weather', icon: '🌤️', api: 'weather' },
+  { id: 'TEMPERATURE', name: 'Temperature', icon: '🌡️', api: 'weather' },
+  { id: 'PRECIPITATION', name: 'Precipitation Forecast', icon: '🌧️', api: 'weather' },
+  { id: 'AIR_QUALITY', name: 'Air Quality', icon: '💨', api: 'weather' },
+  { id: 'NDVI', name: 'Vegetation Health (NDVI)', icon: '🌱', api: 'gis' },
+  { id: 'SOIL_MOISTURE', name: 'Soil Moisture', icon: '💧', api: 'gis' },
+  { id: 'EVAPOTRANSPIRATION', name: 'Evapotranspiration', icon: '🌫️', api: 'gis' },
+  { id: 'LAND_SURFACE_TEMP', name: 'Land Surface Temp', icon: '🔥', api: 'gis' },
+  { id: 'ELEVATION', name: 'Elevation (DEM)', icon: '⛰️', api: 'gis' },
 ];
 
 export default function GISMapGoogle() {
@@ -55,9 +58,10 @@ export default function GISMapGoogle() {
     setAnalysisLoading(true);
     setAnalysisStats(null);
     setAnalysisTileUrl(null);
+    setError(null);
 
     try {
-       // Format coordinates for GEE (GeoJSON Polygon: [[[lng, lat], ...]])
+       // Format coordinates for analysis (GeoJSON Polygon: [[[lng, lat], ...]])
        let polygonCoords: any[] = [];
        if (farm.coordinates && Array.isArray(farm.coordinates)) {
           // Assuming stored as [[lng, lat]] or similar. Need to ensure closure.
@@ -68,11 +72,16 @@ export default function GISMapGoogle() {
 
        if (!polygonCoords.length) {
          console.warn("No coordinates for farm");
+         setError("No coordinates available for this farm");
          setAnalysisLoading(false);
          return;
        }
 
-      const response = await fetch('/api/gis/analyze', {
+      // Determine which API to use
+      const option = ANALYSIS_OPTIONS.find(opt => opt.id === layerId);
+      const apiEndpoint = option?.api === 'weather' ? '/api/weather/analyze' : '/api/gis/analyze';
+
+      const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -87,18 +96,22 @@ export default function GISMapGoogle() {
         })
       });
 
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || errorData.message || 'Analysis failed');
+      }
+
       const result = await response.json();
 
-      if (result.success || result.stats) {
-        setAnalysisStats(result.stats || result.data.stats);
-        setAnalysisTileUrl(result.tileUrl || result.data.tileUrl);
+      if (result.success || result.stats || result.data) {
+        setAnalysisStats(result.stats || result.data?.stats || result.data?.current);
+        setAnalysisTileUrl(result.tileUrl || result.data?.tileUrl);
       } else {
-        console.error(result.error);
-        setError(result.error || "Analysis failed");
+        throw new Error(result.error || "Analysis failed");
       }
-    } catch (err) {
-      console.error("GIS Analysis failed", err);
-      setError("Analysis failed to run");
+    } catch (err: any) {
+      console.error("Analysis failed", err);
+      setError(err.message || "Analysis failed to run. Try selecting another layer.");
     } finally {
       setAnalysisLoading(false);
     }
@@ -187,13 +200,52 @@ export default function GISMapGoogle() {
 
         {activeLayer && !analysisLoading && analysisStats && (
           <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-100 animate-in fade-in slide-in-from-top-2">
-            <p className="text-xs font-bold text-blue-800 uppercase mb-1">Regional Avg - {activeLayer}</p>
-            <div className="flex items-end justify-between">
-              <span className="text-2xl font-bold text-blue-900">
-                {analysisStats.mean || analysisStats.total}
-                <span className="text-xs font-normal text-blue-600 ml-1">{analysisStats.unit}</span>
-              </span>
-            </div>
+            <p className="text-xs font-bold text-blue-800 uppercase mb-2">{activeLayer.replace('_', ' ')}</p>
+            
+            {/* Weather Data Display */}
+            {activeLayer === 'WEATHER' && analysisStats.temperature !== undefined && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Temperature:</span>
+                  <span className="text-xl font-bold text-blue-900">{analysisStats.temperature}°C</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Humidity:</span>
+                  <span className="text-lg font-semibold">{analysisStats.humidity}%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Wind:</span>
+                  <span className="text-sm">{analysisStats.wind_speed} m/s</span>
+                </div>
+                {analysisStats.description && (
+                  <p className="text-xs text-gray-600 capitalize mt-2">{analysisStats.description}</p>
+                )}
+              </div>
+            )}
+            
+            {/* Temperature Data */}
+            {activeLayer === 'TEMPERATURE' && (
+              <div className="space-y-1">
+                <div className="flex items-end justify-between">
+                  <span className="text-2xl font-bold text-blue-900">
+                    {analysisStats.mean || analysisStats.temperature}°C
+                  </span>
+                </div>
+                {analysisStats.min && analysisStats.max && (
+                  <p className="text-xs text-gray-600">Range: {analysisStats.min}°C - {analysisStats.max}°C</p>
+                )}
+              </div>
+            )}
+            
+            {/* General Stats Display */}
+            {(activeLayer !== 'WEATHER' && activeLayer !== 'TEMPERATURE') && (
+              <div className="flex items-end justify-between">
+                <span className="text-2xl font-bold text-blue-900">
+                  {analysisStats.mean || analysisStats.total || analysisStats.aqi || 'N/A'}
+                  <span className="text-xs font-normal text-blue-600 ml-1">{analysisStats.unit || ''}</span>
+                </span>
+              </div>
+            )}
           </div>
         )}
 

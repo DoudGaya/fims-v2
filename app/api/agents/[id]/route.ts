@@ -86,70 +86,130 @@ export async function PUT(
     const newStatus = body.status;
     const statusChanged = newStatus && newStatus !== currentStatus;
 
+    // Prepare update data - only include fields that are provided
+    const userUpdateData: any = {};
+    if (body.firstName !== undefined) userUpdateData.firstName = body.firstName;
+    if (body.lastName !== undefined) userUpdateData.lastName = body.lastName;
+    if (body.firstName && body.lastName) {
+      userUpdateData.displayName = `${body.firstName} ${body.lastName}`;
+    }
+    if (body.phone !== undefined) userUpdateData.phoneNumber = body.phone;
+    if (body.isActive !== undefined) {
+      userUpdateData.isActive = body.isActive;
+    } else if (body.status) {
+      userUpdateData.isActive = body.status === 'active' || body.status === 'Enrolled';
+    }
+
+    // Prepare agent update data - only include provided fields
+    const agentUpdateData: any = {};
+    if (body.firstName !== undefined) agentUpdateData.firstName = body.firstName;
+    if (body.lastName !== undefined) agentUpdateData.lastName = body.lastName;
+    if (body.middleName !== undefined) agentUpdateData.middleName = body.middleName || null;
+    if (body.phone !== undefined && body.phone) {
+      // Check if phone is being changed and if it's already taken
+      if (body.phone !== existingAgent.phoneNumber) {
+        const phoneExists = await prisma.agent.findFirst({
+          where: { phone: body.phone, NOT: { userId: id } }
+        });
+        if (phoneExists) {
+          return NextResponse.json({ error: 'Phone number already in use by another agent' }, { status: 409 });
+        }
+      }
+      agentUpdateData.phone = body.phone;
+    }
+    if (body.nin !== undefined && body.nin) {
+      // Check if NIN is being changed and if it's already taken
+      if (body.nin !== existingAgent.agent?.nin) {
+        const ninExists = await prisma.agent.findFirst({
+          where: { nin: body.nin, NOT: { userId: id } }
+        });
+        if (ninExists) {
+          return NextResponse.json({ error: 'NIN already in use by another agent' }, { status: 409 });
+        }
+      }
+      agentUpdateData.nin = body.nin;
+    }
+    if (body.bvn !== undefined && body.bvn) {
+      // Check if BVN is being changed and if it's already taken
+      if (body.bvn !== existingAgent.agent?.bvn) {
+        const bvnExists = await prisma.agent.findFirst({
+          where: { bvn: body.bvn, NOT: { userId: id } }
+        });
+        if (bvnExists) {
+          return NextResponse.json({ error: 'BVN already in use by another agent' }, { status: 409 });
+        }
+      }
+      agentUpdateData.bvn = body.bvn;
+    }
+    if (body.gender !== undefined) agentUpdateData.gender = body.gender;
+    if (body.maritalStatus !== undefined) agentUpdateData.maritalStatus = body.maritalStatus;
+    if (body.dateOfBirth !== undefined) {
+      agentUpdateData.dateOfBirth = body.dateOfBirth ? new Date(body.dateOfBirth) : null;
+    }
+    if (body.address !== undefined) agentUpdateData.address = body.address;
+    if (body.bankName !== undefined) agentUpdateData.bankName = body.bankName;
+    if (body.accountNumber !== undefined) agentUpdateData.accountNumber = body.accountNumber;
+    if (body.accountName !== undefined) agentUpdateData.accountName = body.accountName;
+    if (body.state !== undefined) agentUpdateData.state = body.state;
+    if (body.localGovernment !== undefined || body.lga !== undefined) {
+      agentUpdateData.localGovernment = body.localGovernment || body.lga;
+    }
+    if (body.ward !== undefined) agentUpdateData.ward = body.ward;
+    if (body.pollingUnit !== undefined) agentUpdateData.pollingUnit = body.pollingUnit;
+    if (body.assignedState !== undefined) agentUpdateData.assignedState = body.assignedState;
+    if (body.assignedLGA !== undefined) agentUpdateData.assignedLGA = body.assignedLGA;
+    if (body.status !== undefined) agentUpdateData.status = body.status;
+
     // Update User and Agent profile
     const result = await prisma.$transaction(async (tx) => {
       // Update User
       const user = await tx.user.update({
         where: { id },
-        data: {
-          firstName: body.firstName,
-          lastName: body.lastName,
-          displayName: body.firstName && body.lastName ? `${body.firstName} ${body.lastName}` : undefined,
-          phoneNumber: body.phone,
-          isActive: body.isActive !== undefined ? body.isActive : undefined,
-        }
+        data: userUpdateData
       });
 
-      // Update Agent Profile if it exists, or create it
-      const agentProfile = await tx.agent.upsert({
-        where: { userId: id },
-        create: {
-          userId: id,
-          firstName: body.firstName || existingAgent.firstName || '',
-          lastName: body.lastName || existingAgent.lastName || '',
-          middleName: body.middleName,
-          email: existingAgent.email,
-          phone: body.phone || existingAgent.phoneNumber || '',
-          nin: body.nin || `NIN-${Date.now()}`,
-          bvn: body.bvn,
-          gender: body.gender,
-          maritalStatus: body.maritalStatus,
-          dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null,
-          address: body.address,
-          bankName: body.bankName,
-          accountNumber: body.accountNumber,
-          accountName: body.accountName,
-          state: body.state,
-          localGovernment: body.localGovernment || body.lga,
-          ward: body.ward,
-          pollingUnit: body.pollingUnit,
-          assignedState: body.assignedState,
-          assignedLGA: body.assignedLGA,
-          status: body.status || (body.isActive ? 'active' : 'inactive'),
-        },
-        update: {
-          firstName: body.firstName,
-          lastName: body.lastName,
-          middleName: body.middleName,
-          phone: body.phone,
-          nin: body.nin,
-          bvn: body.bvn,
-          gender: body.gender,
-          maritalStatus: body.maritalStatus,
-          dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null,
-          address: body.address,
-          bankName: body.bankName,
-          accountNumber: body.accountNumber,
-          accountName: body.accountName,
-          state: body.state,
-          localGovernment: body.localGovernment || body.lga,
-          ward: body.ward,
-          pollingUnit: body.pollingUnit,
-          assignedState: body.assignedState,
-          assignedLGA: body.assignedLGA,
-          status: body.status, // Update recruitment status
-        }
+      // Check if agent profile exists
+      const agentExists = await tx.agent.findUnique({
+        where: { userId: id }
       });
+
+      let agentProfile;
+      
+      if (agentExists) {
+        // Update existing agent profile
+        agentProfile = await tx.agent.update({
+          where: { userId: id },
+          data: agentUpdateData
+        });
+      } else {
+        // Create new agent profile
+        agentProfile = await tx.agent.create({
+          data: {
+            userId: id,
+            firstName: body.firstName || existingAgent.firstName || '',
+            lastName: body.lastName || existingAgent.lastName || '',
+            middleName: body.middleName || null,
+            email: existingAgent.email,
+            phone: body.phone || existingAgent.phoneNumber || '',
+            nin: body.nin || `NIN-${Date.now()}-${id.substring(0, 8)}`,
+            bvn: body.bvn || null,
+            gender: body.gender || null,
+            maritalStatus: body.maritalStatus || null,
+            dateOfBirth: body.dateOfBirth ? new Date(body.dateOfBirth) : null,
+            address: body.address || null,
+            bankName: body.bankName || null,
+            accountNumber: body.accountNumber || null,
+            accountName: body.accountName || null,
+            state: body.state || null,
+            localGovernment: body.localGovernment || body.lga || null,
+            ward: body.ward || null,
+            pollingUnit: body.pollingUnit || null,
+            assignedState: body.assignedState || null,
+            assignedLGA: body.assignedLGA || null,
+            status: body.status || (body.isActive ? 'active' : 'inactive'),
+          }
+        });
+      }
 
       return { user, agentProfile };
     });
@@ -170,6 +230,112 @@ export async function PUT(
   } catch (error) {
     console.error('Error updating agent:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userPermissions = (session.user as any).permissions as string[];
+    if (!checkPermission(userPermissions, PERMISSIONS.AGENTS_UPDATE)) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    const { id } = await params;
+    const body = await req.json();
+
+    // Check if agent exists
+    const existingAgent = await prisma.user.findUnique({
+      where: { id },
+      include: { agent: true }
+    });
+
+    if (!existingAgent || existingAgent.role !== 'agent') {
+      return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+    }
+
+    // Check unique constraints if updating unique fields
+    if (body.phone && body.phone !== existingAgent.agent?.phone) {
+      const phoneExists = await prisma.agent.findFirst({
+        where: { phone: body.phone, NOT: { userId: id } }
+      });
+      if (phoneExists) {
+        return NextResponse.json({ error: 'Phone number already in use' }, { status: 409 });
+      }
+    }
+
+    if (body.nin && body.nin !== existingAgent.agent?.nin) {
+      const ninExists = await prisma.agent.findFirst({
+        where: { nin: body.nin, NOT: { userId: id } }
+      });
+      if (ninExists) {
+        return NextResponse.json({ error: 'NIN already in use' }, { status: 409 });
+      }
+    }
+
+    if (body.bvn && body.bvn !== existingAgent.agent?.bvn) {
+      const bvnExists = await prisma.agent.findFirst({
+        where: { bvn: body.bvn, NOT: { userId: id } }
+      });
+      if (bvnExists) {
+        return NextResponse.json({ error: 'BVN already in use' }, { status: 409 });
+      }
+    }
+
+    // Quick update for status or simple fields
+    const result = await prisma.$transaction(async (tx) => {
+      // Update Agent profile if it exists
+      if (existingAgent.agent) {
+        const agentProfile = await tx.agent.update({
+          where: { userId: id },
+          data: body
+        });
+
+        // Update user isActive if status changed
+        if (body.status) {
+          await tx.user.update({
+            where: { id },
+            data: {
+              isActive: body.status === 'active' || body.status === 'Enrolled'
+            }
+          });
+        }
+
+        return agentProfile;
+      } else {
+        return null;
+      }
+    });
+
+    if (!result) {
+      return NextResponse.json({ error: 'Agent profile not found' }, { status: 404 });
+    }
+
+    // Send email if status changed
+    if (body.status && body.status !== existingAgent.agent?.status) {
+      const { sendAgentStatusEmail } = await import('@/lib/emailService');
+      await sendAgentStatusEmail(
+        existingAgent.email,
+        existingAgent.firstName || 'Agent',
+        body.status
+      );
+    }
+
+    return NextResponse.json(result);
+
+  } catch (error: any) {
+    console.error('Error updating agent:', error);
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      message: error.message || 'Unknown error'
+    }, { status: 500 });
   }
 }
 

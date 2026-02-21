@@ -160,24 +160,27 @@ export async function POST(req: NextRequest) {
 
     const data = validationResult.data;
 
-    // Check for duplicate NIN or Phone
+    // Check for duplicate NIN or Phone (only if NIN is provided)
     const existingFarmer = await prisma.farmer.findFirst({
       where: {
         OR: [
-          { nin: data.nin },
+          data.nin ? { nin: data.nin } : { id: 'never-match' },
           { phone: data.phone }
         ]
       }
     });
 
     if (existingFarmer) {
-      if (existingFarmer.nin === data.nin) {
+      if (data.nin && existingFarmer.nin === data.nin) {
         return NextResponse.json({ error: 'A farmer with this NIN already exists' }, { status: 409 });
       }
       if (existingFarmer.phone === data.phone) {
         return NextResponse.json({ error: 'A farmer with this phone number already exists' }, { status: 409 });
       }
     }
+
+    // Generate NIN if not provided (required by schema)
+    const nin = data.nin || `GEN-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
 
     // Generate Farmer ID (Simple implementation, can be improved)
     // Format: FIMS-{STATE_CODE}-{RANDOM}
@@ -204,6 +207,7 @@ export async function POST(req: NextRequest) {
     const newFarmer = await prisma.farmer.create({
       data: {
         ...farmerData,
+        nin, // Use generated or provided NIN
         // farmerId, // Removed as it's not in schema
         status: 'Pending', // Default status
         agentId: session.user.id, // Changed from registeredBy to agentId

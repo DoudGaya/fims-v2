@@ -211,34 +211,65 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
         setSaving(true);
         setErrorMsg('');
 
-        // Validate NIN
-        if (!/^\d{11}$/.test(formData.nin)) {
-            setErrorMsg('NIN must be exactly 11 digits numeric.');
+        // Validate NIN only if provided
+        if (formData.nin && formData.nin.trim() && !/^\d{10,11}$/.test(formData.nin)) {
+            setErrorMsg('NIN must be 10-11 digits numeric.');
+            setSaving(false);
+            return;
+        }
+
+        // Validate BVN only if provided
+        if (formData.bvn && formData.bvn.trim() && !/^\d{11}$/.test(formData.bvn)) {
+            setErrorMsg('BVN must be exactly 11 digits numeric.');
             setSaving(false);
             return;
         }
 
         try {
+            // Prepare update payload - only include non-empty fields
+            const updatePayload: any = {};
+            
+            // Only include fields that have values
+            if (formData.firstName?.trim()) updatePayload.firstName = formData.firstName.trim();
+            if (formData.lastName?.trim()) updatePayload.lastName = formData.lastName.trim();
+            if (formData.middleName?.trim()) updatePayload.middleName = formData.middleName.trim();
+            if (formData.phone?.trim()) updatePayload.phone = formData.phone.trim();
+            if (formData.nin?.trim()) updatePayload.nin = formData.nin.trim();
+            if (formData.bvn?.trim()) updatePayload.bvn = formData.bvn.trim();
+            if (formData.gender) updatePayload.gender = formData.gender;
+            if (formData.maritalStatus) updatePayload.maritalStatus = formData.maritalStatus;
+            if (formData.dateOfBirth) updatePayload.dateOfBirth = formData.dateOfBirth;
+            if (formData.address?.trim()) updatePayload.address = formData.address.trim();
+            if (formData.bankName?.trim()) updatePayload.bankName = formData.bankName.trim();
+            if (formData.accountNumber?.trim()) updatePayload.accountNumber = formData.accountNumber.trim();
+            if (formData.accountName?.trim()) updatePayload.accountName = formData.accountName.trim();
+            if (formData.state) updatePayload.state = formData.state;
+            if (formData.lga) updatePayload.localGovernment = formData.lga;
+            if (formData.ward?.trim()) updatePayload.ward = formData.ward.trim();
+            if (formData.pollingUnit?.trim()) updatePayload.pollingUnit = formData.pollingUnit.trim();
+            if (formData.assignedState) updatePayload.assignedState = formData.assignedState;
+            if (formData.assignedLGA?.trim()) updatePayload.assignedLGA = formData.assignedLGA.trim();
+            if (formData.status) {
+                updatePayload.status = formData.status;
+                updatePayload.isActive = formData.status === 'Enrolled' || formData.status === 'active';
+            }
+
             const res = await fetch(`/api/agents/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...formData,
-                    localGovernment: formData.lga, // Map to API expected field
-                    isActive: formData.status === 'Enrolled' || formData.status === 'active' // simplistic logic, backend handles sync
-                })
+                body: JSON.stringify(updatePayload)
             });
 
             if (!res.ok) {
                 const data = await res.json();
-                throw new Error(data.error || 'Failed to update agent');
+                throw new Error(data.error || data.message || 'Failed to update agent');
             }
 
             router.push(`/agents/${id}`);
             router.refresh();
         } catch (err: any) {
-            console.error(err);
-            setErrorMsg(err.message);
+            console.error('Update error:', err);
+            setErrorMsg(err.message || 'Failed to update agent. Please check the form and try again.');
         } finally {
             setSaving(false);
         }

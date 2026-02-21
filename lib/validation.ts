@@ -2,7 +2,16 @@ import { z } from 'zod';
 
 // Farmer validation schema
 export const farmerSchema = z.object({
-  nin: z.string().min(1, 'NIN is required').length(11, 'NIN must be exactly 11 digits').regex(/^\d+$/, 'NIN must contain only digits'),
+  nin: z.string().optional().or(z.literal('')).transform(val => {
+    if (!val || val === '') return undefined;
+    // Remove any non-digit characters
+    const cleaned = val.replace(/\D/g, '');
+    // NIN should be 11 digits, but we'll accept 10-11
+    if (cleaned.length < 10 || cleaned.length > 11) {
+      throw new Error('NIN must be 10-11 digits');
+    }
+    return cleaned;
+  }),
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   middleName: z.string().optional().or(z.literal('')),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
