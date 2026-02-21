@@ -5,8 +5,8 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
-// Load Google Maps JS API on client only
-const GoogleMapPolygons = dynamic(() => import('@/components/maps/GoogleMapPolygons'), { ssr: false });
+// Load Leaflet Map on client only (free alternative to Google Maps)
+const LeafletPolygonMap = dynamic(() => import('@/components/maps/LeafletPolygonMap'), { ssr: false });
 
 const ANALYSIS_OPTIONS = [
   { id: 'NDVI', name: 'Vegetation Health (NDVI)', icon: '🌱' },
@@ -205,7 +205,7 @@ export default function GISMapGoogle() {
         </button>
       </div>
 
-      <GoogleMapPolygons
+      <LeafletPolygonMap
         center={center}
         farms={farms}
         loading={loading || analysisLoading}
