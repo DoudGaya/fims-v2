@@ -10,114 +10,166 @@ export async function GET(request: Request) {
   }
 
   try {
-    console.log('🗺️ Loading farm GeoJSON data...');
+    const { searchParams } = new URL(request.url);
+    const limit = Math.min(parseInt(searchParams.get('limit') ?? '1000', 10), 5000);
 
+    console.log(`🗺️ Loading farm GeoJSON data (limit: ${limit})...`);
+
+    // ── Query 1: farms with polygon data (for polygon layer) ──────────────
     const farms = await prisma.farm.findMany({
+      where: {
+        OR: [
+          { farmCoordinates: { not: null } },
+          { farmPolygon:     { not: null } },
+          {
+            AND: [
+              { farmLatitude:  { not: null } },
+              { farmLongitude: { not: null } },
+            ],
+          },
+        ],
+      },
+      take: limit,
       include: {
         farmer: {
           select: {
-            id: true,
-            firstName: true,
-            middleName: true,
-            lastName: true,
-            state: true,
-            lga: true,
-            ward: true,
-            status: true
+            id: true, firstName: true, middleName: true, lastName: true,
+            state: true, lga: true, ward: true, status: true,
           }
         }
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
+      orderBy: { createdAt: 'desc' }
     });
 
-    console.log(`📊 Found ${farms.length} farms`);
+    // ── Query 2: ALL farms with valid Nigerian lat/lng (for dot layer) ────
+    // Server-side bbox filter ensures only real Nigerian coordinates come through.
+    const pointFarms = await prisma.farm.findMany({
+      where: {
+        farmLatitude:  { gte: 3,   lte: 15   },
+        farmLongitude: { gte: 2,   lte: 15.5 },
+      },
+      take: 5000,
+      select: {
+        id: true,
+        farmLatitude: true,
+        farmLongitude: true,
+        primaryCrop: true,
+        farmState: true,
+        farmLocalGovernment: true,
+        farmSize: true,
+        farmArea: true,
+        farmerId: true,
+        farmer: {
+          select: {
+            firstName: true, middleName: true, lastName: true,
+            status: true, state: true, lga: true,
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
 
-    // Helpers
-    const toNumberPair = (p: any) => Array.isArray(p) && p.length >= 2 ? [Number(p[0]), Number(p[1])] : null;
-    const clampPairs = (arr: any) => (Array.isArray(arr) ? arr.map(toNumberPair).filter((p): p is number[] => p !== null) : []);
+    console.log(`📊 Found ${farms.length} farms for polygons, ${pointFarms.length} farms with valid Nigerian coordinates`);
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    const nigeriaBBox = { latMin: 3, latMax: 15, lngMin: 2, lngMax: 15.5 };
+    const inNigeria = ([lng, lat]: number[]) =>
+      lng >= nigeriaBBox.lngMin && lng <= nigeriaBBox.lngMax &&
+      lat >= nigeriaBBox.latMin && lat <= nigeriaBBox.latMax;
+
     const ensureClosed = (arr: number[][]) => {
-      if (!arr.length) return arr;
-      const first = arr[0];
-      const last = arr[arr.length - 1];
-      if (first[0] === last[0] && first[1] === last[1]) return arr;
-      return [...arr, first];
+      if (arr.length < 2) return arr;
+      const f = arr[0]; const l = arr[arr.length - 1];
+      return f[0] === l[0] && f[1] === l[1] ? arr : [...arr, f];
     };
 
-    const nigeriaBBox = { latMin: 3, latMax: 15, lngMin: 2, lngMax: 15.5 };
-    const inNigeria = ([lng, lat]: number[]) => lat >= nigeriaBBox.latMin && lat <= nigeriaBBox.latMax && lng >= nigeriaBBox.lngMin && lng <= nigeriaBBox.lngMax;
+    /** Convert any coordinate element to [lng, lat] pair, handling objects & arrays */
+    const toPair = (p: any): [number, number] | null => {
+      if (Array.isArray(p) && p.length >= 2) return [Number(p[0]), Number(p[1])];
+      if (p && typeof p === 'object') {
+        // {latitude, longitude} or {lat, lng} or {x, y}
+        const lat = p.latitude ?? p.lat ?? p.y;
+        const lng = p.longitude ?? p.lng ?? p.x;
+        if (lat != null && lng != null) return [Number(lng), Number(lat)];
+      }
+      return null;
+    };
 
-    // Transform farms
+    /** Extract a flat list of [lng, lat] pairs from any nested coordinate structure */
+    const extractRing = (parsed: any): number[][] => {
+      if (!parsed) return [];
+
+      // Single-point object: {"latitude":x,"longitude":y}  →  build square
+      if (!Array.isArray(parsed) && typeof parsed === 'object') {
+        const pair = toPair(parsed);
+        if (pair) return [pair]; // will be detected as single-point below
+        // GeoJSON-style
+        const inner = (parsed as any).coordinates ?? (parsed as any).geometry?.coordinates;
+        if (inner) return extractRing(inner);
+        return [];
+      }
+
+      if (!Array.isArray(parsed)) return [];
+      if (parsed.length === 0) return [];
+
+      const first = parsed[0];
+
+      // [[ring]] — triple-nested (GeoJSON Polygon)
+      if (Array.isArray(first) && Array.isArray(first[0]) && Array.isArray(first[0][0])) {
+        return extractRing(first[0]);
+      }
+      // [ring] — double-nested
+      if (Array.isArray(first) && Array.isArray(first[0])) {
+        return extractRing(first);
+      }
+      // flat array of pairs [[lng,lat],...] or [{lat,lng},...]
+      if (Array.isArray(first) || (first && typeof first === 'object')) {
+        return parsed.map(toPair).filter((p): p is [number, number] => p !== null);
+      }
+      return [];
+    };
+
+    // Transform farms — only REAL multi-point surveyed rings are included.
+    // Single-point farms (most of the DB) are served only by the pointsGeoJson dot layer.
+    // farmPolygon stores [{latitude, longitude, timestamp?, accuracy?}, ...] from the mobile app.
     const transformedFarms = farms.map(farm => {
-      let raw: any[] = [];
+      let ring: number[][] = [];
 
-      // Parse coordinates
-      if (farm.farmCoordinates || farm.farmPolygon) {
+      const stored = farm.farmPolygon || farm.farmCoordinates;
+      if (stored) {
         try {
-          const coordinateData = farm.farmCoordinates || farm.farmPolygon;
-          let parsed: any = coordinateData;
-
-          if (typeof coordinateData === 'string') {
-            parsed = JSON.parse(coordinateData);
+          const parsed = typeof stored === 'string' ? JSON.parse(stored) : stored;
+          const pts = extractRing(parsed);
+          // Require ≥3 GPS-captured points — never synthesise squares from single points
+          if (pts.length >= 3) {
+            ring = ensureClosed(pts);
           }
-
-          if (Array.isArray(parsed)) {
-            if (Array.isArray(parsed[0]) && Array.isArray(parsed[0][0])) {
-              raw = parsed[0]; // Take first ring
-            } else {
-              raw = parsed;
-            }
-          } else if (parsed && typeof parsed === 'object') {
-            const coords = (parsed as any).coordinates || (parsed as any).geometry?.coordinates;
-            if (Array.isArray(coords)) {
-              raw = Array.isArray(coords[0]) && Array.isArray(coords[0][0]) ? coords[0] : coords;
-            }
-          }
-        } catch (error) {
-          console.warn(`⚠️ Failed to parse coordinates for farm ${farm.id}:`, error);
-          raw = [];
+        } catch (e) {
+          console.warn(`⚠️ Parse error for farm ${farm.id}:`, e);
         }
       }
 
-      // Fallback small square if point exists
-      if (raw.length === 0 && farm.farmLatitude && farm.farmLongitude) {
-        const lat = Number(farm.farmLatitude);
-        const lng = Number(farm.farmLongitude);
-        const offset = 0.001;
-        raw = [
-          [lng - offset, lat - offset],
-          [lng + offset, lat - offset],
-          [lng + offset, lat + offset],
-          [lng - offset, lat + offset],
-          [lng - offset, lat - offset],
-        ];
+      // Swap detection: use whichever axis order puts more points inside Nigeria bbox
+      if (ring.length >= 3) {
+        const hitsNormal  = ring.filter(inNigeria).length;
+        const ringSwapped = ensureClosed(ring.map(([a, b]) => [b, a]));
+        const hitsSwapped = ringSwapped.filter(inNigeria).length;
+        if (hitsSwapped > hitsNormal) ring = ringSwapped;
       }
 
-      // Normalize
-      let coordsLngLat = ensureClosed(clampPairs(raw));
-
-      // Swap check logic
-      const hitsAsLngLat = coordsLngLat.filter(inNigeria).length;
-      const swapped = ensureClosed(coordsLngLat.map(([lng, lat]) => [lat, lng]));
-      const hitsAsSwapped = swapped.filter(inNigeria).length;
-
-      if (hitsAsSwapped > hitsAsLngLat) {
-        coordsLngLat = swapped;
-      }
-
-      const coordsLatLng = coordsLngLat.map(([lng, lat]) => [lat, lng]);
+      const valid = ring.length >= 3 && ring.filter(inNigeria).length >= Math.ceil(ring.length * 0.6);
+      const coordsLatLng = ring.map(([lng, lat]) => [lat, lng]);
 
       return {
         id: farm.id,
         name: `${farm.farmer?.firstName || 'Unknown'}'s Farm`,
-        farmerName: farm.farmer ?
-          `${farm.farmer.firstName} ${farm.farmer.middleName || ''} ${farm.farmer.lastName}`.trim() :
-          'Unknown',
+        farmerName: farm.farmer
+          ? `${farm.farmer.firstName} ${farm.farmer.middleName || ''} ${farm.farmer.lastName}`.trim()
+          : 'Unknown',
         farmerId: farm.farmerId,
         crop: farm.primaryCrop,
         area: farm.farmSize || farm.farmArea,
-        coordinates: coordsLngLat,
+        coordinates: ring,
         coordinatesLatLng: coordsLatLng,
         status: farm.farmer?.status?.toLowerCase() === 'verified' ? 'verified' : 'pending',
         state: farm.farmState || farm.farmer?.state || '',
@@ -128,29 +180,52 @@ export async function GET(request: Request) {
         secondaryCrop: farm.secondaryCrop,
         soilType: farm.soilType,
         farmingExperience: farm.farmingExperience,
-        // Metadata
-        coordinatesCount: coordsLngLat.length,
-        hasValidCoordinates: coordsLngLat.length >= 3,
+        coordinatesCount: ring.length,
+        hasValidCoordinates: valid,
       };
     });
 
-    const validFarms = transformedFarms.filter(farm => farm.hasValidCoordinates);
-    const invalidFarms = transformedFarms.filter(farm => !farm.hasValidCoordinates);
+    const validFarms   = transformedFarms.filter(f => f.hasValidCoordinates);
+    const invalidFarms = transformedFarms.filter(f => !f.hasValidCoordinates);
 
-    console.log(`✅ ${validFarms.length} farms with valid coordinates`);
+    console.log(`✅ ${validFarms.length} surveyed polygon farms, ${pointFarms.length} dot farms`);
 
-    // Statistics
+    // ── Build Point FeatureCollection from raw lat/lng (no parsing needed) ──
+    const pointsGeoJson = {
+      type: 'FeatureCollection',
+      features: pointFarms.map(pf => ({
+        type: 'Feature',
+        properties: {
+          id: pf.id,
+          farmerName: pf.farmer
+            ? `${pf.farmer.firstName || ''} ${pf.farmer.middleName || ''} ${pf.farmer.lastName || ''}`.trim()
+            : 'Unknown',
+          crop:   pf.primaryCrop   || null,
+          area:   pf.farmSize      || pf.farmArea || null,
+          status: pf.farmer?.status?.toLowerCase() === 'verified' ? 'verified' : 'pending',
+          state:  pf.farmState     || pf.farmer?.state || '',
+          lga:    pf.farmLocalGovernment || pf.farmer?.lga || '',
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [Number(pf.farmLongitude), Number(pf.farmLatitude)],
+        },
+      }))
+    };
+
+    // Statistics — based on pointFarms (all farms with valid Nigerian coords)
     const totalArea = validFarms.reduce((sum, farm) => sum + (Number(farm.area) || 0), 0);
-    const verifiedFarms = validFarms.filter(farm => farm.status === 'verified').length;
-    const pendingFarms = validFarms.filter(farm => farm.status === 'pending').length;
 
-    const cropStats = validFarms.reduce((acc: Record<string, number>, farm) => {
-      const crop = (farm.crop as string) || 'Unknown';
+    const verifiedFarms = pointFarms.filter(pf => pf.farmer?.status?.toLowerCase() === 'verified').length;
+    const pendingFarms  = pointFarms.filter(pf => pf.farmer?.status?.toLowerCase() !== 'verified').length;
+
+    const cropStats = pointFarms.reduce((acc: Record<string, number>, pf) => {
+      const crop = (pf.primaryCrop as string) || 'Unknown';
       acc[crop] = (acc[crop] || 0) + 1;
       return acc;
     }, {});
 
-    // GeoJSON FeatureCollection
+    // GeoJSON — only real surveyed polygons, no synthetic squares
     const geoJsonFeatureCollection = {
       type: 'FeatureCollection',
       features: validFarms.map(farm => ({
@@ -166,31 +241,35 @@ export async function GET(request: Request) {
           state: farm.state,
           lga: farm.lga,
           ward: farm.ward,
-          createdAt: farm.createdAt,
-          updatedAt: farm.updatedAt,
+          coordinatesCount: farm.coordinatesCount,
         },
         geometry: {
           type: 'Polygon',
-          coordinates: [farm.coordinates] // [lng,lat]
-        }
+          coordinates: [farm.coordinates], // [[lng,lat], ...]
+        },
       }))
     };
+
+    console.log(`🗺️ GeoJSON: ${validFarms.length} real surveyed polygons`);
 
     return NextResponse.json({
       success: true,
       farms: validFarms,
       geoJson: geoJsonFeatureCollection,
+      pointsGeoJson,
       statistics: {
-        total: validFarms.length,
-        verified: verifiedFarms,
-        pending: pendingFarms,
-        totalArea: totalArea,
-        cropStats: cropStats,
-        invalidCoordinates: invalidFarms.length
+        total:      pointFarms.length,
+        verified:   verifiedFarms,
+        pending:    pendingFarms,
+        totalArea:  totalArea,
+        cropStats:  cropStats,
+        invalidCoordinates: invalidFarms.length,
+        surveyedPolygons:   validFarms.length,
       },
       metadata: {
         timestamp: new Date().toISOString(),
-        totalFarmsInDb: farms.length,
+        requestedLimit: limit,
+        totalFarmsInDb: await prisma.farm.count(),
         farmsWithValidCoordinates: validFarms.length,
         farmsWithInvalidCoordinates: invalidFarms.length
       }

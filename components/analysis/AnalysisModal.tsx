@@ -161,7 +161,7 @@ export function AnalysisModal({ farmId, farmName }: AnalysisModalProps) {
                <CardContent className="pt-6">
                  <div className="text-center">
                     <p className="text-sm font-medium text-gray-500">Surface Moisture</p>
-                    <h3 className="text-2xl font-bold text-blue-700">{data.surface_moisture} mm/mm</h3>
+                    <h3 className="text-2xl font-bold text-blue-700">{data.surface_moisture} mm</h3>
                  </div>
                </CardContent>
              </Card>
@@ -169,7 +169,7 @@ export function AnalysisModal({ farmId, farmName }: AnalysisModalProps) {
                <CardContent className="pt-6">
                  <div className="text-center">
                     <p className="text-sm font-medium text-gray-500">Root Zone</p>
-                    <h3 className="text-2xl font-bold text-green-700">{data.root_zone_moisture} mm/mm</h3>
+                    <h3 className="text-2xl font-bold text-green-700">{data.root_zone_moisture} mm</h3>
                  </div>
                </CardContent>
              </Card>

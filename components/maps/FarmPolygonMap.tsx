@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { GoogleMap, useJsApiLoader, Polygon } from '@react-google-maps/api';
+import { GoogleMap, Polygon } from '@react-google-maps/api';
+import { useGoogleMaps } from './GoogleMapsProvider';
 
 const containerStyle = {
     width: '100%',
@@ -23,11 +24,7 @@ interface FarmPolygonMapProps {
 }
 
 export default function FarmPolygonMap({ polygonData }: FarmPolygonMapProps) {
-    const { isLoaded, loadError } = useJsApiLoader({
-        id: 'google-map-script',
-        googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || ''
-    });
-
+    const { isLoaded, loadError } = useGoogleMaps();
     const [map, setMap] = useState<google.maps.Map | null>(null);
     const [authError, setAuthError] = useState(false);
 

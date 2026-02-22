@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 
-// Load Leaflet Map on client only (free alternative to Google Maps)
-const LeafletPolygonMap = dynamic(() => import('@/components/maps/LeafletPolygonMap'), { ssr: false });
+// MapLibre GL JS — GPU-accelerated, free, no API key needed
+const AgriMapLibre = dynamic(() => import('@/components/maps/AgriMapLibre'), { ssr: false });
 
 const ANALYSIS_OPTIONS = [
   { id: 'WEATHER', name: 'Current Weather', icon: '🌤️', api: 'weather' },
@@ -21,9 +20,12 @@ const ANALYSIS_OPTIONS = [
 ];
 
 export default function GISMapGoogle() {
-  const router = useRouter();
   const { data: session } = useSession();
-  const [farms, setFarms] = useState([]);
+  const [farms, setFarms] = useState<any[]>([]);
+  const [geoJson, setGeoJson] = useState<any>(null);
+  const [pointsGeoJson, setPointsGeoJson] = useState<any>(null);
+  const [totalFarms, setTotalFarms] = useState(0);
+  const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,10 +42,13 @@ export default function GISMapGoogle() {
       setLoading(true);
       setError(null);
 
-      const res = await fetch('/api/farms/geojson');
+      const res = await fetch('/api/farms/geojson?limit=1000');
       const data = await res.json();
       if (!data.success) throw new Error(data.message || 'Failed loading farms');
       setFarms(data.farms || []);
+      setGeoJson(data.geoJson ?? null);
+      setPointsGeoJson(data.pointsGeoJson ?? null);
+      setTotalFarms(data.metadata?.totalFarmsInDb || data.farms?.length || 0);
     } catch (e: any) {
       setError(e.message);
       setFarms([]);
@@ -104,10 +109,31 @@ export default function GISMapGoogle() {
       const result = await response.json();
 
       if (result.success || result.stats || result.data) {
-        setAnalysisStats(result.stats || result.data?.stats || result.data?.current);
-        setAnalysisTileUrl(result.tileUrl || result.data?.tileUrl);
+        // Normalise stats shape across different API responses
+        let statsData: any = null;
+        if (['WEATHER', 'TEMPERATURE'].includes(layerId) && result.data?.current) {
+          // Weather API: use rich current weather object (has .temperature, .wind_speed, etc.)
+          statsData = result.data.current;
+        } else if (layerId === 'PRECIPITATION' && result.data?.current) {
+          // Build precipitation-specific stats from forecast data
+          const total5d = result.data.forecast?.reduce(
+            (s: number, f: any) => s + (f.rain || 0), 0
+          ) || 0;
+          statsData = {
+            mean:        result.data.current.rain_1h || result.data.current.rain_3h || 0,
+            total:       parseFloat(total5d.toFixed(1)),
+            unit:        'mm',
+            humidity:    result.data.current.humidity,
+            description: `${total5d.toFixed(1)} mm forecast (5 days)`,
+          };
+        } else {
+          // GIS API (Open-Meteo) or AIR_QUALITY — stats is at top level or data.stats
+          statsData = result.stats ?? result.data?.stats ?? result.data ?? result;
+        }
+        setAnalysisStats(statsData);
+        setAnalysisTileUrl(result.tileUrl || result.data?.tileUrl || null);
       } else {
-        throw new Error(result.error || "Analysis failed");
+        throw new Error(result.error || 'Analysis failed');
       }
     } catch (err: any) {
       console.error("Analysis failed", err);
@@ -133,12 +159,15 @@ export default function GISMapGoogle() {
     }
   };
 
-  const handleFarmSelect = (farm: any) => {
-      setSelectedFarm(farm);
-      if (farm && activeLayer) {
-          runAnalysis(activeLayer, farm);
-      } else if (!farm) {
-          // Clear stats if deselected
+  const handleFarmSelect = (farmProps: any) => {
+      // farmProps comes from MapLibre feature.properties (id, farmerName, crop, state, lga, area, status)
+      // For analysis we need full farm object (with coordinates) from the farms array
+      const fullFarm = farmProps ? (farms.find((f: any) => f.id === farmProps.id) ?? farmProps) : null;
+      setSelectedFarm(fullFarm);
+      setSelectedFarmId(farmProps?.id ?? null);
+      if (fullFarm && activeLayer) {
+          runAnalysis(activeLayer, fullFarm);
+      } else if (!fullFarm) {
           setAnalysisStats(null);
           setAnalysisTileUrl(null);
       }
@@ -147,126 +176,260 @@ export default function GISMapGoogle() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const handleBack = useCallback(() => {
-    router.back();
-  }, [router]);
-
-  const center = useMemo(() => ({ lat: 9.0765, lng: 8.6753 }), []);
+  // ── Stats card helper ──────────────────────────────────────────────────────
+  const renderStats = () => {
+    if (!activeLayer || !analysisStats) return null;
+    if (activeLayer === 'WEATHER' && analysisStats.temperature !== undefined) {
+      return (
+        <>
+          <StatChip label="Temp" value={`${analysisStats.temperature}°C`} accent="#3B82F6" />
+          <StatChip label="Humidity" value={`${analysisStats.humidity}%`} accent="#06B6D4" />
+          <StatChip label="Wind" value={`${analysisStats.wind_speed} m/s`} accent="#8B5CF6" />
+          {analysisStats.description && (
+            <StatChip label="Cond." value={analysisStats.description} accent="#6B7280" />
+          )}
+        </>
+      );
+    }
+    if (activeLayer === 'TEMPERATURE') {
+      return (
+        <>
+          <StatChip label="Avg Temp" value={`${analysisStats.mean ?? analysisStats.temperature ?? 'N/A'}°C`} accent="#F59E0B" />
+          {analysisStats.min !== undefined && (
+            <StatChip label="Min" value={`${analysisStats.min}°C`} accent="#6B7280" />
+          )}
+          {analysisStats.max !== undefined && (
+            <StatChip label="Max" value={`${analysisStats.max}°C`} accent="#EF4444" />
+          )}
+        </>
+      );
+    }
+    // GIS / AIR_QUALITY / PRECIPITATION
+    const unit = analysisStats.unit ? ` ${analysisStats.unit}` : '';
+    const mainVal = analysisStats.mean ?? analysisStats.total ?? analysisStats.aqi;
+    return (
+      <>
+        {mainVal !== undefined && (
+          <StatChip
+            label={activeLayer.replace(/_/g, ' ')}
+            value={`${mainVal}${unit}`}
+            accent="#10B981"
+          />
+        )}
+        {analysisStats.min !== undefined && (
+          <StatChip label="Min" value={`${analysisStats.min}${unit}`} accent="#6B7280" />
+        )}
+        {analysisStats.max !== undefined && (
+          <StatChip label="Max" value={`${analysisStats.max}${unit}`} accent="#EF4444" />
+        )}
+        {analysisStats.health && (
+          <StatChip label="Health" value={analysisStats.health} accent="#10B981" />
+        )}
+        {analysisStats.description && (
+          <StatChip label="Note" value={analysisStats.description} accent="#6B7280" />
+        )}
+        {activeLayer === 'SOIL_MOISTURE' && analysisStats.rootZone !== undefined && (
+          <StatChip label="Root Zone" value={`${analysisStats.rootZone}%`} accent="#92400E" />
+        )}
+        {analysisStats.source && (
+          <StatChip label="Source" value={analysisStats.source} accent="#6B7280" small />
+        )}
+      </>
+    );
+  };
 
   return (
-    <div className="h-[calc(100vh-64px)] w-full relative">
-      <div className="absolute top-4 left-4 z-10 bg-white p-4 rounded-lg shadow-lg max-w-sm">
-        <h1 className="text-xl font-bold mb-1">Precision Ag Platform</h1>
-        <p className="text-xs text-gray-500 mb-4">Total Farms Monitored: {farms.length}</p>
+    <div style={{ position: 'relative', width: '100%', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
 
-        {selectedFarm ? (
-           <div className="mb-4 p-2 bg-green-50 rounded border border-green-200">
-               <p className="font-bold text-sm">{selectedFarm.farmerName || 'Farm Selected'}</p>
-               <p className="text-xs text-gray-600">{selectedFarm.lga}, {selectedFarm.state}</p>
-               {activeLayer ? (
-                 <p className="text-xs text-blue-600 mt-1">Analyzing {activeLayer}...</p>
-               ) : (
-                 <p className="text-xs text-gray-500 mt-1">Select a layer below to analyze</p>
-               )}
-           </div>
-        ) : (
-           <p className="text-xs text-orange-600 mb-4 font-medium">Click a farm on the map to analyze</p>
+      {/* ── Full-bleed map ── */}
+      <AgriMapLibre
+        geoJson={geoJson}
+        pointsGeoJson={pointsGeoJson}
+        loading={loading}
+        onFarmSelect={handleFarmSelect}
+        analysisTileUrl={analysisTileUrl}
+        selectedFarmId={selectedFarmId}
+      />
+
+      {/* ── Top-left: title + farm count ── */}
+      <div style={{
+        position: 'absolute', top: 14, left: 14, zIndex: 10,
+        background: 'rgba(10,14,20,0.65)', backdropFilter: 'blur(16px)',
+        border: '1px solid rgba(255,255,255,0.12)',
+        borderRadius: 12, padding: '10px 16px',
+        boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+      }}>
+        <p style={{ fontWeight: 700, fontSize: 14, color: '#fff', margin: 0 }}>
+          Precision Ag Platform
+        </p>
+        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', margin: '2px 0 0' }}>
+          {loading
+            ? 'Loading farms…'
+            : (() => {
+                const dotCount  = (pointsGeoJson as any)?.features?.length ?? 0;
+                const polyCount = (geoJson as any)?.features?.length ?? 0;
+                const shown = dotCount || farms.length;
+                const label = shown > 0
+                  ? `${shown.toLocaleString()} / ${totalFarms.toLocaleString()} farms`
+                  : `${totalFarms.toLocaleString()} farms`;
+                return polyCount > 0 ? `${label} · ${polyCount} surveyed` : label;
+              })()
+          }
+        </p>
+        {selectedFarm && (
+          <div style={{
+            marginTop: 8,
+            paddingTop: 8,
+            borderTop: '1px solid rgba(255,255,255,0.1)',
+          }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: '#10B981', margin: 0 }}>
+              {selectedFarm.farmerName || 'Farm selected'}
+            </p>
+            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', margin: '1px 0 0' }}>
+              {[selectedFarm.lga, selectedFarm.state].filter(Boolean).join(', ')}
+            </p>
+          </div>
+        )}
+        {error && (
+          <p style={{ fontSize: 11, color: '#F87171', margin: '6px 0 0' }}>{error}</p>
+        )}
+      </div>
+
+      {/* ── Bottom-center: analysis dock ── */}
+      <div style={{
+        position: 'absolute',
+        bottom: 24,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 10,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 10,
+        maxWidth: 'calc(100vw - 280px)',   // leave room for legend + basemap switcher
+        width: 'max-content',
+      }}>
+
+        {/* Analysis result chips — shown when active layer has data */}
+        {activeLayer && !analysisLoading && analysisStats && (
+          <div style={{
+            display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center',
+            padding: '10px 14px',
+            background: 'rgba(10,14,20,0.65)', backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: 12,
+            boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+          }}>
+            {renderStats()}
+          </div>
         )}
 
-        {error && <p className="text-xs text-red-500 mb-2">{error}</p>}
+        {/* Analysis spinner */}
+        {analysisLoading && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '8px 16px',
+            background: 'rgba(10,14,20,0.65)', backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: 10,
+            boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+            color: 'rgba(255,255,255,0.8)', fontSize: 12,
+          }}>
+            <div style={{
+              width: 14, height: 14, border: '2px solid #10B981',
+              borderTopColor: 'transparent', borderRadius: '50%',
+              animation: 'gis-spin 0.7s linear infinite',
+            }} />
+            Analyzing {activeLayer?.replace(/_/g, ' ')}…
+          </div>
+        )}
 
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-gray-700">Analysis Layers</h3>
-          <div className="grid grid-cols-1 gap-2">
-            {ANALYSIS_OPTIONS.map((opt) => (
+        {/* Layer grid buttons */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: `repeat(${ANALYSIS_OPTIONS.length}, 1fr)`,
+          gap: 6,
+          padding: '10px 14px',
+          background: 'rgba(10,14,20,0.62)', backdropFilter: 'blur(16px)',
+          border: '1px solid rgba(255,255,255,0.12)',
+          borderRadius: 16,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.35)',
+        }}>
+          {ANALYSIS_OPTIONS.map((opt) => {
+            const isActive = activeLayer === opt.id;
+            return (
               <button
                 key={opt.id}
                 onClick={() => handleLayerChange(opt.id)}
                 disabled={analysisLoading}
-                className={`flex items-center p-2 rounded-md text-sm transition-colors ${activeLayer === opt.id
-                    ? 'bg-green-100 text-green-800 border border-green-300'
-                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-transparent'
-                  }`}
+                title={opt.name}
+                style={{
+                  display:        'flex',
+                  flexDirection:  'column',
+                  alignItems:     'center',
+                  gap:            4,
+                  padding:        '8px 12px',
+                  borderRadius:   10,
+                  border:         isActive
+                    ? '1.5px solid rgba(16,185,129,0.8)'
+                    : '1.5px solid rgba(255,255,255,0.08)',
+                  background:     isActive
+                    ? 'rgba(16,185,129,0.18)'
+                    : 'rgba(255,255,255,0.05)',
+                  color:          isActive ? '#10B981' : 'rgba(255,255,255,0.7)',
+                  cursor:         analysisLoading ? 'not-allowed' : 'pointer',
+                  opacity:        analysisLoading && !isActive ? 0.5 : 1,
+                  transition:     'all 0.15s ease',
+                  minWidth:       60,
+                  boxShadow:      isActive ? '0 0 12px rgba(16,185,129,0.2)' : 'none',
+                  whiteSpace:     'nowrap' as const,
+                }}
               >
-                <span className="mr-3 text-lg">{opt.icon}</span>
-                <span className="flex-1 text-left">{opt.name}</span>
-                {activeLayer === opt.id && analysisLoading && (
-                  <div className="animate-spin h-4 w-4 border-2 border-green-600 rounded-full border-t-transparent"></div>
-                )}
+                <span style={{ fontSize: 18, lineHeight: 1 }}>{opt.icon}</span>
+                <span style={{ fontSize: 10, fontWeight: isActive ? 700 : 400, textAlign: 'center' as const }}>
+                  {opt.name.split(' ').slice(0, 2).join('\n')}
+                </span>
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
 
-        {activeLayer && !analysisLoading && analysisStats && (
-          <div className="mt-4 p-3 bg-blue-50 rounded border border-blue-100 animate-in fade-in slide-in-from-top-2">
-            <p className="text-xs font-bold text-blue-800 uppercase mb-2">{activeLayer.replace('_', ' ')}</p>
-            
-            {/* Weather Data Display */}
-            {activeLayer === 'WEATHER' && analysisStats.temperature !== undefined && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Temperature:</span>
-                  <span className="text-xl font-bold text-blue-900">{analysisStats.temperature}°C</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Humidity:</span>
-                  <span className="text-lg font-semibold">{analysisStats.humidity}%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Wind:</span>
-                  <span className="text-sm">{analysisStats.wind_speed} m/s</span>
-                </div>
-                {analysisStats.description && (
-                  <p className="text-xs text-gray-600 capitalize mt-2">{analysisStats.description}</p>
-                )}
-              </div>
-            )}
-            
-            {/* Temperature Data */}
-            {activeLayer === 'TEMPERATURE' && (
-              <div className="space-y-1">
-                <div className="flex items-end justify-between">
-                  <span className="text-2xl font-bold text-blue-900">
-                    {analysisStats.mean || analysisStats.temperature}°C
-                  </span>
-                </div>
-                {analysisStats.min && analysisStats.max && (
-                  <p className="text-xs text-gray-600">Range: {analysisStats.min}°C - {analysisStats.max}°C</p>
-                )}
-              </div>
-            )}
-            
-            {/* General Stats Display */}
-            {(activeLayer !== 'WEATHER' && activeLayer !== 'TEMPERATURE') && (
-              <div className="flex items-end justify-between">
-                <span className="text-2xl font-bold text-blue-900">
-                  {analysisStats.mean || analysisStats.total || analysisStats.aqi || 'N/A'}
-                  <span className="text-xs font-normal text-blue-600 ml-1">{analysisStats.unit || ''}</span>
-                </span>
-              </div>
-            )}
-          </div>
+        {/* Hint when no farm selected */}
+        {!selectedFarm && !loading && (
+          <p style={{
+            fontSize: 11, color: 'rgba(255,255,255,0.5)',
+            background: 'rgba(10,14,20,0.5)', backdropFilter: 'blur(8px)',
+            padding: '5px 12px', borderRadius: 20,
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}>
+            Click a farm polygon to analyze
+          </p>
         )}
-
-        <button
-          onClick={loadData}
-          className="mt-4 w-full text-xs text-gray-500 hover:text-gray-900 underline"
-        >
-          Reload Farm Data
-        </button>
       </div>
 
-      <LeafletPolygonMap
-        center={center}
-        farms={farms}
-        loading={loading || analysisLoading}
-        onReload={loadData}
-        onBack={handleBack}
-        onFarmSelect={handleFarmSelect}
-        analysisTileUrl={analysisTileUrl}
-        analysisStats={analysisStats}
-      />
+      <style>{`@keyframes gis-spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+// ── Tiny stat chip ─────────────────────────────────────────────────────────────
+function StatChip({
+  label, value, accent, small,
+}: { label: string; value: string; accent: string; small?: boolean }) {
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
+      padding: '6px 12px', borderRadius: 8,
+      background: `${accent}18`,
+      border: `1px solid ${accent}44`,
+      minWidth: small ? 60 : 80,
+    }}>
+      <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+        {label}
+      </span>
+      <span style={{ fontSize: small ? 11 : 16, fontWeight: 700, color: '#fff', lineHeight: 1.2, textAlign: 'center' as const }}>
+        {value}
+      </span>
     </div>
   );
 }

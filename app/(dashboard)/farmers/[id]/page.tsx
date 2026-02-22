@@ -53,6 +53,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import FarmPolygonMap from '@/components/maps/FarmPolygonMap';
+import { GoogleMapsProvider } from '@/components/maps/GoogleMapsProvider';
 import { AnalysisModal } from '@/components/analysis/AnalysisModal';
 
 export default function FarmerDetailsPage() {
@@ -151,6 +152,7 @@ export default function FarmerDetailsPage() {
   }
 
   return (
+    <GoogleMapsProvider>
     <div className=" w-full mx-auto px-1 space-y-8 animate-in fade-in duration-500">
 
       {/* 1. Header Section */}
@@ -548,6 +550,7 @@ export default function FarmerDetailsPage() {
       </Dialog>
 
     </div>
+    </GoogleMapsProvider>
   );
 }
 

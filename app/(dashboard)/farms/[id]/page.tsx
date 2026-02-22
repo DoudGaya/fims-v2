@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 import FarmPolygonMap from '@/components/maps/FarmPolygonMap';
+import { GoogleMapsProvider } from '@/components/maps/GoogleMapsProvider';
 import { AnalysisModal } from '@/components/analysis/AnalysisModal';
 
 interface Farm {
@@ -144,6 +145,7 @@ export default function FarmDetailsPage() {
   if (!farm) return <ErrorState error="Farm not found" />;
 
   return (
+    <GoogleMapsProvider>
     <div className="w-full mx-auto px-1 space-y-8 animate-in fade-in duration-500">
 
       {/* 1. Header Section */}
@@ -369,6 +371,7 @@ export default function FarmDetailsPage() {
       </div>
 
     </div>
+    </GoogleMapsProvider>
   );
 }
 

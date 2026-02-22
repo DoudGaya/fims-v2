@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useRef, useEffect, useState } from 'react';
-import { GoogleMap, LoadScript, Polygon, InfoWindow, Marker, useJsApiLoader } from '@react-google-maps/api';
+import { GoogleMap, LoadScript, Polygon, InfoWindow, Marker } from '@react-google-maps/api';
+import { useGoogleMaps } from './GoogleMapsProvider';
 
 interface Farm {
   id: string;
@@ -64,10 +65,7 @@ export default function GoogleMapPolygons({ center, farms, loading, onReload, on
       }
   }, []);
 
-  const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
-    googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || ''
-  });
+  const { isLoaded, loadError } = useGoogleMaps();
 
   const polygons = useMemo(() => {
     return (farms || [])
