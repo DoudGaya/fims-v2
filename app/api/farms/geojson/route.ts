@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
@@ -19,8 +20,8 @@ export async function GET(request: Request) {
     const farms = await prisma.farm.findMany({
       where: {
         OR: [
-          { farmCoordinates: { not: null } },
-          { farmPolygon:     { not: null } },
+          { farmCoordinates: { not: Prisma.DbNull } },
+          { farmPolygon:     { not: Prisma.DbNull } },
           {
             AND: [
               { farmLatitude:  { not: null } },
