@@ -1,6 +1,35 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Eye,
+  Download,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Loader2,
+  CheckCircle2,
+  Clock,
+  Users,
+} from 'lucide-react';
 
 interface Farmer {
   id: string;
@@ -8,167 +37,394 @@ interface Farmer {
   lastName: string;
   nin: string;
   phone: string;
-  certificates: any[];
-  farms: any[];
+  state: string;
+  lga: string;
+  certificates: { certificateId: string; issuedDate: string }[];
+  farms: { primaryCrop: string; farmSize: number }[];
 }
+
+type StatusFilter = 'all' | 'generated' | 'pending';
 
 export default function CertificatesClient() {
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
+  // Preview modal state
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewFarmer, setPreviewFarmer] = useState<Farmer | null>(null);
+  // We store a blob: URL so the iframe renders inline instead of triggering a download
+  const [blobUrl, setBlobUrl] = useState('');
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState('');
+
+  // Debounce search
   useEffect(() => {
-    fetchFarmers();
-  }, [page, search]);
+    const t = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  const fetchFarmers = async () => {
+  const fetchFarmers = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
         page: page.toString(),
         limit: '10',
-        search,
+        search: debouncedSearch,
+        status: statusFilter,
       });
       const res = await fetch(`/api/certificates?${params}`);
       const data = await res.json();
-      setFarmers(data.farmers);
-      setTotalPages(data.pagination.pages);
+      setFarmers(data.farmers ?? []);
+      setTotalPages(data.pagination?.pages ?? 1);
+      setTotal(data.pagination?.total ?? 0);
     } catch (error) {
       console.error('Error fetching farmers:', error);
     } finally {
       setLoading(false);
     }
+  }, [page, debouncedSearch, statusFilter]);
+
+  useEffect(() => {
+    fetchFarmers();
+  }, [fetchFarmers]);
+
+  // ── Preview ──────────────────────────────────────────────────────────────
+  const handlePreview = async (farmer: Farmer) => {
+    setPreviewFarmer(farmer);
+    setPreviewOpen(true);
+    setPreviewLoading(true);
+    setPreviewError('');
+    setBlobUrl('');
+    try {
+      const res = await fetch(`/api/certificates/preview?farmerId=${farmer.id}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(err.error || `Server error ${res.status}`);
+      }
+      const blob = await res.blob();
+      // blob: URLs are always rendered inline by the browser PDF viewer
+      const url = URL.createObjectURL(blob);
+      setBlobUrl(url);
+    } catch (err) {
+      console.error('Preview error:', err);
+      setPreviewError(err instanceof Error ? err.message : 'Failed to load preview');
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
-  const handleGenerate = async (farmerId: string, nin: string) => {
-    setGenerating(farmerId);
+  const closePreview = () => {
+    setPreviewOpen(false);
+    setPreviewFarmer(null);
+    setPreviewError('');
+    setPreviewLoading(false);
+    if (blobUrl) {
+      URL.revokeObjectURL(blobUrl);
+      setBlobUrl('');
+    }
+  };
+
+  // ── Download (generate + save to DB) ─────────────────────────────────────
+  const handleDownload = async (farmer: Farmer) => {
+    setGenerating(farmer.id);
     try {
       const res = await fetch('/api/certificates/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ farmerId }),
+        body: JSON.stringify({ farmerId: farmer.id }),
       });
 
       if (!res.ok) throw new Error('Generation failed');
 
       const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
+      const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `certificate-${nin}.pdf`;
+      a.download = `CCSA-Certificate-${farmer.firstName}-${farmer.lastName}.pdf`;
       document.body.appendChild(a);
       a.click();
-      window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
-      // Refresh list to update status if we were tracking it
+      // Revoke after a short delay so the browser has time to start the download
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+
       fetchFarmers();
     } catch (error) {
       console.error('Error generating certificate:', error);
-      alert('Failed to generate certificate');
+      alert('Failed to generate certificate. Please try again.');
     } finally {
       setGenerating(null);
     }
   };
 
+  const handlePreviewDownload = async () => {
+    if (!previewFarmer) return;
+    await handleDownload(previewFarmer);
+  };
+
+  const tabs: { key: StatusFilter; label: string; icon: React.ReactNode }[] = [
+    { key: 'all', label: 'All Farmers', icon: <Users className="h-3.5 w-3.5" /> },
+    { key: 'generated', label: 'Generated', icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
+    { key: 'pending', label: 'Pending', icon: <Clock className="h-3.5 w-3.5" /> },
+  ];
+
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Certificates</h1>
-        <div className="flex gap-4">
-          <input
-            type="text"
-            placeholder="Search farmers..."
-            className="px-4 py-2 border rounded-lg"
+    <div className="flex flex-col gap-6 p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Certificates</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Manage and issue CCSA farmer registration certificates
+          </p>
+        </div>
+        <div className="flex items-center gap-2 rounded-lg bg-blue-50 px-4 py-2 text-sm text-blue-700">
+          <FileText className="h-4 w-4" />
+          <span className="font-semibold">{total}</span>
+          <span>farmers total</span>
+        </div>
+      </div>
+
+      {/* Filters Row */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex rounded-lg border bg-white p-1 text-sm">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => { setStatusFilter(tab.key); setPage(1); }}
+              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-colors ${
+                statusFilter === tab.key
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {tab.icon}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search name, NIN, phone…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
           />
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Farmer</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NIN</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Farm Info</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+      {/* Table */}
+      <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-gray-50">
+              <TableHead>Farmer</TableHead>
+              <TableHead>NIN</TableHead>
+              <TableHead>Location</TableHead>
+              <TableHead>Farm</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Certificate ID</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {loading ? (
-              <tr>
-                <td colSpan={5} className="px-6 py-4 text-center">Loading...</td>
-              </tr>
+              <TableRow>
+                <TableCell colSpan={7} className="py-12 text-center">
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading farmers…
+                  </div>
+                </TableCell>
+              </TableRow>
             ) : farmers.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-6 py-4 text-center">No farmers found</td>
-              </tr>
+              <TableRow>
+                <TableCell colSpan={7} className="py-12 text-center text-muted-foreground">
+                  No farmers found
+                </TableCell>
+              </TableRow>
             ) : (
-              farmers.map((farmer) => (
-                <tr key={farmer.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {farmer.firstName} {farmer.lastName}
-                    </div>
-                    <div className="text-sm text-gray-500">{farmer.phone}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {farmer.nin}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {farmer.farms[0]?.primaryCrop || 'N/A'} 
-                    {farmer.farms[0]?.farmSize ? ` (${farmer.farms[0].farmSize} ha)` : ''}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {farmer.certificates.length > 0 ? (
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                        Generated
-                      </span>
-                    ) : (
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                        Pending
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button
-                      onClick={() => handleGenerate(farmer.id, farmer.nin)}
-                      disabled={generating === farmer.id}
-                      className="text-indigo-600 hover:text-indigo-900 disabled:opacity-50"
-                    >
-                      {generating === farmer.id ? 'Generating...' : 'Generate PDF'}
-                    </button>
-                  </td>
-                </tr>
-              ))
+              farmers.map((farmer) => {
+                const hasCert = farmer.certificates.length > 0;
+                const cert = farmer.certificates[0];
+                const isGenerating = generating === farmer.id;
+
+                return (
+                  <TableRow key={farmer.id} className="hover:bg-gray-50/60">
+                    <TableCell>
+                      <div className="font-medium text-gray-900">
+                        {farmer.firstName} {farmer.lastName}
+                      </div>
+                      <div className="text-xs text-muted-foreground">{farmer.phone}</div>
+                    </TableCell>
+                    <TableCell className="font-mono text-sm text-gray-600">
+                      {farmer.nin || '—'}
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-600">
+                      {[farmer.lga, farmer.state].filter(Boolean).join(', ') || '—'}
+                    </TableCell>
+                    <TableCell className="text-sm text-gray-600">
+                      {farmer.farms[0]
+                        ? `${farmer.farms[0].primaryCrop || 'N/A'} · ${farmer.farms[0].farmSize ?? 0} ha`
+                        : '—'}
+                    </TableCell>
+                    <TableCell>
+                      {hasCert ? (
+                        <Badge variant="outline" className="border-green-200 bg-green-50 text-green-700">
+                          <CheckCircle2 className="mr-1 h-3 w-3" />
+                          Generated
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="border-yellow-200 bg-yellow-50 text-yellow-700">
+                          <Clock className="mr-1 h-3 w-3" />
+                          Pending
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {cert ? cert.certificateId : '—'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handlePreview(farmer)}
+                          disabled={isGenerating}
+                          className="gap-1.5"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          Preview
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          onClick={() => handleDownload(farmer)}
+                          disabled={isGenerating}
+                          className="gap-1.5 bg-blue-600 hover:bg-blue-700"
+                        >
+                          {isGenerating ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Download className="h-3.5 w-3.5" />
+                          )}
+                          {isGenerating ? 'Generating…' : 'Download'}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
-      <div className="mt-4 flex justify-between items-center">
-        <button
-          onClick={() => setPage(p => Math.max(1, p - 1))}
-          disabled={page === 1}
-          className="px-4 py-2 border rounded disabled:opacity-50"
-        >
-          Previous
-        </button>
-        <span>Page {page} of {totalPages}</span>
-        <button
-          onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-          disabled={page === totalPages}
-          className="px-4 py-2 border rounded disabled:opacity-50"
-        >
-          Next
-        </button>
-      </div>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <span>
+            Showing page {page} of {totalPages} ({total} total)
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+            >
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Preview Modal */}
+      <Dialog open={previewOpen} onOpenChange={(open) => !open && closePreview()}>
+        <DialogContent className="flex h-[92vh] max-w-5xl flex-col gap-0 p-0">
+          <DialogHeader className="flex flex-row items-center justify-between border-b px-6 py-4 shrink-0">
+            <div>
+              <DialogTitle className="text-lg font-semibold">
+                Certificate Preview
+              </DialogTitle>
+              {previewFarmer && (
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  {previewFarmer.firstName} {previewFarmer.lastName}
+                  {previewFarmer.nin ? ` · NIN: ${previewFarmer.nin}` : ''}
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 pr-8">
+              <Button
+                onClick={handlePreviewDownload}
+                disabled={generating === previewFarmer?.id}
+                className="gap-2 bg-blue-600 hover:bg-blue-700"
+              >
+                {generating === previewFarmer?.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                {generating === previewFarmer?.id ? 'Generating…' : 'Download PDF'}
+              </Button>
+            </div>
+          </DialogHeader>
+
+          {/* PDF iframe — using blob: URL so the browser renders inline instead of downloading */}
+          <div className="relative flex-1 bg-gray-100">
+            {previewLoading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gray-50">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                <p className="text-sm text-muted-foreground">Generating certificate preview…</p>
+              </div>
+            )}
+            {previewError && !previewLoading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gray-50 p-6">
+                <p className="text-sm font-medium text-red-600">Failed to load preview</p>
+                <p className="text-xs text-muted-foreground">{previewError}</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => previewFarmer && handlePreview(previewFarmer)}
+                  className="mt-2"
+                >
+                  Retry
+                </Button>
+              </div>
+            )}
+            {blobUrl && !previewLoading && (
+              <iframe
+                key={blobUrl}
+                src={blobUrl}
+                className="h-full w-full border-0"
+                title="Certificate Preview"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

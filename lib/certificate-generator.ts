@@ -102,17 +102,27 @@ export class CertificateGenerator {
     private async addHeader(pdf: any): Promise<number> {
         let y = 30;
 
-        // Load Logo
+        // Load Logo (Cosmopolitan University seal)
         try {
-            const logoPath = path.join(process.cwd(), 'public', 'ccsa-logo.png');
-            if (fs.existsSync(logoPath)) {
-                const logoData = fs.readFileSync(logoPath).toString('base64');
-                const imgWidth = 25;
-                const imgHeight = 25;
-                // Justify between: Logo on Left, QR on Right (QR added in footer/separately)
-                const x = this.margin; 
-                pdf.addImage(logoData, 'PNG', x, 15, imgWidth, imgHeight);
-                y = 52; // Move text down to clear Logo and QR code area
+            // Try certificate-logo.png first (CU seal), fall back to ccsa-logo.png
+            const logoCandidates = ['certificate-logo.png', 'ccsa-logo.png'];
+            let logoLoaded = false;
+            for (const logoFile of logoCandidates) {
+                const logoPath = path.join(process.cwd(), 'public', logoFile);
+                if (fs.existsSync(logoPath)) {
+                    const logoData = fs.readFileSync(logoPath).toString('base64');
+                    const imgWidth = 28;
+                    const imgHeight = 28;
+                    // Justify between: Logo on Left, QR on Right (QR added in footer/separately)
+                    const x = this.margin;
+                    pdf.addImage(logoData, 'PNG', x, 13, imgWidth, imgHeight);
+                    y = 52; // Move text down to clear Logo and QR code area
+                    logoLoaded = true;
+                    break;
+                }
+            }
+            if (!logoLoaded) {
+                console.warn('No logo file found in public/');
             }
         } catch (e) {
             console.error("Failed to load logo", e);
@@ -370,7 +380,7 @@ export class CertificateGenerator {
         const x = this.pageWidth - this.margin - qrSize;
         try {
             const certificateId = `CCSA-${new Date().getFullYear()}-${farmerId.slice(-6).toUpperCase()}`;
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://fims.cosmopolitan.edu.ng';
             const verifyUrl = `${baseUrl}/verify-certificate/${certificateId}`;
 
             // Use external API to avoid 'canvas' dependency issues in serverless/windows environments
