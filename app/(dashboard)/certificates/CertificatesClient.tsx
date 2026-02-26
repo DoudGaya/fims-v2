@@ -362,7 +362,7 @@ export default function CertificatesClient() {
 
       {/* Preview Modal */}
       <Dialog open={previewOpen} onOpenChange={(open) => !open && closePreview()}>
-        <DialogContent className="flex h-[92vh] max-w-5xl flex-col gap-0 p-0">
+        <DialogContent className="flex h-[92vh] max-w-7xl flex-col gap-0 p-0">
           <DialogHeader className="flex flex-row items-center justify-between border-b px-6 py-4 shrink-0">
             <div>
               <DialogTitle className="text-lg font-semibold">
@@ -376,11 +376,11 @@ export default function CertificatesClient() {
               )}
             </div>
 
-            <div className="flex items-center gap-2 pr-8">
+            {/* <div className="flex items-center gap-2 pr-8">
               <Button
                 onClick={handlePreviewDownload}
                 disabled={generating === previewFarmer?.id}
-                className="gap-2 bg-blue-600 hover:bg-blue-700"
+                className="gap-2 bg-br hover:bg-blue-700"
               >
                 {generating === previewFarmer?.id ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -389,7 +389,7 @@ export default function CertificatesClient() {
                 )}
                 {generating === previewFarmer?.id ? 'Generating…' : 'Download PDF'}
               </Button>
-            </div>
+            </div> */}
           </DialogHeader>
 
           {/* PDF iframe — using blob: URL so the browser renders inline instead of downloading */}
