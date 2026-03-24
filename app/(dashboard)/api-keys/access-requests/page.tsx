@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -171,7 +171,7 @@ export default function ApiAccessRequestsPage() {
   const pendingCount = requests.filter(r => r.status === 'PENDING').length;
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
@@ -249,9 +249,8 @@ export default function ApiAccessRequestsPage() {
               </TableHeader>
               <TableBody>
                 {requests.map(req => (
-                  <>
+                  <React.Fragment key={req.id}>
                     <TableRow
-                      key={req.id}
                       className="dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
                       onClick={() => setExpanded(expanded === req.id ? null : req.id)}
                     >
@@ -339,7 +338,7 @@ export default function ApiAccessRequestsPage() {
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </React.Fragment>
                 ))}
               </TableBody>
             </Table>
