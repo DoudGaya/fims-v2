@@ -3,16 +3,24 @@ import { NextResponse } from 'next/server';
 
 export default withAuth(
   function middleware(req) {
+    const token = req.nextauth.token;
+    const { pathname } = req.nextUrl;
+
+    // Redirect already-authenticated users away from the signin page
+    if (pathname === '/auth/signin' && token) {
+      return NextResponse.redirect(new URL('/dashboard', req.url));
+    }
+
     const response = NextResponse.next();
 
-    // 1. Security Headers
+    // Security Headers
     response.headers.set('X-Content-Type-Options', 'nosniff');
     response.headers.set('X-Frame-Options', 'DENY');
     response.headers.set('X-XSS-Protection', '1; mode=block');
     response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
     response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
-    if (req.nextUrl.pathname.startsWith('/api/')) {
+    if (pathname.startsWith('/api/')) {
       response.headers.set('Cache-Control', 'no-store, max-age=0');
     }
 
@@ -20,7 +28,16 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: ({ token }) => !!token,
+      authorized: ({ req, token }) => {
+        const { pathname } = req.nextUrl;
+
+        // Allow signin page through — the middleware function handles auth'd user redirect
+        if (pathname === '/auth/signin') {
+          return true;
+        }
+
+        return !!token;
+      },
     },
     pages: {
       signIn: '/auth/signin',
@@ -31,11 +48,16 @@ export default withAuth(
 export const config = {
   matcher: [
     '/dashboard/:path*',
+    '/analytics/:path*',
     '/farmers/:path*',
-    '/agents/:path*',
     '/farms/:path*',
+    '/agents/:path*',
     '/clusters/:path*',
+    '/users/:path*',
+    '/certificates/:path*',
+    '/maps/:path*',
+    '/reports/:path*',
     '/settings/:path*',
-    '/api/dashboard/:path*', // Protect API routes too (optional, but good practice)
+    '/auth/signin',
   ],
 };

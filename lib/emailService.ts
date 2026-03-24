@@ -174,3 +174,118 @@ export async function sendAgentStatusEmail(email: string, name: string, status: 
     return null; 
   }
 }
+
+export async function sendApiAccessRequestNotification(params: {
+  organizationName: string;
+  contactName: string;
+  email: string;
+  phone?: string | null;
+  intendedUse: string;
+  requestedScopes: string[];
+  expectedVolume?: string | null;
+  requestId: string;
+}) {
+  const transporter = createTransporter();
+  if (!transporter) {
+    console.warn('Email service not configured - skipping API access request notification');
+    return null;
+  }
+
+  const adminEmail = 'abdulrahman.dauda@cosmopolitan.edu.ng';
+  const reviewUrl = `${process.env.NEXTAUTH_URL}/api-keys/access-requests`;
+
+  const mailOptions = {
+    from: `"CCSA FIMS" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+    to: adminEmail,
+    subject: `New API Access Request — ${params.organizationName}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>New API Access Request</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background-color: #013358; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background-color: #f9f9f9; }
+            .field { margin-bottom: 12px; }
+            .label { font-weight: bold; color: #013358; }
+            .value { background-color: #fff; padding: 8px 12px; border-left: 3px solid #013358; margin-top: 4px; }
+            .button { display: inline-block; padding: 12px 24px; background-color: #013358; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+            .footer { padding: 20px; text-align: center; font-size: 12px; color: #666; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>CCSA FIMS</h1>
+              <p>New API Access Request Received</p>
+            </div>
+            <div class="content">
+              <p>A new organisation has submitted an API access request. Please review and respond via the admin dashboard.</p>
+              <div class="field">
+                <div class="label">Organisation Name</div>
+                <div class="value">${params.organizationName}</div>
+              </div>
+              <div class="field">
+                <div class="label">Contact Name</div>
+                <div class="value">${params.contactName}</div>
+              </div>
+              <div class="field">
+                <div class="label">Email</div>
+                <div class="value">${params.email}</div>
+              </div>
+              ${params.phone ? `<div class="field"><div class="label">Phone</div><div class="value">${params.phone}</div></div>` : ''}
+              <div class="field">
+                <div class="label">Intended Use</div>
+                <div class="value">${params.intendedUse}</div>
+              </div>
+              <div class="field">
+                <div class="label">Requested Scopes</div>
+                <div class="value">${params.requestedScopes.join(', ')}</div>
+              </div>
+              ${params.expectedVolume ? `<div class="field"><div class="label">Expected Volume</div><div class="value">${params.expectedVolume}</div></div>` : ''}
+              <div class="field">
+                <div class="label">Request ID</div>
+                <div class="value" style="font-family: monospace; font-size: 12px;">${params.requestId}</div>
+              </div>
+              <p style="text-align: center;">
+                <a href="${reviewUrl}" class="button">Review in Dashboard</a>
+              </p>
+            </div>
+            <div class="footer">
+              <p>Centre for Climate Smart Agriculture<br>Cosmopolitan University Abuja</p>
+              <p>This is an automated notification from FIMS.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+    text: `
+New API Access Request — ${params.organizationName}
+
+Organisation: ${params.organizationName}
+Contact: ${params.contactName}
+Email: ${params.email}
+${params.phone ? `Phone: ${params.phone}\n` : ''}Intended Use: ${params.intendedUse}
+Requested Scopes: ${params.requestedScopes.join(', ')}
+${params.expectedVolume ? `Expected Volume: ${params.expectedVolume}\n` : ''}Request ID: ${params.requestId}
+
+Review: ${reviewUrl}
+
+Centre for Climate Smart Agriculture
+Cosmopolitan University Abuja
+    `,
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('API access request notification sent:', info.messageId);
+    return info;
+  } catch (error) {
+    console.error('Error sending API access request notification:', error);
+    return null;
+  }
+}

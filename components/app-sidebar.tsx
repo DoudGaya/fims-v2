@@ -22,7 +22,8 @@ import {
   Globe,
   Settings,
   Leaf,
-  BriefcaseBusiness
+  BriefcaseBusiness,
+  Key
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -108,6 +109,12 @@ const navigationConfig = [
     url: '/settings',
     icon: Settings,
     requiredPermission: PERMISSIONS.SETTINGS_READ
+  },
+  {
+    title: 'API Keys',
+    url: '/api-keys',
+    icon: Key,
+    requiredPermission: PERMISSIONS.SYSTEM_MANAGE_INTEGRATIONS
   },
 ];
 

@@ -7,8 +7,9 @@ import {
 } from 'recharts';
 import {
   Users, Sprout, Briefcase, Map, MapPin,
-  TrendingUp, PieChart as PieChartIcon, Activity, Loader2
+  TrendingUp, PieChart as PieChartIcon, Activity
 } from 'lucide-react';
+import { PageLoader, SectionLoader } from '@/components/ui/loading-spinner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
@@ -92,12 +93,7 @@ export default function AnalyticsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex w-full h-[80vh]items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <span className="ml-3 text-lg font-medium text-gray-600">Loading Analytics...</span>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (error || !data) {
@@ -120,12 +116,12 @@ export default function AnalyticsPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Project Analytics</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Project Analytics</h1>
           <p className="text-muted-foreground mt-1">
             Real-time insights into farmers, farms, and field operations.
           </p>
         </div>
-        <div className="flex items-center space-x-2 text-sm text-muted-foreground bg-white px-3 py-1 rounded-md border shadow-sm">
+        <div className="flex items-center space-x-2 text-sm text-muted-foreground bg-white dark:bg-gray-800 px-3 py-1 rounded-md border dark:border-gray-700 shadow-sm">
           <Activity className="h-4 w-4 text-green-600" />
           <span>Last updated: {new Date().toLocaleDateString()}</span>
         </div>
@@ -141,7 +137,7 @@ export default function AnalyticsPage() {
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="bg-white border p-1 h-auto">
+        <TabsList className="bg-white dark:bg-gray-800 border dark:border-gray-700 p-1 h-auto">
           <TabsTrigger value="overview" className="px-4 py-2">Overview</TabsTrigger>
           <TabsTrigger value="demographics" className="px-4 py-2">Demographics</TabsTrigger>
           <TabsTrigger value="agriculture" className="px-4 py-2">Agriculture</TabsTrigger>
@@ -155,7 +151,7 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
             {/* Registration Trend - Wide Chart */}
-            <Card className="lg:col-span-2 shadow-sm border-none ring-1 ring-gray-200">
+            <Card className="lg:col-span-2 shadow-sm border-none ring-1 ring-gray-200 dark:ring-gray-700">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5 text-gray-500" />
@@ -172,9 +168,9 @@ export default function AnalyticsPage() {
                         <stop offset="95%" stopColor="#16a34a" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                    <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#888888" />
-                    <YAxis tick={{ fontSize: 12 }} stroke="#888888" />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#6b7280" strokeOpacity={0.3} />
+                    <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#6b7280" />
+                    <YAxis tick={{ fontSize: 12 }} stroke="#6b7280" />
                     <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                     <Area type="monotone" dataKey="count" stroke="#16a34a" fillOpacity={1} fill="url(#colorCount)" />
                   </AreaChart>
@@ -183,7 +179,7 @@ export default function AnalyticsPage() {
             </Card>
 
             {/* Quick Stats / Secondary Chart */}
-            <Card className="shadow-sm border-none ring-1 ring-gray-200">
+            <Card className="shadow-sm border-none ring-1 ring-gray-200 dark:ring-gray-700">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <PieChartIcon className="h-5 w-5 text-gray-500" />
@@ -217,7 +213,7 @@ export default function AnalyticsPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Top States Summary */}
-            <Card className="shadow-sm border-none ring-1 ring-gray-200">
+            <Card className="shadow-sm border-none ring-1 ring-gray-200 dark:ring-gray-700">
               <CardHeader>
                 <CardTitle>Top States by Enrollment</CardTitle>
                 <CardDescription>Locations with highest activity</CardDescription>
@@ -236,7 +232,7 @@ export default function AnalyticsPage() {
             </Card>
 
             {/* Top Crops Summary */}
-            <Card className="shadow-sm border-none ring-1 ring-gray-200">
+            <Card className="shadow-sm border-none ring-1 ring-gray-200 dark:ring-gray-700">
               <CardHeader>
                 <CardTitle>Primary Crops</CardTitle>
                 <CardDescription>Most cultivated crops across all farms</CardDescription>
@@ -247,7 +243,7 @@ export default function AnalyticsPage() {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                     <YAxis />
-                    <Tooltip cursor={{ fill: '#f4f4f5' }} />
+                    <Tooltip cursor={{ fill: 'rgba(100,100,120,0.08)' }} />
                     <Bar dataKey="value" fill="#eab308" radius={[4, 4, 0, 0]} barSize={40} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -334,7 +330,7 @@ export default function AnalyticsPage() {
                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
                     <XAxis type="number" />
                     <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
-                    <Tooltip cursor={{ fill: '#f4f4f5' }} />
+                    <Tooltip cursor={{ fill: 'rgba(100,100,120,0.08)' }} />
                     <Bar dataKey="value" fill="#16a34a" radius={[0, 4, 4, 0]} barSize={20} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -402,7 +398,7 @@ export default function AnalyticsPage() {
                 </CardHeader>
                 <CardContent className="h-[500px] flex items-center justify-center">
                   {!lgaData ? (
-                    <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                    <SectionLoader />
                   ) : lgaData.length === 0 ? (
                     <p className="text-muted-foreground">No LGA data available for {selectedState}</p>
                   ) : (
@@ -428,14 +424,14 @@ export default function AnalyticsPage() {
 
 function KPICard({ title, value, icon: Icon, color, bg }: any) {
   return (
-    <Card className="shadow-sm border-none ring-1 ring-gray-200 hover:ring-2 hover:ring-primary/20 transition-all">
+    <Card className="shadow-sm border-none ring-1 ring-gray-200 dark:ring-gray-700 hover:ring-2 hover:ring-primary/20 transition-all">
       <CardContent className="p-6 flex items-center gap-4">
         <div className={`h-12 w-12 rounded-full ${bg} flex items-center justify-center shrink-0`}>
           <Icon className={`h-6 w-6 ${color}`} />
         </div>
         <div>
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <h3 className="text-2xl font-bold text-gray-900">{typeof value === 'number' ? value.toLocaleString() : value}</h3>
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{typeof value === 'number' ? value.toLocaleString() : value}</h3>
         </div>
       </CardContent>
     </Card>

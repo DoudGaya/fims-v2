@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import { PERMISSIONS } from '@/lib/permissions';
+import { getCached } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,10 @@ export async function GET(req: NextRequest) {
         }
 
         // Parallel fetch for stats
+        const result = await getCached(
+          'fims:v1:agents:analytics',
+          600, // 10 minutes
+          async () => {
         const [
             totalAgents,
             activeAgents,
@@ -60,15 +65,19 @@ export async function GET(req: NextRequest) {
             .map(i => ({ state: i.state, count: i._count.id }))
             .slice(0, 10); // Top 10
 
-        return NextResponse.json({
-            totalAgents,
-            activeAgents,
-            inactiveAgents,
-            newApplications,
-            interviewing,
-            agentsByStatus,
-            agentsByState
-        });
+            return {
+              totalAgents,
+              activeAgents,
+              inactiveAgents,
+              newApplications,
+              interviewing,
+              agentsByStatus,
+              agentsByState,
+            };
+          }
+        );
+
+        return NextResponse.json(result);
 
     } catch (error) {
         console.error('Error fetching agent analytics:', error);

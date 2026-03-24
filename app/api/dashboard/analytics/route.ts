@@ -55,15 +55,15 @@ export async function GET() {
              prisma.farmer.count({ where: { createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }),
         ]);
 
-        // Batch 4: Potentially Large Dataset (Standalone)
+        // Batch 4: Secondary crops — capped at 5k rows (sufficient for top-10 crop counts)
         const secondaryCropsRaw = await prisma.farm.findMany({ 
             select: { secondaryCrop: true }, 
             where: { NOT: { secondaryCrop: { equals: [] } } },
-            take: 20000 
+            take: 5000
         });
 
-        // Batch 5: Monthly Trends (Sequential Loop)
-        const monthlyCounts = [];
+        // Batch 5: Monthly Trends — all 12 queries fired in parallel
+        const monthBoundaries: { start: Date; end: Date }[] = [];
         for (let i = 0; i < 12; i++) {
             const start = new Date();
             start.setMonth(start.getMonth() - (11 - i));
@@ -71,11 +71,13 @@ export async function GET() {
             start.setHours(0, 0, 0, 0);
             const end = new Date(start);
             end.setMonth(end.getMonth() + 1);
-            
-            // Execute one by one
-            const count = await prisma.farmer.count({ where: { createdAt: { gte: start, lt: end } } });
-            monthlyCounts.push(count);
+            monthBoundaries.push({ start, end });
         }
+        const monthlyCounts = await Promise.all(
+            monthBoundaries.map(({ start, end }) =>
+                prisma.farmer.count({ where: { createdAt: { gte: start, lt: end } } })
+            )
+        );
 
         return {
           totalFarmers,

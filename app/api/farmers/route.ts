@@ -6,6 +6,7 @@ import { farmerSchema } from '@/lib/validation';
 import { PERMISSIONS } from '@/lib/permissions';
 import ProductionLogger from '@/lib/productionLogger';
 import { Prisma } from '@prisma/client';
+import { getCached, cacheKey, invalidateByPrefix } from '@/lib/cache';
 
 // Helper to check permissions
 const checkPermission = (permissions: string[] | undefined, permission: string) => {
@@ -73,7 +74,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Execute query
+    // Execute query — cache keyed by all filter/pagination params
+    const key = cacheKey('farmers', { page, limit, search, state, cluster, status, startDate, endDate });
+    const result = await getCached(key, 300, async () => {
     const [farmers, total, stats] = await Promise.all([
       prisma.farmer.findMany({
         where,
@@ -84,14 +87,12 @@ export async function GET(req: NextRequest) {
           cluster: {
             select: {
               title: true,
-              // state: true // Cluster might not have state directly, check schema
             }
           },
           farms: {
             select: {
               id: true,
               farmSize: true,
-              // status: true // Farm might not have status
             }
           }
         }
@@ -115,17 +116,19 @@ export async function GET(req: NextRequest) {
         };
       })
     ]);
-
-    return NextResponse.json({
-      farmers,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit)
-      },
-      stats
+      return {
+        farmers,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        },
+        stats
+      };
     });
+
+    return NextResponse.json(result);
 
   } catch (error) {
     console.error('Error fetching farmers:', error);
@@ -226,6 +229,9 @@ export async function POST(req: NextRequest) {
     });
 
     ProductionLogger.info(`Farmer created: ${newFarmer.id} by ${session.user.email}`);
+
+    // Invalidate cached farmers lists and analytics so next request fetches fresh data
+    await invalidateByPrefix('fims:v1:farmers');
 
     return NextResponse.json(newFarmer, { status: 201 });
 

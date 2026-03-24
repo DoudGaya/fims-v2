@@ -129,7 +129,11 @@ export default function EditUserPage() {
     }
   };
 
-  if (loading) return <div className="p-8 text-center">Loading...</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center h-screen">
+      <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600" />
+    </div>
+  );
   if (error && !formData.email) return <div className="p-8 text-center text-red-600">{error}</div>;
 
   return (
@@ -137,19 +141,19 @@ export default function EditUserPage() {
       <div className="mb-6">
         <Link
           href="/users"
-          className="flex items-center text-sm text-gray-500 hover:text-gray-700"
+          className="flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
         >
           <ArrowLeftIcon className="h-4 w-4 mr-1" />
           Back to Users
         </Link>
       </div>
 
-      <div className="bg-white shadow sm:rounded-lg">
+      <div className="bg-white dark:bg-gray-900 shadow sm:rounded-lg">
         <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">
+          <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">
             Edit User
           </h3>
-          <div className="mt-2 max-w-xl text-sm text-gray-500">
+          <div className="mt-2 max-w-xl text-sm text-gray-500 dark:text-gray-400">
             <p>Update user details and permissions.</p>
           </div>
 
@@ -167,7 +171,7 @@ export default function EditUserPage() {
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
               {/* First Name */}
               <div className="sm:col-span-3">
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   First Name
                 </label>
                 <div className="mt-1">
@@ -178,14 +182,14 @@ export default function EditUserPage() {
                     required
                     value={formData.firstName}
                     onChange={handleChange}
-                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   />
                 </div>
               </div>
 
               {/* Last Name */}
               <div className="sm:col-span-3">
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Last Name
                 </label>
                 <div className="mt-1">
@@ -196,14 +200,14 @@ export default function EditUserPage() {
                     required
                     value={formData.lastName}
                     onChange={handleChange}
-                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   />
                 </div>
               </div>
 
               {/* Email */}
               <div className="sm:col-span-6">
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Email Address
                 </label>
                 <div className="mt-1">
@@ -214,14 +218,14 @@ export default function EditUserPage() {
                     required
                     value={formData.email}
                     onChange={handleChange}
-                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   />
                 </div>
               </div>
 
               {/* Password */}
               <div className="sm:col-span-6">
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   New Password (Optional)
                 </label>
                 <div className="mt-1">
@@ -233,14 +237,14 @@ export default function EditUserPage() {
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="Leave blank to keep current password"
-                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                   />
                 </div>
               </div>
 
               {/* Role */}
               <div className="sm:col-span-6">
-                <label htmlFor="roleId" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="roleId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Role
                 </label>
                 <div className="mt-1">
@@ -250,7 +254,7 @@ export default function EditUserPage() {
                     required
                     value={formData.roleId}
                     onChange={handleChange}
-                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
                   >
                     <option value="">Select a Role</option>
                     {roles.map((role) => (
@@ -276,10 +280,10 @@ export default function EditUserPage() {
                     />
                   </div>
                   <div className="ml-3 text-sm">
-                    <label htmlFor="isActive" className="font-medium text-gray-700">
+                    <label htmlFor="isActive" className="font-medium text-gray-700 dark:text-gray-300">
                       Active Account
                     </label>
-                    <p className="text-gray-500">Allow this user to log in.</p>
+                    <p className="text-gray-500 dark:text-gray-400">Allow this user to log in.</p>
                   </div>
                 </div>
               </div>
@@ -288,7 +292,7 @@ export default function EditUserPage() {
             <div className="flex justify-end">
               <Link
                 href="/users"
-                className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mr-3"
+                className="bg-white dark:bg-gray-800 py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mr-3"
               >
                 Cancel
               </Link>

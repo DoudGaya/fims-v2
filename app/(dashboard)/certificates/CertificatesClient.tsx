@@ -25,11 +25,11 @@ import {
   ChevronLeft,
   ChevronRight,
   FileText,
-  Loader2,
   CheckCircle2,
   Clock,
   Users,
 } from 'lucide-react';
+import { ButtonLoader, SectionLoader } from '@/components/ui/loading-spinner';
 
 interface Farmer {
   id: string;
@@ -182,12 +182,12 @@ export default function CertificatesClient() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Certificates</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Certificates</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
             Manage and issue CCSA farmer registration certificates
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-lg bg-blue-50 px-4 py-2 text-sm text-blue-700">
+        <div className="flex items-center gap-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 px-4 py-2 text-sm text-blue-700 dark:text-blue-300">
           <FileText className="h-4 w-4" />
           <span className="font-semibold">{total}</span>
           <span>farmers total</span>
@@ -196,7 +196,7 @@ export default function CertificatesClient() {
 
       {/* Filters Row */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex rounded-lg border bg-white p-1 text-sm">
+        <div className="flex rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-1 text-sm">
           {tabs.map((tab) => (
             <button
               key={tab.key}
@@ -225,10 +225,10 @@ export default function CertificatesClient() {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
         <Table>
           <TableHeader>
-            <TableRow className="bg-gray-50">
+            <TableRow className="bg-gray-50 dark:bg-gray-700">
               <TableHead>Farmer</TableHead>
               <TableHead>NIN</TableHead>
               <TableHead>Location</TableHead>
@@ -243,7 +243,7 @@ export default function CertificatesClient() {
               <TableRow>
                 <TableCell colSpan={7} className="py-12 text-center">
                   <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <ButtonLoader />
                     Loading farmers…
                   </div>
                 </TableCell>
@@ -261,32 +261,32 @@ export default function CertificatesClient() {
                 const isGenerating = generating === farmer.id;
 
                 return (
-                  <TableRow key={farmer.id} className="hover:bg-gray-50/60">
+                  <TableRow key={farmer.id} className="hover:bg-gray-50/60 dark:hover:bg-gray-700/60">
                     <TableCell>
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium text-gray-900 dark:text-gray-100">
                         {farmer.firstName} {farmer.lastName}
                       </div>
                       <div className="text-xs text-muted-foreground">{farmer.phone}</div>
                     </TableCell>
-                    <TableCell className="font-mono text-sm text-gray-600">
+                    <TableCell className="font-mono text-sm text-gray-600 dark:text-gray-400">
                       {farmer.nin || '—'}
                     </TableCell>
-                    <TableCell className="text-sm text-gray-600">
+                    <TableCell className="text-sm text-gray-600 dark:text-gray-400">
                       {[farmer.lga, farmer.state].filter(Boolean).join(', ') || '—'}
                     </TableCell>
-                    <TableCell className="text-sm text-gray-600">
+                    <TableCell className="text-sm text-gray-600 dark:text-gray-400">
                       {farmer.farms[0]
                         ? `${farmer.farms[0].primaryCrop || 'N/A'} · ${farmer.farms[0].farmSize ?? 0} ha`
                         : '—'}
                     </TableCell>
                     <TableCell>
                       {hasCert ? (
-                        <Badge variant="outline" className="border-green-200 bg-green-50 text-green-700">
+                        <Badge variant="outline" className="border-green-200 bg-green-50 text-green-700 dark:border-green-700 dark:bg-green-900/20 dark:text-green-300">
                           <CheckCircle2 className="mr-1 h-3 w-3" />
                           Generated
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="border-yellow-200 bg-yellow-50 text-yellow-700">
+                        <Badge variant="outline" className="border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300">
                           <Clock className="mr-1 h-3 w-3" />
                           Pending
                         </Badge>
@@ -315,7 +315,7 @@ export default function CertificatesClient() {
                           className="gap-1.5 bg-blue-600 hover:bg-blue-700"
                         >
                           {isGenerating ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            <ButtonLoader />
                           ) : (
                             <Download className="h-3.5 w-3.5" />
                           )}
@@ -383,7 +383,7 @@ export default function CertificatesClient() {
                 className="gap-2 bg-br hover:bg-blue-700"
               >
                 {generating === previewFarmer?.id ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <ButtonLoader />
                 ) : (
                   <Download className="h-4 w-4" />
                 )}
@@ -393,15 +393,15 @@ export default function CertificatesClient() {
           </DialogHeader>
 
           {/* PDF iframe — using blob: URL so the browser renders inline instead of downloading */}
-          <div className="relative flex-1 bg-gray-100">
+          <div className="relative flex-1 bg-gray-100 dark:bg-gray-800">
             {previewLoading && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gray-50">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gray-50 dark:bg-gray-900">
+                <SectionLoader />
                 <p className="text-sm text-muted-foreground">Generating certificate preview…</p>
               </div>
             )}
             {previewError && !previewLoading && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gray-50 p-6">
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gray-50 dark:bg-gray-900 p-6">
                 <p className="text-sm font-medium text-red-600">Failed to load preview</p>
                 <p className="text-xs text-muted-foreground">{previewError}</p>
                 <Button

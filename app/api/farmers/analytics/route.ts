@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import ProductionLogger from '@/lib/productionLogger';
 import { PERMISSIONS } from '@/lib/permissions';
+import { getCached } from '@/lib/cache';
 
 // Helper to check permissions
 const checkPermission = (permissions: string[] | undefined, permission: string) => {
@@ -25,6 +26,10 @@ export async function GET() {
 
     ProductionLogger.info('Fetching farmers analytics data');
 
+    const result = await getCached(
+      'fims:v1:farmers:analytics',
+      600, // 10 minutes
+      async () => {
     // Get total farmers count
     const totalFarmers = await prisma.farmer.count();
 
@@ -97,13 +102,17 @@ export async function GET() {
       }
     });
 
-    return NextResponse.json({
-      totalFarmers,
-      farmersByState,
-      farmersByStatus,
-      farmersByGender,
-      recentRegistrations
-    });
+      return {
+        totalFarmers,
+        farmersByState,
+        farmersByStatus,
+        farmersByGender,
+        recentRegistrations
+      };
+      }
+    );
+
+    return NextResponse.json(result);
 
   } catch (error: any) {
     ProductionLogger.error('Farmers analytics error:', error.message);

@@ -294,7 +294,7 @@ export default function UsersClient() {
 
   if (error) {
     return (
-      <div className="p-4 bg-red-50 border-l-4 border-red-400 text-red-700">
+      <div className="p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-400 dark:border-red-600 text-red-700 dark:text-red-400">
         <p>{error}</p>
       </div>
     );
@@ -304,44 +304,44 @@ export default function UsersClient() {
     <div className="space-y-6 px-1">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">User Management</h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">User Management</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Control access, manage roles, and monitor system users.
           </p>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-4">
-        <Card className="bg-white">
+        <Card className="bg-white dark:bg-gray-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Users</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Users</CardTitle>
             <UsersIcon className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <div className="text-2xl font-bold">{users.length}</div>
           </CardContent>
         </Card>
-        <Card className="bg-white">
+        <Card className="bg-white dark:bg-gray-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-sm font-medium text-gray-600">Active Users</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Active Users</CardTitle>
             <CheckCircleIcon className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <div className="text-2xl font-bold">{activeUsersCount}</div>
           </CardContent>
         </Card>
-        <Card className="bg-white">
+        <Card className="bg-white dark:bg-gray-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-sm font-medium text-gray-600">Total Roles</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">Total Roles</CardTitle>
             <ShieldCheckIcon className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <div className="text-2xl font-bold">{roles.length}</div>
           </CardContent>
         </Card>
-        <Card className="bg-white">
+        <Card className="bg-white dark:bg-gray-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-sm font-medium text-gray-600">System Roles</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">System Roles</CardTitle>
             <KeyIcon className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
@@ -398,7 +398,7 @@ export default function UsersClient() {
                   </TableHeader>
                   <TableBody>
                     {loading ? (
-                      <TableRow><TableCell colSpan={4} className="text-center h-24">Loading...</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={4} className="text-center h-24"><div className="flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div></TableCell></TableRow>
                     ) : users.length === 0 ? (
                       <TableRow><TableCell colSpan={4} className="text-center h-24">No users found.</TableCell></TableRow>
                     ) : (
@@ -407,7 +407,7 @@ export default function UsersClient() {
                           <TableCell>
                             <div className="flex flex-col">
                               <span className="font-medium">{user.name}</span>
-                              <span className="text-xs text-gray-500">{user.email}</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">{user.email}</span>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -419,7 +419,7 @@ export default function UsersClient() {
                           </TableCell>
                           <TableCell>
                             {user.isActive ?
-                              <Badge className="bg-green-100 text-green-800 hover:bg-green-200 border-none">Active</Badge>
+                              <Badge className="bg-green-100 text-green-800 hover:bg-green-200 border-none dark:bg-green-900/20 dark:text-green-300">Active</Badge>
                               : <Badge variant="destructive">Inactive</Badge>}
                           </TableCell>
                           <TableCell className="text-right">
@@ -445,7 +445,7 @@ export default function UsersClient() {
               {/* Pagination */}
               <div className="flex justify-between items-center py-4 px-2">
                 <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
-                <span className="text-xs text-gray-500">Page {page} of {totalPages}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">Page {page} of {totalPages}</span>
                 <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
               </div>
             </Card>
@@ -496,19 +496,19 @@ export default function UsersClient() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {roles.map(role => (
               <Card key={role.id} className="relative overflow-hidden">
-                {role.isSystem && <div className="absolute top-0 right-0 p-1 bg-gray-100 rounded-bl text-[10px] text-gray-500 font-mono">SYSTEM</div>}
+                {role.isSystem && <div className="absolute top-0 right-0 p-1 bg-gray-100 dark:bg-gray-700 rounded-bl text-[10px] text-gray-500 dark:text-gray-400 font-mono">SYSTEM</div>}
                 <CardHeader className="pb-2">
                   <CardTitle className="flex justify-between items-center">
                     {role.name}
                     {!role.isSystem && (
                       <div className="flex gap-2">
                         {hasPermission(PERMISSIONS.ROLES_UPDATE) && (
-                          <button onClick={() => handleOpenRoleModal(role)} className="p-1 hover:bg-gray-100 rounded text-blue-600">
+                          <button onClick={() => handleOpenRoleModal(role)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-blue-600">
                             <PencilIcon className="h-4 w-4" />
                           </button>
                         )}
                         {hasPermission(PERMISSIONS.ROLES_DELETE) && (
-                          <button onClick={() => handleRoleDelete(role.id)} className="p-1 hover:bg-gray-100 rounded text-red-600">
+                          <button onClick={() => handleRoleDelete(role.id)} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-red-600">
                             <TrashIcon className="h-4 w-4" />
                           </button>
                         )}
@@ -549,9 +549,9 @@ export default function UsersClient() {
                   <CardContent>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
                       {categoryPermissions.map(perm => (
-                        <div key={perm} className="flex items-center gap-2 p-2 rounded border bg-gray-50/50">
+                        <div key={perm} className="flex items-center gap-2 p-2 rounded border dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
                           <KeyIcon className="h-4 w-4 text-gray-400" />
-                          <code className="text-xs text-gray-700 font-mono">{perm}</code>
+                          <code className="text-xs text-gray-700 dark:text-gray-300 font-mono">{perm}</code>
                         </div>
                       ))}
                     </div>
@@ -592,14 +592,14 @@ export default function UsersClient() {
 
             <div className="space-y-2">
               <Label className="text-base font-semibold">Permissions</Label>
-              <div className="border rounded-md p-4 space-y-4 h-[400px] overflow-y-auto bg-gray-50">
+              <div className="border rounded-md p-4 space-y-4 h-[400px] overflow-y-auto bg-gray-50 dark:bg-gray-800">
                 {PERMISSION_CATEGORIES.map(cat => {
                   const catPerms = Object.values(PERMISSIONS).filter(p => p.startsWith(cat.prefix));
                   if (catPerms.length === 0) return null;
 
                   return (
-                    <div key={cat.prefix} className="bg-white p-3 rounded shadow-sm">
-                      <h4 className="font-medium text-sm mb-2 uppercase text-gray-500">{cat.title}</h4>
+                    <div key={cat.prefix} className="bg-white dark:bg-gray-700 p-3 rounded shadow-sm">
+                      <h4 className="font-medium text-sm mb-2 uppercase text-gray-500 dark:text-gray-400">{cat.title}</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {catPerms.map(perm => (
                           <div key={perm} className="flex items-center space-x-2">

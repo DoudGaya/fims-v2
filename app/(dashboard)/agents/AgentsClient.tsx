@@ -339,16 +339,16 @@ export default function AgentsClient() {
     switch (status.toLowerCase()) {
       case 'active':
       case 'enrolled':
-        return <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-200">Active</Badge>;
+        return <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800">Active</Badge>;
       case 'applied':
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200">New Application</Badge>;
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800">New Application</Badge>;
       case 'callforinterview':
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200">Interviewing</Badge>;
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-800">Interviewing</Badge>;
       case 'accepted':
-        return <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200 hover:bg-indigo-200">Onboarding</Badge>;
+        return <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200 hover:bg-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-800">Onboarding</Badge>;
       case 'rejected':
       case 'inactive':
-        return <Badge className="bg-red-100 text-red-800 border-red-200 hover:bg-red-200">Inactive</Badge>;
+        return <Badge className="bg-red-100 text-red-800 border-red-200 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800">Inactive</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -359,7 +359,7 @@ export default function AgentsClient() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Agents Management</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Agents Management</h1>
           <p className="text-muted-foreground mt-1">
             Recruit, onboard, and manage field agents.
           </p>
@@ -386,60 +386,60 @@ export default function AgentsClient() {
 
       {/* Analytics Cards */}
       <div className="grid gap-4 md:grid-cols-5">
-        <Card className="col-span-1 border-blue-200 bg-blue-50">
+        <Card className="col-span-1 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-medium text-blue-800">Applications</CardTitle>
-            <InboxArrowDownIcon className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-xs font-medium text-blue-800 dark:text-blue-300">Applications</CardTitle>
+            <InboxArrowDownIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-blue-900">
+            <div className="text-2xl font-bold text-blue-900 dark:text-blue-200">
               {analyticsLoading ? '...' : analytics?.newApplications || 0}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 border-yellow-200 bg-yellow-50">
+        <Card className="col-span-1 border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-medium text-yellow-800">Interviewing</CardTitle>
-            <PhoneIcon className="h-4 w-4 text-yellow-600" />
+            <CardTitle className="text-xs font-medium text-yellow-800 dark:text-yellow-300">Interviewing</CardTitle>
+            <PhoneIcon className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-yellow-900">
+            <div className="text-2xl font-bold text-yellow-900 dark:text-yellow-200">
               {analyticsLoading ? '...' : analytics?.interviewing || 0}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 border-green-200 bg-green-50">
+        <Card className="col-span-1 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-medium text-green-800">Active</CardTitle>
-            <CheckCircleIcon className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-xs font-medium text-green-800 dark:text-green-300">Active</CardTitle>
+            <CheckCircleIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-green-900">
+            <div className="text-2xl font-bold text-green-900 dark:text-green-200">
               {analyticsLoading ? '...' : analytics?.activeAgents || 0}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 border-gray-200 bg-gray-50">
+        <Card className="col-span-1 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-medium text-gray-800">Total</CardTitle>
-            <UserIcon className="h-4 w-4 text-gray-600" />
+            <CardTitle className="text-xs font-medium text-gray-800 dark:text-gray-300">Total</CardTitle>
+            <UserIcon className="h-4 w-4 text-gray-600 dark:text-gray-400" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-gray-900">
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               {analyticsLoading ? '...' : analytics?.totalAgents || 0}
             </div>
           </CardContent>
         </Card>
-        <Card className="col-span-1 border-red-200 bg-red-50">
+        <Card className="col-span-1 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-medium text-red-800">Inactive</CardTitle>
-            <XCircleIcon className="h-4 w-4 text-red-600" />
+            <CardTitle className="text-xs font-medium text-red-800 dark:text-red-300">Inactive</CardTitle>
+            <XCircleIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-red-900">
+            <div className="text-2xl font-bold text-red-900 dark:text-red-200">
               {analyticsLoading ? '...' : analytics?.inactiveAgents || 0}
             </div>
           </CardContent>
@@ -451,7 +451,7 @@ export default function AgentsClient() {
         <Card>
           <CardHeader>
             <CardTitle>Application Status</CardTitle>
-            <div className="text-sm text-gray-500">Distribution of agent recruitment pipeline</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">Distribution of agent recruitment pipeline</div>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
@@ -491,7 +491,7 @@ export default function AgentsClient() {
         <Card>
           <CardHeader>
             <CardTitle>Top Assignments</CardTitle>
-            <div className="text-sm text-gray-500">Agents by Assigned State</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">Agents by Assigned State</div>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
@@ -517,7 +517,7 @@ export default function AgentsClient() {
       <Card>
         <CardContent className="p-4">
           {error && (
-            <div className="mb-4 p-4 text-red-700 bg-red-100 rounded-md border border-red-200 flex justify-between items-center">
+            <div className="mb-4 p-4 text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-700 flex justify-between items-center">
               <div>
                 <p className="font-medium">Error loading agents</p>
                 <p className="text-sm">{error}</p>
@@ -631,10 +631,10 @@ export default function AgentsClient() {
       </Card>
 
       {/* Table */}
-      <div className="rounded-md border bg-white overflow-hidden">
+      <div className="rounded-md border dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow className="bg-gray-50/50">
+            <TableRow className="bg-gray-50/50 dark:bg-gray-800/50">
               <TableHead>Agent</TableHead>
               <TableHead>NIN</TableHead>
               <TableHead>Gender</TableHead>
@@ -663,24 +663,24 @@ export default function AgentsClient() {
               </TableRow>
             ) : (
               agents.map((agent) => (
-                <TableRow key={agent.id} className="hover:bg-gray-50/50">
+                <TableRow key={agent.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50">
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
+                      <div className="h-9 w-9 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-300 font-bold text-xs">
                         {agent.displayName?.substring(0, 2).toUpperCase() || <UserIcon className="h-5 w-5" />}
                       </div>
                       <div>
-                        <Link href={`/agents/${agent.id}`} className="font-medium text-gray-900 hover:underline">
+                        <Link href={`/agents/${agent.id}`} className="font-medium text-gray-900 dark:text-gray-100 hover:underline">
                           {agent.displayName}
                         </Link>
-                        <div className="text-xs text-gray-500">{agent.email}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{agent.email}</div>
                         <div className="text-xs text-gray-400 font-mono mt-0.5">
                           {agent.phoneNumber && !agent.phoneNumber.startsWith('temp_') ? agent.phoneNumber : <span className="italic opacity-50">No Phone</span>}
                         </div>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs font-mono text-gray-600">
+                  <TableCell className="text-xs font-mono text-gray-600 dark:text-gray-400">
                     {agent.agent?.nin ? agent.agent.nin : <span className="text-gray-300">-</span>}
                   </TableCell>
                    <TableCell className="text-sm">
@@ -690,7 +690,7 @@ export default function AgentsClient() {
                     {agent.agent?.assignedState ? (
                       <div>
                         <div className="text-sm font-medium">{agent.agent.assignedState}</div>
-                        <div className="text-xs text-gray-500">{agent.agent.assignedLGA || '-'}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{agent.agent.assignedLGA || '-'}</div>
                       </div>
                     ) : (
                       <div className="opacity-60">
@@ -708,7 +708,7 @@ export default function AgentsClient() {
                       <span className="text-xs text-muted-foreground">Farmers</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-gray-500 text-sm">
+                  <TableCell className="text-gray-500 dark:text-gray-400 text-sm">
                     {new Date(agent.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
@@ -770,7 +770,7 @@ export default function AgentsClient() {
 
       {/* Pagination */}
       <div className="flex items-center justify-between px-2">
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-gray-500 dark:text-gray-400">
           Showing {(pagination.page - 1) * pagination.limit + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} entries
         </div>
         <div className="flex items-center space-x-2">

@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 import { farmerSchema } from '@/lib/validation';
 import { PERMISSIONS } from '@/lib/permissions';
 import ProductionLogger from '@/lib/productionLogger';
+import { invalidateByPrefix } from '@/lib/cache';
 
 // Helper to check permissions
 const checkPermission = (permissions: string[] | undefined, permission: string) => {
@@ -124,6 +125,8 @@ export async function PUT(
 
     ProductionLogger.info(`Farmer updated: ${id} by ${session.user.email}`);
 
+    await invalidateByPrefix('fims:v1:farmers');
+
     return NextResponse.json(updatedFarmer);
 
   } catch (error) {
@@ -166,6 +169,8 @@ export async function PATCH(
     });
 
     ProductionLogger.info(`Farmer status updated: ${id} to ${body.status} by ${session.user.email}`);
+
+    await invalidateByPrefix('fims:v1:farmers');
 
     return NextResponse.json(updatedFarmer);
 
@@ -220,6 +225,8 @@ export async function DELETE(
     });
 
     ProductionLogger.info(`Farmer deleted: ${id} by ${session.user.email}`);
+
+    await invalidateByPrefix('fims:v1:farmers');
 
     return NextResponse.json({ message: 'Farmer deleted successfully' });
 

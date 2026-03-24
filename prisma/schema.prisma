@@ -36,8 +36,82 @@ model User {
   userRoles              user_roles[]
   userPermissions        UserPermission[]
   ssoAuditLogs           SSOAuditLog[]
+  apiKeys                ApiKey[]
 
   @@map("users")
+}
+
+// ─── Public API Access ──────────────────────────────────────────────────────
+
+/// External API token issued to third-party partners / internal systems.
+/// The raw token is shown ONCE at creation and never stored — only a SHA-256 hash is persisted.
+model ApiKey {
+  id                   String          @id @default(cuid())
+  /// Short prefix shown in admin UI (e.g. "fims_live_abc123ef") — safe to display
+  keyPrefix            String          @unique
+  /// SHA-256 hash of the full 64-hex token — NEVER store or log plaintext
+  keyHash              String          @unique
+  name                 String          // Human label, e.g. "Ministry of Agriculture"
+  description          String?
+  /// Granular scopes: "farmers:read" | "farms:read" | "clusters:read" | "analytics:read"
+  scopes               String[]
+  /// When true, identity (nin) and financial (bvn/bank) fields are included in responses.
+  /// ⚠️  WARNING: Enable ONLY for internal CCSA products — never for third-party integrations.
+  allowSensitiveFields Boolean         @default(false)
+  /// Requests per minute. Recommended: 100 (standard) | 500 (high-volume partner)
+  rateLimit            Int             @default(100)
+  isActive             Boolean         @default(true)
+  expiresAt            DateTime?
+  lastUsedAt           DateTime?
+  requestCount         BigInt          @default(0)
+  createdByUserId      String
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  createdBy            User            @relation(fields: [createdByUserId], references: [id])
+  usageLogs            ApiKeyUsageLog[]
+
+  @@map("api_keys")
+}
+
+/// Lightweight per-request log for each API key call.
+model ApiKeyUsageLog {
+  id         String   @id @default(cuid())
+  apiKeyId   String
+  endpoint   String
+  method     String   @default("GET")
+  statusCode Int
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+  apiKey     ApiKey   @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@index([apiKeyId, createdAt(sort: Desc)])
+  @@map("api_key_usage_logs")
+}
+
+// ─── API Access Requests ───────────────────────────────────────────────────────
+
+enum AccessRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// Submitted by external organisations requesting programmatic API access.
+model ApiAccessRequest {
+  id               String              @id @default(cuid())
+  organizationName String
+  contactName      String
+  email            String
+  phone            String?
+  intendedUse      String
+  requestedScopes  String[]
+  expectedVolume   String?
+  status           AccessRequestStatus @default(PENDING)
+  adminNotes       String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@map("api_access_requests")
 }
 
 model Agent {

@@ -64,15 +64,15 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Settings & System</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Settings & System</h1>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           System configuration and overview.
         </p>
       </div>
 
       {/* System Status Cards */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -80,15 +80,15 @@ export default function SettingsPage() {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">System Status</dt>
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">System Status</dt>
                   <dd>
-                    <div className="text-lg font-medium text-gray-900">
+                    <div className="text-lg font-medium text-gray-900 dark:text-gray-100">
                       {loading ? '...' : stats?.system.status === 'healthy' ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300">
                           Healthy
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300">
                           Issues Detected
                         </span>
                       )}
@@ -98,14 +98,14 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
-          <div className="bg-gray-50 px-5 py-3">
+          <div className="bg-gray-50 dark:bg-gray-700 px-5 py-3">
             <div className="text-sm">
-              <span className="text-gray-500">Version: {stats?.system.version}</span>
+              <span className="text-gray-500 dark:text-gray-400">Version: {stats?.system.version}</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
+        <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
           <div className="p-5">
             <div className="flex items-center">
               <div className="flex-shrink-0">
@@ -113,9 +113,9 @@ export default function SettingsPage() {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Total Users</dt>
+                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Users</dt>
                   <dd>
-                    <div className="text-lg font-medium text-gray-900">
+                    <div className="text-lg font-medium text-gray-900 dark:text-gray-100">
                       {loading ? '...' : stats?.users.total}
                     </div>
                   </dd>
@@ -123,31 +123,31 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
-          <div className="bg-gray-50 px-5 py-3">
+          <div className="bg-gray-50 dark:bg-gray-700 px-5 py-3">
             <div className="text-sm">
               <span className="text-green-600 font-medium">+{stats?.users.recent}</span>
-              <span className="text-gray-500"> new this week</span>
+              <span className="text-gray-500 dark:text-gray-400"> new this week</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Settings Navigation */}
-      <h2 className="text-lg font-medium text-gray-900 mt-8">Configuration</h2>
+      <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100 mt-8">Configuration</h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {settingsLinks.map((link) => (
           <Link
             key={link.name}
             href={link.href}
-            className="relative rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-green-500"
+            className="relative rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 dark:hover:border-gray-500 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-green-500"
           >
             <div className={`flex-shrink-0 h-10 w-10 rounded-full flex items-center justify-center ${link.color}`}>
               <link.icon className="h-6 w-6 text-white" aria-hidden="true" />
             </div>
             <div className="flex-1 min-w-0">
               <span className="absolute inset-0" aria-hidden="true" />
-              <p className="text-sm font-medium text-gray-900">{link.name}</p>
-              <p className="text-sm text-gray-500 truncate">{link.description}</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{link.name}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{link.description}</p>
             </div>
           </Link>
         ))}

@@ -277,7 +277,7 @@ function FarmersContent() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Farmers Management</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Farmers Management</h1>
           <p className="text-muted-foreground mt-1">
             Overview and management of registered farmers across all regions.
           </p>
@@ -294,13 +294,13 @@ function FarmersContent() {
 
       {/* Analytics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <Card className="col-span-1 lg:col-span-1 border-blue-200">
+        <Card className="col-span-1 lg:col-span-1 border-blue-200 dark:border-blue-800">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-xs font-medium text-blue-800">Total Farmers</CardTitle>
-            <UsersIcon className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-xs font-medium text-blue-800 dark:text-blue-300">Total Farmers</CardTitle>
+            <UsersIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold text-blue-900">{analytics?.totalFarmers?.toLocaleString() || 0}</div>
+            <div className="text-2xl font-bold text-blue-900 dark:text-blue-200">{analytics?.totalFarmers?.toLocaleString() || 0}</div>
           </CardContent>
         </Card>
 
@@ -350,7 +350,7 @@ function FarmersContent() {
         <Card>
           <CardHeader>
             <CardTitle>Registration Status</CardTitle>
-            <div className="text-sm text-gray-500">Distribution of farmer onboarding stages</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">Distribution of farmer onboarding stages</div>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
@@ -389,7 +389,7 @@ function FarmersContent() {
         <Card>
           <CardHeader>
             <CardTitle>Top Locations</CardTitle>
-            <div className="text-sm text-gray-500">Farmers by State</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">Farmers by State</div>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
@@ -466,7 +466,7 @@ function FarmersContent() {
 
       {/* Batch Actions */}
       {selectedFarmers.size > 0 && (
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-2">
@@ -530,16 +530,16 @@ function FarmersContent() {
       )}
 
       {/* Table */}
-      <div className="rounded-md border bg-white overflow-hidden">
+      <div className="rounded-md border dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
         <Table>
           <TableHeader>
-            <TableRow className="bg-gray-50/50">
+            <TableRow className="bg-gray-50/50 dark:bg-gray-800/50">
               <TableHead className="w-[50px]">
                 <input
                   type="checkbox"
                   checked={selectedFarmers.size === farmers.length && farmers.length > 0}
                   onChange={toggleSelectAll}
-                  className="h-4 w-4 rounded border-gray-300 cursor-pointer"
+                  className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 cursor-pointer"
                 />
               </TableHead>
               <TableHead className="w-[300px]">Farmer</TableHead>
@@ -570,50 +570,50 @@ function FarmersContent() {
               farmers.map((farmer) => (
                 <TableRow
                   key={farmer.id}
-                  className={`cursor-pointer hover:bg-blue-50/50 ${selectedFarmers.has(farmer.id) ? 'bg-blue-50' : ''}`}
+                  className={`cursor-pointer hover:bg-blue-50/50 dark:hover:bg-gray-800/50 ${selectedFarmers.has(farmer.id) ? 'bg-blue-50 dark:bg-blue-900/30' : ''}`}
                 >
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={selectedFarmers.has(farmer.id)}
                       onChange={() => toggleSelectFarmer(farmer.id)}
-                      className="h-4 w-4 rounded border-gray-300 cursor-pointer"
+                      className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 cursor-pointer"
                     />
                   </TableCell>
                   <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)}>
                     <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-full bg-gray-100 flex items-center justify-center text-sm font-semibold text-gray-600">
+                      <div className="h-9 w-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-sm font-semibold text-gray-600 dark:text-gray-300">
                         {farmer.firstName[0]}{farmer.lastName[0]}
                       </div>
                       <div>
-                        <div className="font-medium text-gray-900">{farmer.firstName} {farmer.lastName}</div>
-                        <div className="text-xs text-gray-500">{farmer.phone}</div>
+                        <div className="font-medium text-gray-900 dark:text-gray-100">{farmer.firstName} {farmer.lastName}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{farmer.phone}</div>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)}>
                     <div className="text-sm">{farmer.nin || 'N/A'}</div>
-                    <div className="text-xs text-gray-500 font-mono">ID: {farmer.id.substring(0, 8)}...</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">ID: {farmer.id.substring(0, 8)}...</div>
                   </TableCell>
                   <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)}>
                     <div className="text-sm font-medium">{farmer.state}</div>
-                    <div className="text-xs text-gray-500">{farmer.cluster?.title || 'No Cluster'}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{farmer.cluster?.title || 'No Cluster'}</div>
                   </TableCell>
                   <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)}>
                     <Badge variant="outline"
                       className={`
-                      ${farmer.status === 'Verified' ? 'bg-green-100 text-green-800 border-green-200' : ''}
-                      ${farmer.status === 'Validated' ? 'bg-indigo-100 text-indigo-800 border-indigo-200' : ''}
-                      ${farmer.status === 'Enrolled' ? 'bg-blue-50 text-blue-700 border-blue-200' : ''}
-                      ${farmer.status === 'FarmCaptured' ? 'bg-purple-100 text-purple-800 border-purple-200' : ''}
-                      ${farmer.status === 'Rejected' ? 'bg-red-100 text-red-800 border-red-200' : ''}
-                      ${farmer.status === 'Pending' ? 'bg-gray-100 text-gray-800 border-gray-200' : ''}
+                      ${farmer.status === 'Verified' ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800' : ''}
+                      ${farmer.status === 'Validated' ? 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-800' : ''}
+                      ${farmer.status === 'Enrolled' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800' : ''}
+                      ${farmer.status === 'FarmCaptured' ? 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800' : ''}
+                      ${farmer.status === 'Rejected' ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800' : ''}
+                      ${farmer.status === 'Pending' ? 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600' : ''}
                     `}
                     >
                       {farmer.status}
                     </Badge>
                   </TableCell>
-                  <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)} className="text-gray-500">
+                  <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)} className="text-gray-500 dark:text-gray-400">
                     {new Date(farmer.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
@@ -662,7 +662,7 @@ function FarmersContent() {
 
       {/* Pagination */}
       <div className="flex items-center justify-between px-2">
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-gray-500 dark:text-gray-400">
           Showing {(pagination.page - 1) * pagination.limit + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} entries
         </div>
         <div className="flex items-center space-x-2">

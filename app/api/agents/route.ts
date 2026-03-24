@@ -8,6 +8,7 @@ import { Prisma } from '@prisma/client';
 import { auth as firebaseAuth } from '@/lib/firebase-admin';
 import ProductionLogger from '@/lib/productionLogger';
 import bcrypt from 'bcryptjs';
+import { getCached, cacheKey, invalidateByPrefix } from '@/lib/cache';
 
 // Helper to check permissions
 const checkPermission = (permissions: string[] | undefined, permission: string) => {
@@ -103,7 +104,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Execute query
+    // Execute query — cache keyed by all filter/pagination params
+    const key = cacheKey('agents', { page, limit, search, status, state, lga, startDate, endDate });
+    const result = await getCached(key, 300, async () => {
     const [agents, total] = await Promise.all([
       prisma.user.findMany({
         where,
@@ -143,16 +146,18 @@ export async function GET(req: NextRequest) {
       }),
       prisma.user.count({ where })
     ]);
-
-    return NextResponse.json({
-      agents,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit)
-      }
+      return {
+        agents,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      };
     });
+
+    return NextResponse.json(result);
 
   } catch (error) {
     console.error('Error fetching agents:', error);
@@ -273,6 +278,8 @@ export async function POST(req: NextRequest) {
 
       return { user, agent };
     });
+
+    await invalidateByPrefix('fims:v1:agents');
 
     return NextResponse.json(result, { status: 201 });
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
+import { getCached, cacheKey } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,27 +18,34 @@ export async function GET(request: Request) {
 
     // If state is selected, ONLY fetch LGA stats to save performance
     if (selectedState) {
-      const lgaStatsRaw: any[] = await prisma.$queryRaw`
-        SELECT INITCAP(TRIM(lga)) as lga, COUNT(*)::int as count
-        FROM farmers
-        WHERE state ILIKE ${'%' + selectedState + '%'} AND lga IS NOT NULL
-        GROUP BY INITCAP(TRIM(lga))
-        ORDER BY count DESC
-      `;
-
-      const lgasFormatted = lgaStatsRaw.map((item: any) => ({
-        name: item.lga,
-        value: Number(item.count)
-      }));
+      const lgaResult = await getCached(
+        cacheKey('analytics:lga', { state: selectedState }),
+        600, // 10 minutes
+        async () => {
+          const lgaStatsRaw: any[] = await prisma.$queryRaw`
+            SELECT INITCAP(TRIM(lga)) as lga, COUNT(*)::int as count
+            FROM farmers
+            WHERE state ILIKE ${'%' + selectedState + '%'} AND lga IS NOT NULL
+            GROUP BY INITCAP(TRIM(lga))
+            ORDER BY count DESC
+          `;
+          return lgaStatsRaw.map((item: any) => ({
+            name: item.lga,
+            value: Number(item.count)
+          }));
+        }
+      );
 
       return NextResponse.json({
-        summary: {}, // Not needed for LGA update
-        charts: {
-          lgas: lgasFormatted
-        }
+        summary: {},
+        charts: { lgas: lgaResult }
       });
     }
 
+    const analyticsResult = await getCached(
+      'fims:v1:analytics:full',
+      600, // 10 minutes
+      async () => {
     const [
       totalFarmers,
       totalFarms,
@@ -161,24 +169,28 @@ export async function GET(request: Request) {
       value: Number(c.count)
     }));
 
-    return NextResponse.json({
-      summary: {
-        totalFarmers,
-        totalFarms,
-        totalAgents,
-        totalClusters,
-        totalArea: totalAreaResult._sum.farmSize || 0,
-      },
-      charts: {
-        gender: genderFormatted,
-        crops: cropChartsData,
-        states: statesFormatted,
-        age: ageChartsData,
-        registrations,
-        farmSizes: farmSizesFormatted,
-        lgas: [] // Empty detailed LGAs initially
+        return {
+          summary: {
+            totalFarmers,
+            totalFarms,
+            totalAgents,
+            totalClusters,
+            totalArea: totalAreaResult._sum.farmSize || 0,
+          },
+          charts: {
+            gender: genderFormatted,
+            crops: cropChartsData,
+            states: statesFormatted,
+            age: ageChartsData,
+            registrations,
+            farmSizes: farmSizesFormatted,
+            lgas: []
+          }
+        };
       }
-    });
+    );
+
+    return NextResponse.json(analyticsResult);
 
   } catch (error) {
     console.error('Analytics Error:', error);

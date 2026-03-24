@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import { PERMISSIONS } from '@/lib/permissions';
+import { invalidateByPrefix } from '@/lib/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -225,6 +226,8 @@ export async function PUT(
       );
     }
 
+    await invalidateByPrefix('fims:v1:agents');
+
     return NextResponse.json(result);
 
   } catch (error) {
@@ -328,6 +331,8 @@ export async function PATCH(
       );
     }
 
+    await invalidateByPrefix('fims:v1:agents');
+
     return NextResponse.json(result);
 
   } catch (error: any) {
@@ -384,6 +389,8 @@ export async function DELETE(
     await prisma.user.delete({
       where: { id }
     });
+
+    await invalidateByPrefix('fims:v1:agents');
 
     return NextResponse.json({ message: 'Agent deleted successfully' });
 

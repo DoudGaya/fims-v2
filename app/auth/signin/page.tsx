@@ -5,6 +5,7 @@ import { signIn, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import { PageLoader, ButtonLoader } from '@/components/ui/loading-spinner';
 
 function SignInContent() {
   const { data: session, status } = useSession();
@@ -98,15 +99,11 @@ function SignInContent() {
   };
 
   if (status === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (
-    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 items-center justify-center bg-gray-50">
+    <div className="min-h-screen grid grid-cols-1 lg:grid-cols-2 items-center justify-center bg-gray-50 dark:bg-gray-950">
       <div
         style={{
           backgroundImage: `url(/home-bannner.jpg)`,
@@ -138,7 +135,7 @@ function SignInContent() {
           </h2>
           <small className="text-lg">Cosmopolitan University Abuja</small>
         </div>
-        <div className="bg-white py-8 px-4 max-w-sm mx-auto shadow sm:rounded-lg sm:px-10">
+        <div className="bg-white dark:bg-gray-900 py-8 px-4 max-w-sm mx-auto shadow sm:rounded-lg sm:px-10">
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             <div className="rounded-md flex flex-col space-y-5 shadow-sm">
               <div>
@@ -151,7 +148,7 @@ function SignInContent() {
                   type="email"
                   autoComplete="email"
                   required
-                  className="relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-950/80 focus:border-blue-950/80 focus:z-10 sm:text-sm"
+                  className="relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-blue-950/80 focus:border-blue-950/80 focus:z-10 sm:text-sm"
                   placeholder="Email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -167,7 +164,7 @@ function SignInContent() {
                   type="password"
                   autoComplete="current-password"
                   required
-                  className="relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-950/80 focus:border-blue-950/80 focus:z-10 sm:text-sm"
+                  className="relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-blue-950/80 focus:border-blue-950/80 focus:z-10 sm:text-sm"
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -193,7 +190,7 @@ function SignInContent() {
                 disabled={loading}
                 className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-950 hover:bg-blue-950/80 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-950/80 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? <div className="spinner px-4"></div> : 'Sign in'}
+                {loading ? <ButtonLoader className="mx-4" /> : 'Sign in'}
               </button>
             </div>
 
@@ -207,7 +204,7 @@ function SignInContent() {
                 <div className="w-full border-t border-gray-300"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
+                <span className="px-2 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">
                   Or continue with
                 </span>
               </div>
@@ -217,7 +214,7 @@ function SignInContent() {
               type="button"
               onClick={handleGoogleSignIn}
               disabled={loading}
-              className="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <svg className="h-5 w-5" viewBox="0 0 24 24">
                 <path
@@ -257,7 +254,7 @@ function SignInContent() {
 
 export default function SignIn() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<PageLoader />}>
       <SignInContent />
     </Suspense>
   );

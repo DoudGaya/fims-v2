@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { usePermissions } from '@/components/PermissionProvider';
 import { PERMISSIONS } from '@/lib/permissions';
 import { getFirstAvailableRoute } from '@/lib/redirectHelper';
+import { PageLoader } from '@/components/ui/loading-spinner';
 import {
   UsersIcon,
   UserGroupIcon,
@@ -79,11 +80,7 @@ export default function Dashboard() {
   };
 
   if (status === 'loading' || loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!session) {
@@ -110,7 +107,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 py-6">
       {/* Top Section: Welcome & Goal */}
-      <div className="grid bg-stone-200 rounded-lg p-3 grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid bg-stone-200 dark:bg-stone-800 rounded-lg p-3 grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-4">
           {/* <div>
             <h3 className="text-2xl font-bold tracking-tight">
@@ -187,9 +184,9 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Quick Actions</h3>
+      <div className="bg-white dark:bg-gray-900 shadow rounded-lg">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Quick Actions</h3>
         </div>
         <div className="p-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -202,21 +199,21 @@ export default function Dashboard() {
             </button>
             <button
               onClick={() => router.push('/farmers')}
-              className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               <UsersIcon className="h-4 w-4 mr-2" />
               View All Farmers
             </button>
             <button
               onClick={() => router.push('/clusters')}
-              className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               <BuildingOfficeIcon className="h-4 w-4 mr-2" />
               Manage Clusters
             </button>
             <button
               onClick={() => router.push('/farms')}
-              className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               <GlobeAltIcon className="h-4 w-4 mr-2" />
               View Farms

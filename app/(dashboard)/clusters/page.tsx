@@ -147,7 +147,7 @@ export default function ClustersPage() {
   const CHART_COLORS = ['#16a34a', '#2563eb', '#ea580c', '#db2777', '#7c3aed'];
 
   if (status === 'loading') {
-    return <div className="p-8 text-center text-gray-500">Loading cluster data...</div>;
+    return <div className="p-8 text-center text-gray-500 dark:text-gray-400">Loading cluster data...</div>;
   }
 
   return (
@@ -155,8 +155,8 @@ export default function ClustersPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Cluster Management</h1>
-          <p className="text-gray-500">Monitor cluster performance and manage leads.</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Cluster Management</h1>
+          <p className="text-gray-500 dark:text-gray-400">Monitor cluster performance and manage leads.</p>
         </div>
         <Link href="/clusters/create">
           <Button className="bg-green-600 hover:bg-green-700 text-white gap-2">
@@ -215,12 +215,12 @@ export default function ClustersPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content: Table */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center gap-4 bg-white p-4 rounded-lg border shadow-sm">
+          <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-4 rounded-lg border dark:border-gray-700 shadow-sm">
             <div className="relative flex-1">
               <MagnifyingGlassIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
               <Input
                 placeholder="Search clusters..."
-                className="pl-9 bg-gray-50 border-gray-200"
+                className="pl-9 bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch(e)}
@@ -236,15 +236,15 @@ export default function ClustersPage() {
             <Button onClick={handleSearch} variant="secondary">Message</Button> {/* Placeholder for bulk action */}
           </div>
 
-          <div className="bg-white rounded-lg border shadow-sm overflow-hidden">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border dark:border-gray-700 shadow-sm overflow-hidden">
             {!loading && clusters.length === 0 ? (
-              <div className="p-12 text-center text-gray-500">
+              <div className="p-12 text-center text-gray-500 dark:text-gray-400">
                 <p>No clusters found matching your criteria.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b">
+                  <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
                     <tr>
                       <th className="px-6 py-3 font-medium">Cluster Name</th>
                       <th className="px-6 py-3 font-medium">Lead</th>
@@ -253,16 +253,16 @@ export default function ClustersPage() {
                       <th className="px-6 py-3 font-medium text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                     {clusters.map((cluster) => (
-                      <tr key={cluster.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 font-medium text-gray-900">
+                      <tr key={cluster.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <td className="px-6 py-4 font-medium text-gray-900 dark:text-gray-100">
                           {cluster.title}
-                          <div className="text-xs text-gray-500 font-normal truncate max-w-[200px]">{cluster.description}</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 font-normal truncate max-w-[200px]">{cluster.description}</div>
                         </td>
-                        <td className="px-6 py-4 text-gray-600">
+                        <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
                           <div>{cluster.clusterLeadFirstName} {cluster.clusterLeadLastName}</div>
-                          <div className="text-xs text-gray-400">{cluster.clusterLeadPhone}</div>
+                          <div className="text-xs text-gray-400 dark:text-gray-500">{cluster.clusterLeadPhone}</div>
                         </td>
                         <td className="px-6 py-4">
                           <Badge variant="secondary" className="font-normal text-gray-600">
@@ -296,8 +296,8 @@ export default function ClustersPage() {
             )}
             {/* Pagination */}
             {pagination.totalPages > 1 && (
-              <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-100">
-                <div className="text-xs text-gray-500">
+              <div className="bg-white dark:bg-gray-800 px-4 py-3 flex items-center justify-between border-t border-gray-100 dark:border-gray-700">
+                <div className="text-xs text-gray-500 dark:text-gray-400">
                   Page {pagination.currentPage} of {pagination.totalPages}
                 </div>
                 <div className="flex gap-2">
@@ -334,7 +334,7 @@ export default function ClustersPage() {
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f0f0f0" />
+                    <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#6b7280" strokeOpacity={0.3} />
                     <XAxis type="number" hide />
                     <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 11 }} orientation="left" />
                     <Tooltip

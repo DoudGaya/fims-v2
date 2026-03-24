@@ -45,10 +45,36 @@ export default function GISMapGoogle() {
       const res = await fetch('/api/farms/geojson?limit=1000');
       const data = await res.json();
       if (!data.success) throw new Error(data.message || 'Failed loading farms');
-      setFarms(data.farms || []);
+      const polygonFarms: any[] = data.farms || [];
+      setFarms(polygonFarms);
       setGeoJson(data.geoJson ?? null);
-      setPointsGeoJson(data.pointsGeoJson ?? null);
-      setTotalFarms(data.metadata?.totalFarmsInDb || data.farms?.length || 0);
+
+      // Build point markers from the centroid of each polygon ring.
+      // Only polygon farms get a dot, so dots and polygons are always in sync.
+      const centroidFeatures = polygonFarms
+        .map((f: any) => {
+          const ring: number[][] = f.coordinates || [];
+          if (ring.length < 3) return null;
+          const lng = ring.reduce((s: number, c: number[]) => s + c[0], 0) / ring.length;
+          const lat = ring.reduce((s: number, c: number[]) => s + c[1], 0) / ring.length;
+          return {
+            type: 'Feature',
+            properties: {
+              id: f.id,
+              farmerName: f.farmerName,
+              crop: f.crop,
+              area: f.area,
+              status: f.status,
+              state: f.state,
+              lga: f.lga,
+            },
+            geometry: { type: 'Point', coordinates: [lng, lat] },
+          };
+        })
+        .filter(Boolean);
+
+      setPointsGeoJson({ type: 'FeatureCollection', features: centroidFeatures });
+      setTotalFarms(data.statistics?.surveyedPolygons ?? polygonFarms.length ?? 0);
     } catch (e: any) {
       setError(e.message);
       setFarms([]);
@@ -266,13 +292,10 @@ export default function GISMapGoogle() {
           {loading
             ? 'Loading farms…'
             : (() => {
-                const dotCount  = (pointsGeoJson as any)?.features?.length ?? 0;
                 const polyCount = (geoJson as any)?.features?.length ?? 0;
-                const shown = dotCount || farms.length;
-                const label = shown > 0
-                  ? `${shown.toLocaleString()} / ${totalFarms.toLocaleString()} farms`
-                  : `${totalFarms.toLocaleString()} farms`;
-                return polyCount > 0 ? `${label} · ${polyCount} surveyed` : label;
+                return polyCount > 0
+                  ? `${polyCount.toLocaleString()} surveyed farm${polyCount !== 1 ? 's' : ''} · Click to analyze`
+                  : 'No surveyed polygon farms yet';
               })()
           }
         </p>
