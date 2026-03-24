@@ -31,6 +31,8 @@ export default function GISMapGoogle() {
   const [error, setError] = useState<string | null>(null);
 
   const [selectedFarm, setSelectedFarm] = useState<any | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ farmId: string; farmName: string } | null>(null);
+  const [deletingFarm, setDeletingFarm] = useState(false);
 
   // GIS Analysis State
   const [activeLayer, setActiveLayer] = useState<string | null>(null);
@@ -49,31 +51,8 @@ export default function GISMapGoogle() {
       setFarms(polygonFarms);
       setGeoJson(data.geoJson ?? null);
 
-      // Build point markers from the centroid of each polygon ring.
-      // Only polygon farms get a dot, so dots and polygons are always in sync.
-      const centroidFeatures = polygonFarms
-        .map((f: any) => {
-          const ring: number[][] = f.coordinates || [];
-          if (ring.length < 3) return null;
-          const lng = ring.reduce((s: number, c: number[]) => s + c[0], 0) / ring.length;
-          const lat = ring.reduce((s: number, c: number[]) => s + c[1], 0) / ring.length;
-          return {
-            type: 'Feature',
-            properties: {
-              id: f.id,
-              farmerName: f.farmerName,
-              crop: f.crop,
-              area: f.area,
-              status: f.status,
-              state: f.state,
-              lga: f.lga,
-            },
-            geometry: { type: 'Point', coordinates: [lng, lat] },
-          };
-        })
-        .filter(Boolean);
-
-      setPointsGeoJson({ type: 'FeatureCollection', features: centroidFeatures });
+      // Use server-built points (all farms with valid Nigerian lat/lng, up to 5 000)
+      setPointsGeoJson(data.pointsGeoJson ?? null);
       setTotalFarms(data.statistics?.surveyedPolygons ?? polygonFarms.length ?? 0);
     } catch (e: any) {
       setError(e.message);
@@ -166,6 +145,40 @@ export default function GISMapGoogle() {
       setError(err.message || "Analysis failed to run. Try selecting another layer.");
     } finally {
       setAnalysisLoading(false);
+    }
+  };
+
+  const handleDeleteFarm = (farmId: string, farmName: string) => {
+    setConfirmDelete({ farmId, farmName });
+  };
+
+  const executeDeleteFarm = async () => {
+    if (!confirmDelete) return;
+    setDeletingFarm(true);
+    try {
+      const res = await fetch(`/api/farms/${confirmDelete.farmId}`, { method: 'DELETE' });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Delete failed'); }
+      setFarms(prev => prev.filter(f => f.id !== confirmDelete.farmId));
+      setGeoJson((prev: any) => prev ? {
+        ...prev,
+        features: prev.features.filter((f: any) => f.properties?.id !== confirmDelete.farmId),
+      } : null);
+      setPointsGeoJson((prev: any) => prev ? {
+        ...prev,
+        features: prev.features.filter((f: any) => f.properties?.id !== confirmDelete.farmId),
+      } : null);
+      if (selectedFarmId === confirmDelete.farmId) {
+        setSelectedFarmId(null);
+        setSelectedFarm(null);
+        setAnalysisStats(null);
+        setAnalysisTileUrl(null);
+      }
+      setConfirmDelete(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete farm');
+      setConfirmDelete(null);
+    } finally {
+      setDeletingFarm(false);
     }
   };
 
@@ -273,6 +286,7 @@ export default function GISMapGoogle() {
         pointsGeoJson={pointsGeoJson}
         loading={loading}
         onFarmSelect={handleFarmSelect}
+        onDeleteFarm={handleDeleteFarm}
         analysisTileUrl={analysisTileUrl}
         selectedFarmId={selectedFarmId}
       />
@@ -429,6 +443,65 @@ export default function GISMapGoogle() {
           </p>
         )}
       </div>
+
+      {/* ── Delete confirm modal ── */}
+      {confirmDelete && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 50,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+        }}>
+          <div style={{
+            background: 'rgba(15,20,30,0.95)', backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: 14, padding: '24px 28px',
+            boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
+            maxWidth: 380, width: 'calc(100vw - 48px)',
+            display: 'flex', flexDirection: 'column', gap: 16,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 22 }}>🗑️</span>
+              <p style={{ fontWeight: 700, fontSize: 15, color: '#fff', margin: 0 }}>Delete Farm?</p>
+            </div>
+            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', margin: 0, lineHeight: 1.7 }}>
+              This will permanently remove the farm record for{' '}
+              <strong style={{ color: '#fff' }}>{confirmDelete.farmName}</strong>.
+              The farmer profile will not be affected.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setConfirmDelete(null)}
+                disabled={deletingFarm}
+                style={{
+                  flex: 1, padding: '9px 0', borderRadius: 8,
+                  border: '1px solid rgba(255,255,255,0.18)',
+                  background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.8)',
+                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executeDeleteFarm}
+                disabled={deletingFarm}
+                style={{
+                  flex: 1, padding: '9px 0', borderRadius: 8,
+                  border: '1px solid #FCA5A5',
+                  background: deletingFarm ? '#7f1d1d' : '#DC2626',
+                  color: '#fff', fontSize: 13, fontWeight: 700,
+                  cursor: deletingFarm ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}
+              >
+                {deletingFarm
+                  ? <><div style={{ width: 12, height: 12, border: '2px solid rgba(255,255,255,0.5)', borderTopColor: '#fff', borderRadius: '50%', animation: 'gis-spin 0.7s linear infinite' }} /> Deleting…</>
+                  : '🗑️ Delete Farm'
+                }
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`@keyframes gis-spin { to { transform: rotate(360deg); } }`}</style>
     </div>

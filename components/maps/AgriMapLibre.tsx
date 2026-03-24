@@ -23,6 +23,7 @@ export interface AgriMapLibreProps {
   pointsGeoJson?: GeoJSON.FeatureCollection | null;
   loading?: boolean;
   onFarmSelect?: (props: FarmProperties | null) => void;
+  onDeleteFarm?: (farmId: string, farmName: string) => void;
   analysisTileUrl?: string | null;
   selectedFarmId?: string | null;
 }
@@ -106,6 +107,7 @@ export default function AgriMapLibre({
   pointsGeoJson,
   loading,
   onFarmSelect,
+  onDeleteFarm,
   analysisTileUrl,
   selectedFarmId,
 }: AgriMapLibreProps) {
@@ -113,10 +115,12 @@ export default function AgriMapLibre({
   const mapRef       = useRef<any>(null);
   const popupRef     = useRef<any>(null);
   const onSelectRef  = useRef(onFarmSelect);
+  const onDeleteRef  = useRef(onDeleteFarm);
   const [mapReady, setMapReady]     = useState(false);
   const [activeBase, setActiveBase] = useState<BasemapId>('streets');
 
   onSelectRef.current = onFarmSelect;
+  onDeleteRef.current = onDeleteFarm;
 
   // ── 1. Init map (StrictMode-safe with local `cancelled` flag) ──────────────
   useEffect(() => {
@@ -249,6 +253,8 @@ export default function AgriMapLibre({
         onSelectRef.current?.(p);
         const statusColor = p.status === 'verified' ? '#10B981' : '#F59E0B';
         const area = p.area ? `${Number(p.area).toFixed(2)} ha` : 'N/A';
+        const safeId   = String(p.id   || '').replace(/"/g, '&quot;');
+        const safeName = String(p.farmerName || p.name || 'Unknown Farmer').replace(/"/g, '&quot;');
         popupRef.current
           .setLngLat(e.lngLat)
           .setHTML(
@@ -260,9 +266,24 @@ export default function AgriMapLibre({
                 <span style="color:#9CA3AF">Area</span><span>${area}</span>
                 <span style="color:#9CA3AF">Status</span><span style="color:${statusColor};font-weight:600">${p.status || 'N/A'}</span>
               </div>
+              <button id="agri-delete-btn" data-farm-id="${safeId}" data-farm-name="${safeName}"
+                style="margin-top:10px;width:100%;padding:6px 10px;border-radius:6px;border:1px solid #FCA5A5;background:#FEF2F2;color:#DC2626;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+                🗑️ Delete Farm
+              </button>
             </div>`
           )
           .addTo(map);
+        setTimeout(() => {
+          const btn = popupRef.current?.getElement()?.querySelector('#agri-delete-btn') as HTMLElement | null;
+          if (btn) {
+            btn.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              const farmId   = btn.getAttribute('data-farm-id') || '';
+              const farmName = btn.getAttribute('data-farm-name') || '';
+              onDeleteRef.current?.(farmId, farmName);
+            });
+          }
+        }, 0);
       };
 
       map.on('click', 'farms-fill', handleClick);
