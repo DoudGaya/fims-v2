@@ -205,7 +205,7 @@ export default function AgriMapLibre({
               paint: { 'line-color': '#ffffff', 'line-width': 3, 'line-opacity': 1 },
             },
 
-            // ── Dots — visible at zoom < 12 (overlaps polygons slightly for smooth transition) ──
+            // ── Dots (zoom ≤ 12): all farms, fade out as polygons take over ──
             {
               id: 'farms-dots', type: 'circle', source: 'farms-points',
               maxzoom: 12,
@@ -218,7 +218,21 @@ export default function AgriMapLibre({
               },
             },
 
-            // ── Selected dot highlight ──
+            // ── Dots (zoom > 12): point-only farms with no polygon remain visible ──
+            {
+              id: 'farms-dots-pointonly', type: 'circle', source: 'farms-points',
+              minzoom: 12,
+              filter: ['!=', ['get', 'hasPolygon'], true],
+              paint: {
+                'circle-color':        FARM_COLOR,
+                'circle-radius':       5,
+                'circle-stroke-color': 'rgba(255,255,255,0.8)',
+                'circle-stroke-width': 1.5,
+                'circle-opacity':      1,
+              },
+            },
+
+            // ── Selected dot highlight (zoom ≤ 12) ──
             {
               id: 'farms-selected-dot', type: 'circle', source: 'farms-points',
               maxzoom: 12,
@@ -229,6 +243,20 @@ export default function AgriMapLibre({
                 'circle-stroke-color': '#ffffff',
                 'circle-stroke-width': 2.5,
                 'circle-opacity':      ['interpolate', ['linear'], ['zoom'], 9, 1, 12, 0],
+              },
+            },
+
+            // ── Selected dot highlight for point-only farms (zoom > 12) ──
+            {
+              id: 'farms-selected-dot-pointonly', type: 'circle', source: 'farms-points',
+              minzoom: 12,
+              filter: ['all', ['==', ['get', 'id'], '$$NONE$$'], ['!=', ['get', 'hasPolygon'], true]],
+              paint: {
+                'circle-color':        FARM_COLOR,
+                'circle-radius':       8,
+                'circle-stroke-color': '#ffffff',
+                'circle-stroke-width': 2.5,
+                'circle-opacity':      1,
               },
             },
           ],
@@ -288,10 +316,11 @@ export default function AgriMapLibre({
 
       map.on('click', 'farms-fill', handleClick);
       map.on('click', 'farms-dots', handleClick);
+      map.on('click', 'farms-dots-pointonly', handleClick);
 
       // Click outside any farm feature → deselect
       map.on('click', (e: any) => {
-        const hits = map.queryRenderedFeatures(e.point, { layers: ['farms-fill', 'farms-dots'] });
+        const hits = map.queryRenderedFeatures(e.point, { layers: ['farms-fill', 'farms-dots', 'farms-dots-pointonly'] });
         if (!hits.length) {
           onSelectRef.current?.(null);
           popupRef.current?.remove();
@@ -304,6 +333,8 @@ export default function AgriMapLibre({
       map.on('mouseleave', 'farms-fill', setCursor(''));
       map.on('mouseenter', 'farms-dots', setCursor('pointer'));
       map.on('mouseleave', 'farms-dots', setCursor(''));
+      map.on('mouseenter', 'farms-dots-pointonly', setCursor('pointer'));
+      map.on('mouseleave', 'farms-dots-pointonly', setCursor(''));
 
       map.on('load', () => {
         if (cancelled) {
@@ -376,8 +407,8 @@ export default function AgriMapLibre({
     const filter = ['==', ['get', 'id'], id] as any;
     mapRef.current.setFilter('farms-selected-fill',    filter);
     mapRef.current.setFilter('farms-selected-outline', filter);
-    mapRef.current.setFilter('farms-selected-dot',     filter);
-  }, [selectedFarmId, mapReady]);
+    mapRef.current.setFilter('farms-selected-dot',     filter);    mapRef.current.setFilter('farms-selected-dot-pointonly',
+      ['all', ['==', ['get', 'id'], id], ['!=', ['get', 'hasPolygon'], true]] as any);  }, [selectedFarmId, mapReady]);
 
   // ── 4. Analysis tile overlay ───────────────────────────────────────────────
   useEffect(() => {

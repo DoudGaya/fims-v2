@@ -188,6 +188,7 @@ export async function GET(request: Request) {
 
     const validFarms   = transformedFarms.filter(f => f.hasValidCoordinates);
     const invalidFarms = transformedFarms.filter(f => !f.hasValidCoordinates);
+    const polygonFarmIds = new Set(validFarms.map(f => f.id));
 
     console.log(`✅ ${validFarms.length} surveyed polygon farms, ${pointFarms.length} dot farms`);
 
@@ -206,6 +207,7 @@ export async function GET(request: Request) {
           status: pf.farmer?.status?.toLowerCase() === 'verified' ? 'verified' : 'pending',
           state:  pf.farmState     || pf.farmer?.state || '',
           lga:    pf.farmLocalGovernment || pf.farmer?.lga || '',
+          hasPolygon: polygonFarmIds.has(pf.id),
         },
         geometry: {
           type: 'Point',

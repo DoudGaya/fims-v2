@@ -52,9 +52,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import FarmPolygonMap from '@/components/maps/FarmPolygonMap';
-import { GoogleMapsProvider } from '@/components/maps/GoogleMapsProvider';
+import dynamic from 'next/dynamic';
 import { AnalysisModal } from '@/components/analysis/AnalysisModal';
+
+const FarmPolygonMapLibre = dynamic(() => import('@/components/maps/FarmPolygonMapLibre'), { ssr: false });
 
 export default function FarmerDetailsPage() {
   const { data: session, status } = useSession();
@@ -152,7 +153,6 @@ export default function FarmerDetailsPage() {
   }
 
   return (
-    <GoogleMapsProvider>
     <div className=" w-full mx-auto px-1 space-y-8 animate-in fade-in duration-500">
 
       {/* 1. Header Section */}
@@ -341,7 +341,12 @@ export default function FarmerDetailsPage() {
                           <div className="mt-6">
                             <h4 className="text-sm font-semibold text-gray-900 mb-2">Farm Map Boundary</h4>
                             <div className="h-[300px] w-full rounded-lg overflow-hidden border">
-                              <FarmPolygonMap polygonData={farm.farmPolygon} />
+                              <FarmPolygonMapLibre
+                                polygonData={farm.farmPolygon}
+                                latitude={farm.farmLatitude}
+                                longitude={farm.farmLongitude}
+                                height={300}
+                              />
                             </div>
                           </div>
                         )}
@@ -550,7 +555,6 @@ export default function FarmerDetailsPage() {
       </Dialog>
 
     </div>
-    </GoogleMapsProvider>
   );
 }
 
