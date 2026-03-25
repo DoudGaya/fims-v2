@@ -3,8 +3,8 @@ import './globals.css';
 import { Providers } from '@/components/Providers';
 
 export const metadata: Metadata = {
-  title: 'CCSA Mobile API',
-  description: 'CCSA Mobile Application Backend & Dashboard',
+  title: 'CCSA | FIMS',
+  description: 'CCSA FIMS & Dashboard',
 };
 
 export default function RootLayout({
