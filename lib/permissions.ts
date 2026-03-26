@@ -54,6 +54,10 @@ export const PERMISSIONS = {
   SETTINGS_READ: 'settings.read',
   SETTINGS_UPDATE: 'settings.update',
   
+  // Requests
+  REQUESTS_READ: 'requests.read',
+  REQUESTS_MANAGE: 'requests.manage',
+
   // System Administration
   SYSTEM_MANAGE_PERMISSIONS: 'system.manage_permissions',
   SYSTEM_MANAGE_ROLES: 'system.manage_roles',

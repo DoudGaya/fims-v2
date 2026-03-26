@@ -30,13 +30,15 @@ model User {
   ssoEmail               String?      // email from SSO provider
   lastSSOLogin           DateTime?    // track SSO login history
   isSSOEnabled           Boolean      @default(false) // flag to allow SSO for user
-  createdAgents          Agent[]      @relation("CreatedByUser")
-  agent                  Agent?
-  farmers                Farmer[]
-  userRoles              user_roles[]
-  userPermissions        UserPermission[]
-  ssoAuditLogs           SSOAuditLog[]
-  apiKeys                ApiKey[]
+  createdAgents                     Agent[]              @relation("CreatedByUser")
+  agent                             Agent?
+  farmers                           Farmer[]
+  userRoles                         user_roles[]
+  userPermissions                   UserPermission[]
+  ssoAuditLogs                      SSOAuditLog[]
+  apiKeys                           ApiKey[]
+  farmDeleteRequestsAsRequester     FarmDeleteRequest[]  @relation("DeleteRequestedBy")
+  farmDeleteRequestsAsReviewer      FarmDeleteRequest[]  @relation("DeleteReviewedBy")
 
   @@map("users")
 }
@@ -112,6 +114,30 @@ model ApiAccessRequest {
   updatedAt        DateTime            @updatedAt
 
   @@map("api_access_requests")
+}
+
+/// Request to delete a farm, pending admin approval.
+model FarmDeleteRequest {
+  id                String              @id @default(cuid())
+  farmId            String?             // nullable — set null when farm is actually deleted
+  farmerId          String              // denormalized for reference after deletion
+  farmerName        String              // denormalized
+  farmSnapshot      Json                // crop, size, state, lga, polygon captured at request time
+  requestedByUserId String
+  reason            String
+  status            AccessRequestStatus @default(PENDING)
+  reviewedByUserId  String?
+  reviewedAt        DateTime?
+  adminNotes        String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  farm              Farm?               @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  requestedBy       User                @relation("DeleteRequestedBy", fields: [requestedByUserId], references: [id])
+  reviewedBy        User?               @relation("DeleteReviewedBy", fields: [reviewedByUserId], references: [id])
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([farmId])
+  @@map("farm_delete_requests")
 }
 
 model Agent {
@@ -249,6 +275,7 @@ model Farm {
   updatedAt           DateTime @updatedAt
   farmer              Farmer   @relation(fields: [farmerId], references: [id], onDelete: Cascade)
   analysisResults     FarmAnalysisResult[]
+  deleteRequests      FarmDeleteRequest[]
 
   @@map("farms")
 }

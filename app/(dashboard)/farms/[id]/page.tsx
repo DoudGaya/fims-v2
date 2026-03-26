@@ -36,6 +36,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 
 import FarmPolygonMap from '@/components/maps/FarmPolygonMap';
 import { GoogleMapsProvider } from '@/components/maps/GoogleMapsProvider';
@@ -91,6 +102,9 @@ export default function FarmDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deleteRequestSuccess, setDeleteRequestSuccess] = useState(false);
 
   const fetchFarm = useCallback(async () => {
     try {
@@ -115,21 +129,27 @@ export default function FarmDetailsPage() {
   }, [id, fetchFarm]);
 
   const handleDelete = async () => {
+    if (!deleteReason.trim()) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/farms/${id}`, {
-        method: 'DELETE',
+      const res = await fetch('/api/farms/delete-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ farmId: id, reason: deleteReason.trim() }),
       });
 
       if (!res.ok) {
-        throw new Error('Failed to delete farm');
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to submit delete request');
       }
 
-      router.push('/farms');
-      router.refresh();
+      setDeleteRequestSuccess(true);
+      setDeleteDialogOpen(false);
+      setDeleteReason('');
     } catch (err) {
       console.error(err);
-      alert('Failed to delete farm'); // Could replace with Toast
+      alert(err instanceof Error ? err.message : 'Failed to submit delete request');
+    } finally {
       setIsDeleting(false);
     }
   };
@@ -183,27 +203,51 @@ export default function FarmDetailsPage() {
             </Link>
           </Button>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" disabled={isDeleting}>
-                <TrashIcon className="mr-2 size-4" /> Delete
+          {/* Success banner */}
+          {deleteRequestSuccess && (
+            <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+              ✓ Deletion request submitted for review.
+              <button className="text-xs underline ml-1" onClick={() => setDeleteRequestSuccess(false)}>Dismiss</button>
+            </div>
+          )}
+
+          {/* Request deletion dialog */}
+          <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50" disabled={deleteRequestSuccess}>
+                <TrashIcon className="mr-2 size-4" /> Request Deletion
               </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the farm record and remove it from our servers.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-                  {isDeleting ? 'Deleting...' : 'Delete Farm'}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Request Farm Deletion</DialogTitle>
+                <DialogDescription>
+                  This will submit a deletion request for review. An admin must approve it before the farm is permanently removed.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2 py-2">
+                <Label>Reason for deletion <span className="text-red-500">*</span></Label>
+                <Textarea
+                  placeholder="Describe why this farm should be deleted…"
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  rows={3}
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => { setDeleteDialogOpen(false); setDeleteReason(''); }}>
+                  Cancel
+                </Button>
+                <Button
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                  onClick={handleDelete}
+                  disabled={isDeleting || !deleteReason.trim()}
+                >
+                  {isDeleting ? 'Submitting…' : '📋 Submit Request'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 

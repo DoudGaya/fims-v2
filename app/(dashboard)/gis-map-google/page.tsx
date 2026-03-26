@@ -31,8 +31,10 @@ export default function GISMapGoogle() {
   const [error, setError] = useState<string | null>(null);
 
   const [selectedFarm, setSelectedFarm] = useState<any | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<{ farmId: string; farmName: string } | null>(null);
-  const [deletingFarm, setDeletingFarm] = useState(false);
+  const [requestDeleteTarget, setRequestDeleteTarget] = useState<{ farmId: string; farmName: string } | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [requestSuccess, setRequestSuccess] = useState<string | null>(null);
 
   // GIS Analysis State
   const [activeLayer, setActiveLayer] = useState<string | null>(null);
@@ -149,36 +151,31 @@ export default function GISMapGoogle() {
   };
 
   const handleDeleteFarm = (farmId: string, farmName: string) => {
-    setConfirmDelete({ farmId, farmName });
+    setRequestDeleteTarget({ farmId, farmName });
+    setDeleteReason('');
   };
 
-  const executeDeleteFarm = async () => {
-    if (!confirmDelete) return;
-    setDeletingFarm(true);
+  const submitDeleteRequest = async () => {
+    if (!requestDeleteTarget || !deleteReason.trim()) return;
+    setSubmittingRequest(true);
     try {
-      const res = await fetch(`/api/farms/${confirmDelete.farmId}`, { method: 'DELETE' });
-      if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Delete failed'); }
-      setFarms(prev => prev.filter(f => f.id !== confirmDelete.farmId));
-      setGeoJson((prev: any) => prev ? {
-        ...prev,
-        features: prev.features.filter((f: any) => f.properties?.id !== confirmDelete.farmId),
-      } : null);
-      setPointsGeoJson((prev: any) => prev ? {
-        ...prev,
-        features: prev.features.filter((f: any) => f.properties?.id !== confirmDelete.farmId),
-      } : null);
-      if (selectedFarmId === confirmDelete.farmId) {
-        setSelectedFarmId(null);
-        setSelectedFarm(null);
-        setAnalysisStats(null);
-        setAnalysisTileUrl(null);
+      const res = await fetch('/api/farms/delete-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ farmId: requestDeleteTarget.farmId, reason: deleteReason.trim() }),
+      });
+      if (!res.ok) {
+        const e = await res.json();
+        throw new Error(e.error || 'Request failed');
       }
-      setConfirmDelete(null);
+      setRequestSuccess(`Deletion request submitted for "${requestDeleteTarget.farmName}". It will be reviewed by an admin.`);
+      setRequestDeleteTarget(null);
+      setDeleteReason('');
     } catch (err: any) {
-      setError(err.message || 'Failed to delete farm');
-      setConfirmDelete(null);
+      setError(err.message || 'Failed to submit delete request');
+      setRequestDeleteTarget(null);
     } finally {
-      setDeletingFarm(false);
+      setSubmittingRequest(false);
     }
   };
 
@@ -444,8 +441,34 @@ export default function GISMapGoogle() {
         )}
       </div>
 
-      {/* ── Delete confirm modal ── */}
-      {confirmDelete && (
+      {/* ── Success banner ── */}
+      {requestSuccess && (
+        <div style={{
+          position: 'absolute', top: 14, right: 14, zIndex: 50,
+          background: 'rgba(16,185,129,0.15)', backdropFilter: 'blur(16px)',
+          border: '1px solid rgba(16,185,129,0.5)',
+          borderRadius: 12, padding: '12px 18px',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+          maxWidth: 380,
+        }}>
+          <p style={{ fontWeight: 600, fontSize: 13, color: '#10B981', margin: 0 }}>Request Submitted ✓</p>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', margin: '4px 0 0', lineHeight: 1.6 }}>
+            {requestSuccess}
+          </p>
+          <button
+            onClick={() => setRequestSuccess(null)}
+            style={{
+              marginTop: 8, fontSize: 11, color: 'rgba(255,255,255,0.5)',
+              background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+            }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* ── Delete request modal ── */}
+      {requestDeleteTarget && (
         <div style={{
           position: 'absolute', inset: 0, zIndex: 50,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -456,22 +479,41 @@ export default function GISMapGoogle() {
             border: '1px solid rgba(255,255,255,0.12)',
             borderRadius: 14, padding: '24px 28px',
             boxShadow: '0 16px 48px rgba(0,0,0,0.5)',
-            maxWidth: 380, width: 'calc(100vw - 48px)',
-            display: 'flex', flexDirection: 'column', gap: 16,
+            maxWidth: 400, width: 'calc(100vw - 48px)',
+            display: 'flex', flexDirection: 'column', gap: 14,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 22 }}>🗑️</span>
-              <p style={{ fontWeight: 700, fontSize: 15, color: '#fff', margin: 0 }}>Delete Farm?</p>
+              <span style={{ fontSize: 22 }}>📋</span>
+              <p style={{ fontWeight: 700, fontSize: 15, color: '#fff', margin: 0 }}>Request Farm Deletion</p>
             </div>
             <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', margin: 0, lineHeight: 1.7 }}>
-              This will permanently remove the farm record for{' '}
-              <strong style={{ color: '#fff' }}>{confirmDelete.farmName}</strong>.
-              The farmer profile will not be affected.
+              Submit a deletion request for{' '}
+              <strong style={{ color: '#fff' }}>{requestDeleteTarget.farmName}</strong>.{' '}
+              An admin will review and approve before the farm is permanently removed.
             </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>
+                Reason for deletion <span style={{ color: '#F87171' }}>*</span>
+              </label>
+              <textarea
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                placeholder="Describe why this farm should be deleted…"
+                rows={3}
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  borderRadius: 8, padding: '8px 12px',
+                  color: '#fff', fontSize: 13, lineHeight: 1.6,
+                  resize: 'vertical', outline: 'none',
+                  fontFamily: 'system-ui, sans-serif',
+                }}
+              />
+            </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button
-                onClick={() => setConfirmDelete(null)}
-                disabled={deletingFarm}
+                onClick={() => { setRequestDeleteTarget(null); setDeleteReason(''); }}
+                disabled={submittingRequest}
                 style={{
                   flex: 1, padding: '9px 0', borderRadius: 8,
                   border: '1px solid rgba(255,255,255,0.18)',
@@ -482,20 +524,21 @@ export default function GISMapGoogle() {
                 Cancel
               </button>
               <button
-                onClick={executeDeleteFarm}
-                disabled={deletingFarm}
+                onClick={submitDeleteRequest}
+                disabled={submittingRequest || !deleteReason.trim()}
                 style={{
                   flex: 1, padding: '9px 0', borderRadius: 8,
-                  border: '1px solid #FCA5A5',
-                  background: deletingFarm ? '#7f1d1d' : '#DC2626',
-                  color: '#fff', fontSize: 13, fontWeight: 700,
-                  cursor: deletingFarm ? 'not-allowed' : 'pointer',
+                  border: '1px solid rgba(251,191,36,0.6)',
+                  background: submittingRequest || !deleteReason.trim() ? 'rgba(251,191,36,0.2)' : 'rgba(251,191,36,0.25)',
+                  color: submittingRequest || !deleteReason.trim() ? 'rgba(251,191,36,0.4)' : '#FBBf24',
+                  fontSize: 13, fontWeight: 700,
+                  cursor: submittingRequest || !deleteReason.trim() ? 'not-allowed' : 'pointer',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                 }}
               >
-                {deletingFarm
-                  ? <><div style={{ width: 12, height: 12, border: '2px solid rgba(255,255,255,0.5)', borderTopColor: '#fff', borderRadius: '50%', animation: 'gis-spin 0.7s linear infinite' }} /> Deleting…</>
-                  : '🗑️ Delete Farm'
+                {submittingRequest
+                  ? <><div style={{ width: 12, height: 12, border: '2px solid rgba(251,191,36,0.4)', borderTopColor: '#FBBf24', borderRadius: '50%', animation: 'gis-spin 0.7s linear infinite' }} /> Submitting…</>
+                  : '📋 Submit Request'
                 }
               </button>
             </div>

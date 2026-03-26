@@ -295,8 +295,8 @@ export default function AgriMapLibre({
                 <span style="color:#9CA3AF">Status</span><span style="color:${statusColor};font-weight:600">${p.status || 'N/A'}</span>
               </div>
               <button id="agri-delete-btn" data-farm-id="${safeId}" data-farm-name="${safeName}"
-                style="margin-top:10px;width:100%;padding:6px 10px;border-radius:6px;border:1px solid #FCA5A5;background:#FEF2F2;color:#DC2626;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
-                🗑️ Delete Farm
+                style="margin-top:10px;width:100%;padding:6px 10px;border-radius:6px;border:1px solid rgba(251,191,36,0.5);background:rgba(251,191,36,0.1);color:#D97706;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">
+                📋 Request Deletion
               </button>
             </div>`
           )

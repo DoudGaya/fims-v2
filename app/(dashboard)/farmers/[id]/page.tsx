@@ -52,8 +52,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import dynamic from 'next/dynamic';
 import { AnalysisModal } from '@/components/analysis/AnalysisModal';
+import { ChevronDownIcon, Trash2Icon } from 'lucide-react';
 
 const FarmPolygonMapLibre = dynamic(() => import('@/components/maps/FarmPolygonMapLibre'), { ssr: false });
 
@@ -73,6 +81,15 @@ export default function FarmerDetailsPage() {
   const [editSection, setEditSection] = useState<string | null>(null);
   const [formData, setFormData] = useState<any>({});
   const [saving, setSaving] = useState(false);
+
+  // Status update state
+  const [statusUpdating, setStatusUpdating] = useState(false);
+
+  // Farm delete request state
+  const [deleteRequestFarm, setDeleteRequestFarm] = useState<any | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deletingRequest, setDeletingRequest] = useState(false);
+  const [deleteSuccessMsg, setDeleteSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -139,6 +156,51 @@ export default function FarmerDetailsPage() {
     setFormData((prev: any) => ({ ...prev, [field]: value }));
   };
 
+  const handleStatusUpdate = async (newStatus: string) => {
+    if (!farmer || newStatus === farmer.status) return;
+    setStatusUpdating(true);
+    try {
+      const res = await fetch(`/api/farmers/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to update status');
+      }
+      const updated = await res.json();
+      setFarmer((prev: any) => ({ ...prev, status: updated.status ?? newStatus }));
+    } catch (e: any) {
+      console.error('Status update failed', e);
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
+  const handleSubmitDeleteRequest = async () => {
+    if (!deleteRequestFarm || !deleteReason.trim()) return;
+    setDeletingRequest(true);
+    try {
+      const res = await fetch('/api/farms/delete-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ farmId: deleteRequestFarm.id, reason: deleteReason.trim() }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to submit delete request');
+      }
+      setDeleteSuccessMsg(`Deletion request submitted for ${deleteRequestFarm.primaryCrop || 'farm'}.`);
+      setDeleteRequestFarm(null);
+      setDeleteReason('');
+    } catch (e: any) {
+      console.error(e);
+    } finally {
+      setDeletingRequest(false);
+    }
+  };
+
   const getTotalFarmArea = () => {
     if (!farmer?.farms) return 0;
     return farmer.farms.reduce((acc: number, farm: any) => acc + (farm.farmSize || 0), 0).toFixed(1);
@@ -197,13 +259,60 @@ export default function FarmerDetailsPage() {
 
       <Separator />
 
+      {/* Delete request success banner */}
+      {deleteSuccessMsg && (
+        <div className="flex items-center justify-between gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+          <span>✓ {deleteSuccessMsg}</span>
+          <button className="text-xs underline" onClick={() => setDeleteSuccessMsg(null)}>Dismiss</button>
+        </div>
+      )}
+
       {/* 2. Main Content Tabs */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="bg-slate-100 p-1 rounded-lg">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="farms">Farms & Crops</TabsTrigger>
-          <TabsTrigger value="financials">Financials & Documents</TabsTrigger>
-        </TabsList>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <TabsList className="bg-slate-100 p-1 rounded-lg">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="farms">Farms & Crops</TabsTrigger>
+            <TabsTrigger value="financials">Financials & Documents</TabsTrigger>
+          </TabsList>
+
+          {/* Status switcher — only visible when user can update farmers */}
+          {hasPermission(PERMISSIONS.FARMERS_UPDATE) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={statusUpdating} className="gap-2 self-start sm:self-auto">
+                  {statusUpdating ? 'Updating…' : (
+                    <>
+                      <span className="text-xs text-muted-foreground">Status:</span>
+                      <Badge variant={farmer.status === 'Verified' ? 'secondary' : farmer.status === 'Rejected' ? 'destructive' : 'outline'} className="text-xs">
+                        {farmer.status}
+                      </Badge>
+                      <ChevronDownIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                    </>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                {['Enrolled', 'FarmCaptured', 'Validated', 'Verified'].map((s) => (
+                  <DropdownMenuItem
+                    key={s}
+                    onClick={() => handleStatusUpdate(s)}
+                    className={farmer.status === s ? 'font-semibold text-blue-700 bg-blue-50' : ''}
+                  >
+                    {farmer.status === s && '✓ '}{s}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => handleStatusUpdate('Rejected')}
+                  className={`text-red-600 ${farmer.status === 'Rejected' ? 'font-semibold bg-red-50' : ''}`}
+                >
+                  {farmer.status === 'Rejected' && '✓ '}Rejected
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
 
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -278,8 +387,18 @@ export default function FarmerDetailsPage() {
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="px-4 pb-4">
-                        <div className="flex justify-end py-2">
-                            <AnalysisModal farmId={farm.id} farmName={`${farm.primaryCrop || 'Farm'} (${farm.farmSize || 0} ha)`} />
+                        <div className="flex items-center justify-between py-2">
+                          <AnalysisModal farmId={farm.id} farmName={`${farm.primaryCrop || 'Farm'} (${farm.farmSize || 0} ha)`} />
+                          {hasPermission(PERMISSIONS.FARMS_DELETE) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-amber-300 text-amber-700 hover:bg-amber-50 gap-1.5"
+                              onClick={() => { setDeleteRequestFarm(farm); setDeleteReason(''); }}
+                            >
+                              <Trash2Icon className="h-3.5 w-3.5" /> Request Deletion
+                            </Button>
+                          )}
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
                           {/* 1. General Info */}
@@ -442,6 +561,42 @@ export default function FarmerDetailsPage() {
         </TabsContent>
 
       </Tabs>
+
+      {/* Farm Delete Request Dialog */}
+      <Dialog open={!!deleteRequestFarm} onOpenChange={(open) => { if (!open) { setDeleteRequestFarm(null); setDeleteReason(''); } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Request Farm Deletion</DialogTitle>
+            <DialogDescription>
+              Submit a deletion request for{' '}
+              <strong>{deleteRequestFarm?.primaryCrop || 'this farm'}</strong>
+              {deleteRequestFarm?.farmSize ? ` (${deleteRequestFarm.farmSize} ha)` : ''}.
+              An admin must approve before the farm is permanently removed.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label>Reason for deletion <span className="text-red-500">*</span></Label>
+            <Textarea
+              placeholder="Describe why this farm should be deleted…"
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setDeleteRequestFarm(null); setDeleteReason(''); }}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+              onClick={handleSubmitDeleteRequest}
+              disabled={deletingRequest || !deleteReason.trim()}
+            >
+              {deletingRequest ? 'Submitting…' : '📋 Submit Request'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Dialog */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>

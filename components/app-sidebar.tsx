@@ -23,7 +23,8 @@ import {
   Settings,
   Leaf,
   BriefcaseBusiness,
-  Key
+  Key,
+  ClipboardList
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -115,6 +116,15 @@ const navigationConfig = [
     url: '/api-keys',
     icon: Key,
     requiredPermission: PERMISSIONS.SYSTEM_MANAGE_INTEGRATIONS
+  },
+  {
+    title: 'Requests',
+    url: '/requests',
+    icon: ClipboardList,
+    requiredPermission: PERMISSIONS.REQUESTS_READ,
+    items: [
+      { title: 'Delete Requests', url: '/requests/delete-requests' },
+    ],
   },
 ];
 
