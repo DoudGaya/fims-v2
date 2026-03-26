@@ -69,7 +69,7 @@ export default function FarmerDetailsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const params = useParams();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const id = params?.id as string;
 
   const [farmer, setFarmer] = useState<any>(null);
@@ -92,6 +92,7 @@ export default function FarmerDetailsPage() {
   const [deleteSuccessMsg, setDeleteSuccessMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    if (status === 'loading' || permissionsLoading) return;
     if (status === 'unauthenticated') {
       router.push('/auth/signin');
     } else if (status === 'authenticated') {
@@ -101,7 +102,7 @@ export default function FarmerDetailsPage() {
         fetchFarmerDetails();
       }
     }
-  }, [status, router, hasPermission, id]);
+  }, [status, permissionsLoading, router, hasPermission, id]);
 
   const fetchFarmerDetails = async () => {
     try {
@@ -161,7 +162,7 @@ export default function FarmerDetailsPage() {
     setStatusUpdating(true);
     try {
       const res = await fetch(`/api/farmers/${id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });

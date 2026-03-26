@@ -94,7 +94,7 @@ function statusBadge(status: string) {
 export default function DeleteRequestsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const [requests, setRequests] = useState<DeleteRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,15 +135,16 @@ export default function DeleteRequestsPage() {
   }, [activeTab, page]);
 
   useEffect(() => {
+    if (status === 'loading' || permissionsLoading) return;
     if (status === 'unauthenticated') router.push('/auth/signin');
     else if (status === 'authenticated') {
       if (!hasPermission(PERMISSIONS.REQUESTS_READ)) router.push('/dashboard');
     }
-  }, [status, router, hasPermission]);
+  }, [status, permissionsLoading, router, hasPermission]);
 
   useEffect(() => {
-    if (status === 'authenticated') fetchRequests();
-  }, [fetchRequests, status]);
+    if (status === 'authenticated' && !permissionsLoading) fetchRequests();
+  }, [fetchRequests, status, permissionsLoading]);
 
   // Reset selection when tab changes
   useEffect(() => { setSelectedIds(new Set()); setPage(1); }, [activeTab]);

@@ -54,6 +54,9 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     // Settings - Read and Update
     PERMISSIONS.SETTINGS_READ,
     PERMISSIONS.SETTINGS_UPDATE,
+    // Requests - Read and Manage
+    PERMISSIONS.REQUESTS_READ,
+    PERMISSIONS.REQUESTS_MANAGE,
     // System - No system permissions for admin (only super_admin)
   ],
   manager: [
@@ -72,6 +75,8 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     PERMISSIONS.CLUSTERS_UPDATE,
     // Analytics - Read only
     PERMISSIONS.ANALYTICS_READ,
+    // Requests - Read only
+    PERMISSIONS.REQUESTS_READ,
   ],
   agent: [
     // Farmers - Create, Read, Update
@@ -135,14 +140,12 @@ export function PermissionProvider({ children }: PermissionProviderProps) {
       // Use permissions directly from session (fetched from database)
       const sessionPermissions = (session.user as any).permissions || [];
 
-      // Fallback to role-based permissions if no database permissions
-      if (sessionPermissions.length === 0) {
-        const userRole = (session.user as any).role;
-        const rolePermissions = ROLE_PERMISSIONS[userRole] || [];
-        setPermissions(rolePermissions);
-      } else {
-        setPermissions(sessionPermissions);
-      }
+      // Merge session permissions with role-based defaults so new permissions
+      // added to ROLE_PERMISSIONS are available even before the token refreshes
+      const userRole = (session.user as any).role;
+      const roleDefaults = ROLE_PERMISSIONS[userRole] || [];
+      const merged = Array.from(new Set([...sessionPermissions, ...roleDefaults]));
+      setPermissions(merged);
     } else {
       setPermissions([]);
     }
