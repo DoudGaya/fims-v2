@@ -58,6 +58,10 @@ export const config = {
     '/maps/:path*',
     '/reports/:path*',
     '/settings/:path*',
+    '/gis-map-google/:path*',
+    '/api-keys/:path*',
+    '/requests/:path*',
+    '/profile/:path*',
     '/auth/signin',
   ],
 };
