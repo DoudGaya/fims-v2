@@ -100,10 +100,14 @@ const navigationConfig = [
   //   requiredPermission: PERMISSIONS.ROLES_READ
   // },
   {
-    title: 'GIS Map',
+    title: 'GIS',
     url: '/gis-map-google',
     icon: Globe,
-    requiredPermission: PERMISSIONS.GIS_VIEW
+    requiredPermission: PERMISSIONS.GIS_VIEW,
+    items: [
+      { title: 'Farm GIS', url: '/gis-map-google' },
+      { title: 'Farmers GIS', url: '/farmers-gis' },
+    ],
   },
   {
     title: 'Settings',

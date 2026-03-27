@@ -59,6 +59,7 @@ export const config = {
     '/reports/:path*',
     '/settings/:path*',
     '/gis-map-google/:path*',
+    '/farmers-gis/:path*',
     '/api-keys/:path*',
     '/requests/:path*',
     '/profile/:path*',

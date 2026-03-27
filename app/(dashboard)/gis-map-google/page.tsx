@@ -29,6 +29,14 @@ export default function GISMapGoogle() {
   const [loading, setLoading] = useState(true);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [limit, setLimit] = useState(1000);
+
+  const LIMIT_OPTIONS = [
+    { label: '1,000',  value: 1000  },
+    { label: '5,000',  value: 5000  },
+    { label: '10,000', value: 10000 },
+    { label: 'All',    value: 0     },
+  ];
 
   const [selectedFarm, setSelectedFarm] = useState<any | null>(null);
   const [requestDeleteTarget, setRequestDeleteTarget] = useState<{ farmId: string; farmName: string } | null>(null);
@@ -46,7 +54,8 @@ export default function GISMapGoogle() {
       setLoading(true);
       setError(null);
 
-      const res = await fetch('/api/farms/geojson?limit=1000');
+      const url = limit > 0 ? `/api/farms/geojson?limit=${limit}` : '/api/farms/geojson';
+      const res = await fetch(url);
       const data = await res.json();
       if (!data.success) throw new Error(data.message || 'Failed loading farms');
       const polygonFarms: any[] = data.farms || [];
@@ -62,7 +71,7 @@ export default function GISMapGoogle() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [limit]);
 
   const runAnalysis = async (layerId: string, farm: any) => {
     if (!layerId || !farm) return;
@@ -310,6 +319,26 @@ export default function GISMapGoogle() {
               })()
           }
         </p>
+        {/* Limit selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)' }}>Load:</span>
+          <select
+            value={limit}
+            onChange={(e) => setLimit(Number(e.target.value))}
+            disabled={loading}
+            style={{
+              fontSize: 11, background: 'rgba(255,255,255,0.1)', color: '#fff',
+              border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6,
+              padding: '2px 6px', cursor: 'pointer', outline: 'none',
+            }}
+          >
+            {LIMIT_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value} style={{ background: '#1a1f2e', color: '#fff' }}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
         {selectedFarm && (
           <div style={{
             marginTop: 8,

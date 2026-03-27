@@ -12,9 +12,10 @@ export async function GET(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const limit = Math.min(parseInt(searchParams.get('limit') ?? '1000', 10), 5000);
+    const limitParam = searchParams.get('limit');
+    const limit = limitParam ? parseInt(limitParam, 10) : 1000;
 
-    console.log(`🗺️ Loading farm GeoJSON data (limit: ${limit})...`);
+    console.log(`🗺️ Loading farm GeoJSON data (limit: ${limit > 0 ? limit : 'all'})...`);
 
     // ── Query 1: farms with polygon data (for polygon layer) ──────────────
     const farms = await prisma.farm.findMany({
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
           },
         ],
       },
-      take: limit,
+      ...(limit > 0 ? { take: limit } : {}),
       include: {
         farmer: {
           select: {
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
         farmLatitude:  { gte: 3,   lte: 15   },
         farmLongitude: { gte: 2,   lte: 15.5 },
       },
-      take: 5000,
+      ...(limit > 0 ? { take: limit } : {}),
       select: {
         id: true,
         farmLatitude: true,
@@ -271,7 +272,6 @@ export async function GET(request: Request) {
       },
       metadata: {
         timestamp: new Date().toISOString(),
-        requestedLimit: limit,
         totalFarmsInDb: await prisma.farm.count(),
         farmsWithValidCoordinates: validFarms.length,
         farmsWithInvalidCoordinates: invalidFarms.length
