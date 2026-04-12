@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,8 +59,15 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
         assignedLGA: '',
         agentType: 'enrollment' as 'enrollment' | 'correction' | 'survey',
         status: 'active',
-        isActive: true
+        isActive: true,
+        photoUrl: ''
     });
+
+    const [photoUploading, setPhotoUploading] = useState(false);
+    const [photoPreview, setPhotoPreview] = useState('');
+    const [photoError, setPhotoError] = useState('');
+    const [isDragging, setIsDragging] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const ROLE_TO_AGENT_TYPE: Record<string, 'enrollment' | 'correction' | 'survey'> = {
         agent: 'enrollment',
@@ -110,8 +117,13 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                     assignedLGA: agentProfile.assignedLGA || '',
                     agentType: (ROLE_TO_AGENT_TYPE[data.role] || 'enrollment') as 'enrollment' | 'correction' | 'survey',
                     status: agentProfile.status || (data.isActive ? 'active' : 'inactive'),
-                    isActive: data.isActive
+                    isActive: data.isActive,
+                    photoUrl: agentProfile.photoUrl || ''
                 });
+
+                if (agentProfile.photoUrl) {
+                    setPhotoPreview(agentProfile.photoUrl);
+                }
 
                 // Set initial location data selection
                 if (initialState) {
@@ -171,9 +183,44 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
 
     const handleChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
-        // Reset valid state if NIN changes
         if (field === 'nin') setNinVerified(false);
     };
+
+    const handlePhotoSelect = useCallback(async (file: File) => {
+        const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        if (!allowed.includes(file.type)) {
+            setPhotoError('Only JPEG, PNG or WebP images are accepted.');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            setPhotoError('Image must be 5 MB or smaller.');
+            return;
+        }
+        setPhotoError('');
+        setPhotoPreview(URL.createObjectURL(file));
+        setPhotoUploading(true);
+        try {
+            const fd = new FormData();
+            fd.append('file', file);
+            const res = await fetch('/api/upload/agent-photo', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Upload failed');
+            setFormData(prev => ({ ...prev, photoUrl: data.url }));
+        } catch (err: any) {
+            setPhotoError(err.message);
+            setPhotoPreview('');
+            setFormData(prev => ({ ...prev, photoUrl: '' }));
+        } finally {
+            setPhotoUploading(false);
+        }
+    }, []);
+
+    const onPhotoDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file) handlePhotoSelect(file);
+    }, [handlePhotoSelect]);
 
     const handleVerifyNIN = async () => {
         if (!formData.nin || formData.nin.length !== 11) {
@@ -257,6 +304,7 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
             if (formData.bankName?.trim()) updatePayload.bankName = formData.bankName.trim();
             if (formData.accountNumber?.trim()) updatePayload.accountNumber = formData.accountNumber.trim();
             if (formData.accountName?.trim()) updatePayload.accountName = formData.accountName.trim();
+            if (formData.photoUrl?.trim()) updatePayload.photoUrl = formData.photoUrl.trim();
             if (formData.state) updatePayload.state = formData.state;
             if (formData.lga) updatePayload.localGovernment = formData.lga;
             if (formData.ward?.trim()) updatePayload.ward = formData.ward.trim();
@@ -303,13 +351,13 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                         Back to Details
                     </Link>
                 </Button>
-                <h1 className="text-2xl font-bold text-gray-900">Edit Agent Compliance & Profile</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Edit Agent Compliance &amp; Profile</h1>
             </div>
 
             <form onSubmit={handleSubmit}>
                 <div className="space-y-8">
                     {errorMsg && (
-                        <div className="bg-red-50 text-red-700 p-4 rounded-md text-sm border border-red-200">
+                        <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-4 rounded-md text-sm border border-red-200 dark:border-red-500/30">
                             {errorMsg}
                         </div>
                     )}
@@ -323,6 +371,69 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                                     <CardDescription>Core biographical data.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
+                                    {/* Profile Photo */}
+                                    <div className="space-y-2">
+                                        <Label>Profile Photo</Label>
+                                        <input ref={fileInputRef} type="file"
+                                            accept="image/jpeg,image/jpg,image/png,image/webp"
+                                            className="sr-only"
+                                            onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoSelect(f); }} />
+                                        {photoPreview ? (
+                                            <div className="flex items-center gap-4 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-700/40">
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                <img src={photoPreview} alt="Profile preview"
+                                                    className="h-20 w-20 rounded-md object-cover border border-gray-200 dark:border-gray-600 shrink-0" />
+                                                <div className="flex-1 min-w-0">
+                                                    {photoUploading ? (
+                                                        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                                                            <span className="inline-block h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                                                            Uploading…
+                                                        </div>
+                                                    ) : formData.photoUrl ? (
+                                                        <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 font-medium">
+                                                            <CheckCircleIcon className="h-5 w-5" />
+                                                            Photo ready
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
+                                                            <XCircleIcon className="h-5 w-5" />
+                                                            {photoError || 'Upload failed'}
+                                                        </div>
+                                                    )}
+                                                    <Button type="button" variant="ghost" size="sm"
+                                                        className="mt-1 h-7 text-xs text-gray-500 dark:text-gray-400"
+                                                        onClick={() => {
+                                                            setPhotoPreview('');
+                                                            setPhotoError('');
+                                                            setFormData(prev => ({ ...prev, photoUrl: '' }));
+                                                            if (fileInputRef.current) fileInputRef.current.value = '';
+                                                        }}
+                                                    >Remove &amp; replace</Button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div
+                                                role="button" tabIndex={0}
+                                                onClick={() => fileInputRef.current?.click()}
+                                                onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
+                                                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                                                onDragLeave={() => setIsDragging(false)}
+                                                onDrop={onPhotoDrop}
+                                                className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed py-6 cursor-pointer transition-colors ${
+                                                    isDragging
+                                                        ? 'border-indigo-400 bg-indigo-50 dark:bg-indigo-900/20'
+                                                        : 'border-gray-300 dark:border-gray-600 hover:border-indigo-400 hover:bg-gray-50 dark:hover:bg-gray-700/40'
+                                                }`}
+                                            >
+                                                <span className="text-sm text-gray-500 dark:text-gray-400">Drop photo or <span className="text-indigo-600 dark:text-indigo-400 underline">click to browse</span></span>
+                                                <span className="text-xs text-gray-400 dark:text-gray-500">JPEG, PNG, WebP · max 5 MB</span>
+                                            </div>
+                                        )}
+                                        {photoError && !photoPreview && (
+                                            <p className="text-xs text-red-600 dark:text-red-400">{photoError}</p>
+                                        )}
+                                    </div>
+
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label>First Name</Label>
@@ -340,7 +451,7 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
 
                                     <div className="space-y-2">
                                         <Label>Email</Label>
-                                        <Input disabled value={formData.email} className="bg-gray-100" />
+                                        <Input disabled value={formData.email} className="bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400" />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Phone</Label>
@@ -447,7 +558,7 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                                     </div>
 
                                     <div className="pt-4 border-t">
-                                        <h4 className="text-sm font-medium mb-3 text-gray-900">Bank Account Details</h4>
+                                        <h4 className="text-sm font-medium mb-3 text-gray-900 dark:text-gray-100">Bank Account Details</h4>
                                         <div className="space-y-3">
                                             <div className="space-y-2">
                                                 <Label>Bank Name</Label>
@@ -475,8 +586,8 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                                     <CardDescription>Geographic deployment.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
-                                    <div className="bg-gray-50 p-3 rounded-md space-y-3">
-                                        <h4 className="text-sm font-semibold text-gray-700">Residential Location</h4>
+                                    <div className="bg-gray-50 dark:bg-gray-700/40 p-3 rounded-md space-y-3">
+                                        <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Residential Location</h4>
                                         <div className="space-y-2">
                                             <Label>State</Label>
                                             <Select required onValueChange={handleStateChange} value={formData.state}>
@@ -524,8 +635,8 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                                         </div>
                                     </div>
 
-                                    <div className="bg-blue-50 p-3 rounded-md space-y-3 border border-blue-100">
-                                        <h4 className="text-sm font-semibold text-blue-800">Operational Assignment</h4>
+                                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md space-y-3 border border-blue-100 dark:border-blue-500/30">
+                                        <h4 className="text-sm font-semibold text-blue-800 dark:text-blue-300">Operational Assignment</h4>
                                         <div className="space-y-2">
                                             <Label>Assigned State</Label>
                                             <Select onValueChange={handleAssignedStateChange} value={formData.assignedState}>
@@ -545,7 +656,7 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                         </div>
                     </div>
 
-                    <div className="flex justify-end gap-4 bg-white p-4 border rounded-lg shadow-sm sticky bottom-4 z-10">
+                    <div className="flex justify-end gap-4 bg-white dark:bg-gray-800 p-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm sticky bottom-4 z-10">
                         <Button variant="outline" type="button" onClick={() => router.back()}>Cancel</Button>
                         <Button type="submit" className="bg-blue-600 hover:bg-blue-700 min-w-[150px]" disabled={saving}>
                             {saving ? 'Saving...' : 'Save Changes'}

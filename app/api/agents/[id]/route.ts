@@ -162,6 +162,7 @@ export async function PUT(
     if (body.bankName !== undefined) agentUpdateData.bankName = body.bankName;
     if (body.accountNumber !== undefined) agentUpdateData.accountNumber = body.accountNumber;
     if (body.accountName !== undefined) agentUpdateData.accountName = body.accountName;
+    if (body.photoUrl !== undefined) agentUpdateData.photoUrl = body.photoUrl;
     if (body.state !== undefined) agentUpdateData.state = body.state;
     if (body.localGovernment !== undefined || body.lga !== undefined) {
       agentUpdateData.localGovernment = body.localGovernment || body.lga;
