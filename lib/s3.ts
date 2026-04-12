@@ -8,7 +8,7 @@ const s3 = new S3Client({
   },
 });
 
-const BUCKET = process.env.AWS_S3_BUCKET!;
+const BUCKET = process.env.AWS_BUCKET_NAME!;
 const REGION = process.env.AWS_REGION!;
 
 /**
