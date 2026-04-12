@@ -42,7 +42,9 @@ export default function AgentApplicationPage() {
         ward: '',
         pollingUnit: '',
         gender: '',
-        about: ''
+        education: '',
+        jobHistory: '',
+        message: '',
     });
 
     const handleStateChange = (formattedStateName: string) => {
@@ -84,7 +86,7 @@ export default function AgentApplicationPage() {
         }
 
         try {
-            const res = await fetch('/api/public/apply', {
+            const res = await fetch('/api/agents/apply', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)
@@ -224,6 +226,7 @@ export default function AgentApplicationPage() {
                             </div>
                         </div>
 
+                        {/* Education */}
                         <div className="space-y-2">
                             <Label htmlFor="gender">Gender</Label>
                             <Select required onValueChange={(val) => handleChange('gender', val)}>
@@ -233,6 +236,24 @@ export default function AgentApplicationPage() {
                                 <SelectContent>
                                     <SelectItem value="Male">Male</SelectItem>
                                     <SelectItem value="Female">Female</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="education">Highest Education Level</Label>
+                            <Select required onValueChange={(val) => handleChange('education', val)}>
+                                <SelectTrigger id="education">
+                                    <SelectValue placeholder="Select level" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Primary">Primary</SelectItem>
+                                    <SelectItem value="Secondary / WAEC / NECO">Secondary / WAEC / NECO</SelectItem>
+                                    <SelectItem value="OND / NCE">OND / NCE</SelectItem>
+                                    <SelectItem value="HND">HND</SelectItem>
+                                    <SelectItem value="BSc / BA">BSc / BA</SelectItem>
+                                    <SelectItem value="MSc / MA / MBA">MSc / MA / MBA</SelectItem>
+                                    <SelectItem value="PhD">PhD</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -303,13 +324,24 @@ export default function AgentApplicationPage() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="about">Why do you want to join us? (Optional)</Label>
+                            <Label htmlFor="jobHistory">Work Experience / Job History</Label>
                             <Textarea
-                                id="about"
-                                placeholder="Briefly describe your experience or motivation..."
-                                className="h-24"
-                                value={formData.about}
-                                onChange={(e) => handleChange('about', e.target.value)}
+                                id="jobHistory"
+                                placeholder="List your previous work experience (employer, role, duration). e.g.:\nNGO Field Officer, ActionAid Nigeria, 2021–2023\nFarm Supervisor, Kebbi State ADP, 2019–2021"
+                                className="h-28"
+                                value={formData.jobHistory}
+                                onChange={(e) => handleChange('jobHistory', e.target.value)}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="message">Why do you want to join us? <span className="text-gray-400 font-normal">(Optional)</span></Label>
+                            <Textarea
+                                id="message"
+                                placeholder="Briefly describe your motivation or any additional information you'd like to share..."
+                                className="h-20"
+                                value={formData.message}
+                                onChange={(e) => handleChange('message', e.target.value)}
                             />
                         </div>
 

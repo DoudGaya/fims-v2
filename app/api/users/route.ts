@@ -4,6 +4,13 @@ import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
 import bcrypt from 'bcryptjs';
+import { auth as firebaseAuth } from '@/lib/firebase-admin';
+
+const ACCOUNT_TYPE_ROLE: Record<string, string> = {
+  enrollment_agent:  'agent',
+  correction_agent:  'data_correction_agent',
+  survey_agent:      'survey_agent',
+};
 
 export async function GET(req: NextRequest) {
   try {
@@ -124,13 +131,20 @@ export async function POST(req: NextRequest) {
       firstName,
       lastName,
       email,
-      roleId, // This will be the role ID
+      roleId,
       isActive = true,
       password,
+      accountType = 'admin', // 'admin' | 'enrollment_agent' | 'correction_agent' | 'survey_agent'
+      phone,
     } = body;
 
     if (!email || !password || !firstName || !lastName) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    const isAgentType = accountType !== 'admin';
+    if (isAgentType && !phone) {
+      return NextResponse.json({ error: 'Phone number is required for agent accounts' }, { status: 400 });
     }
 
     // Check if user exists
@@ -142,10 +156,74 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email already exists' }, { status: 400 });
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Create user
+    if (isAgentType) {
+      // --- Agent accounts: create Firebase user + user record + agent profile ---
+      let firebaseUser;
+      try {
+        try {
+          firebaseUser = await firebaseAuth.getUserByEmail(email);
+          if (firebaseUser) {
+            return NextResponse.json({ error: 'Email already exists in Firebase' }, { status: 409 });
+          }
+        } catch (err: any) {
+          if (err.code !== 'auth/user-not-found') throw err;
+        }
+
+        firebaseUser = await firebaseAuth.createUser({
+          email,
+          password,
+          displayName: `${firstName} ${lastName}`,
+          phoneNumber: phone ? phone.replace(/\s+/g, '') : undefined,
+          emailVerified: true,
+          disabled: false,
+        });
+      } catch (firebaseError: any) {
+        console.error('Error creating Firebase user:', firebaseError);
+        return NextResponse.json({ error: 'Failed to create Firebase user', details: firebaseError.message }, { status: 500 });
+      }
+
+      const result = await prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: {
+            id: firebaseUser.uid,
+            email,
+            password: hashedPassword,
+            firstName,
+            lastName,
+            displayName: `${firstName} ${lastName}`,
+            phoneNumber: phone,
+            role: ACCOUNT_TYPE_ROLE[accountType] ?? 'agent',
+            isActive,
+            isVerified: true,
+          },
+        });
+
+        await tx.agent.create({
+          data: {
+            userId: user.id,
+            firstName,
+            lastName,
+            email,
+            phone,
+            nin: `NIN-${Date.now()}`,
+            state: null,
+            localGovernment: null,
+            assignedState: null,
+            assignedLGA: null,
+            status: 'active',
+            createdByUserId: (session.user as any).id,
+          },
+        });
+
+        return user;
+      });
+
+      return NextResponse.json(result, { status: 201 });
+    }
+
+    // --- Admin / web users: original flow ---
     const user = await prisma.user.create({
       data: {
         firstName,
@@ -154,11 +232,7 @@ export async function POST(req: NextRequest) {
         password: hashedPassword,
         isActive,
         displayName: `${firstName} ${lastName}`,
-        userRoles: roleId ? {
-          create: {
-            roleId: roleId
-          }
-        } : undefined
+        userRoles: roleId ? { create: { roleId } } : undefined,
       },
     });
 

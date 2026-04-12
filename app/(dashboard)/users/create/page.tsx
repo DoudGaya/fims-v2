@@ -14,6 +14,15 @@ interface Role {
   description: string;
 }
 
+type AccountType = 'admin' | 'enrollment_agent' | 'correction_agent' | 'survey_agent';
+
+const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
+  admin:             'Admin / Web User',
+  enrollment_agent:  'Enrollment Agent',
+  correction_agent:  'Correction Agent',
+  survey_agent:      'Survey Agent',
+};
+
 export default function CreateUserPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
@@ -27,9 +36,13 @@ export default function CreateUserPage() {
     lastName: '',
     email: '',
     password: '',
+    phone: '',
     roleId: '',
-    isActive: true
+    accountType: 'admin' as AccountType,
+    isActive: true,
   });
+
+  const isAgentType = formData.accountType !== 'admin';
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -40,7 +53,7 @@ export default function CreateUserPage() {
     }
 
     if (!hasPermission(PERMISSIONS.USERS_CREATE)) {
-      router.push('/users'); // Or 403 page
+      router.push('/users');
       return;
     }
 
@@ -62,7 +75,7 @@ export default function CreateUserPage() {
     const { name, value, type } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
     }));
   };
 
@@ -74,9 +87,7 @@ export default function CreateUserPage() {
     try {
       const res = await fetch('/api/users', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
 
@@ -97,10 +108,7 @@ export default function CreateUserPage() {
   return (
     <div className="max-w-2xl mx-auto py-6">
       <div className="mb-6">
-        <Link
-          href="/users"
-          className="flex items-center text-sm text-gray-500 hover:text-gray-700"
-        >
+        <Link href="/users" className="flex items-center text-sm text-gray-500 hover:text-gray-700">
           <ArrowLeftIcon className="h-4 w-4 mr-1" />
           Back to Users
         </Link>
@@ -108,158 +116,139 @@ export default function CreateUserPage() {
 
       <div className="bg-white shadow sm:rounded-lg">
         <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">
-            Create New User
-          </h3>
+          <h3 className="text-lg leading-6 font-medium text-gray-900">Create New User</h3>
           <div className="mt-2 max-w-xl text-sm text-gray-500">
-            <p>Fill in the details to create a new system user.</p>
+            <p>Fill in the details to create a new system user or mobile field agent.</p>
           </div>
 
           {error && (
             <div className="mt-4 bg-red-50 border-l-4 border-red-400 p-4">
-              <div className="flex">
-                <div className="ml-3">
-                  <p className="text-sm text-red-700">{error}</p>
-                </div>
-              </div>
+              <p className="text-sm text-red-700">{error}</p>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="mt-5 space-y-6">
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+
+              {/* Account Type */}
+              <div className="sm:col-span-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Account Type</label>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {(Object.keys(ACCOUNT_TYPE_LABELS) as AccountType[]).map((type) => (
+                    <label
+                      key={type}
+                      className={`relative flex cursor-pointer rounded-lg border p-3 focus:outline-none ${
+                        formData.accountType === type
+                          ? 'border-green-500 bg-green-50 ring-2 ring-green-500'
+                          : 'border-gray-300 bg-white hover:bg-gray-50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="accountType"
+                        value={type}
+                        checked={formData.accountType === type}
+                        onChange={handleChange}
+                        className="sr-only"
+                      />
+                      <span className="text-xs font-medium text-gray-900 text-center w-full">
+                        {ACCOUNT_TYPE_LABELS[type]}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               {/* First Name */}
               <div className="sm:col-span-3">
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                  First Name
-                </label>
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">First Name</label>
                 <div className="mt-1">
-                  <input
-                    type="text"
-                    name="firstName"
-                    id="firstName"
-                    required
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                  />
+                  <input type="text" name="firstName" id="firstName" required value={formData.firstName} onChange={handleChange}
+                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md" />
                 </div>
               </div>
 
               {/* Last Name */}
               <div className="sm:col-span-3">
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-                  Last Name
-                </label>
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">Last Name</label>
                 <div className="mt-1">
-                  <input
-                    type="text"
-                    name="lastName"
-                    id="lastName"
-                    required
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                  />
+                  <input type="text" name="lastName" id="lastName" required value={formData.lastName} onChange={handleChange}
+                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md" />
                 </div>
               </div>
 
               {/* Email */}
               <div className="sm:col-span-6">
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email Address
-                </label>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email Address</label>
                 <div className="mt-1">
-                  <input
-                    type="email"
-                    name="email"
-                    id="email"
-                    required
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                  />
+                  <input type="email" name="email" id="email" required value={formData.email} onChange={handleChange}
+                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md" />
                 </div>
               </div>
 
+              {/* Phone — only for agent types */}
+              {isAgentType && (
+                <div className="sm:col-span-6">
+                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700">Phone Number</label>
+                  <div className="mt-1">
+                    <input type="tel" name="phone" id="phone" required value={formData.phone} onChange={handleChange}
+                      placeholder="+234..."
+                      className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md" />
+                  </div>
+                </div>
+              )}
+
               {/* Password */}
               <div className="sm:col-span-6">
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  Password
-                </label>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">Password</label>
                 <div className="mt-1">
-                  <input
-                    type="password"
-                    name="password"
-                    id="password"
-                    required
-                    minLength={8}
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                  />
+                  <input type="password" name="password" id="password" required minLength={8} value={formData.password} onChange={handleChange}
+                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md" />
                 </div>
                 <p className="mt-1 text-xs text-gray-500">Must be at least 8 characters.</p>
               </div>
 
-              {/* Role */}
-              <div className="sm:col-span-6">
-                <label htmlFor="roleId" className="block text-sm font-medium text-gray-700">
-                  Role
-                </label>
-                <div className="mt-1">
-                  <select
-                    id="roleId"
-                    name="roleId"
-                    required
-                    value={formData.roleId}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                  >
-                    <option value="">Select a Role</option>
-                    {roles.map((role) => (
-                      <option key={role.id} value={role.id}>
-                        {role.name} - {role.description}
-                      </option>
-                    ))}
-                  </select>
+              {/* Role — only for admin/web users */}
+              {!isAgentType && (
+                <div className="sm:col-span-6">
+                  <label htmlFor="roleId" className="block text-sm font-medium text-gray-700">Role</label>
+                  <div className="mt-1">
+                    <select id="roleId" name="roleId" value={formData.roleId} onChange={handleChange}
+                      className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md">
+                      <option value="">Select a Role</option>
+                      {roles.map((role) => (
+                        <option key={role.id} value={role.id}>
+                          {role.name} — {role.description}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Is Active */}
               <div className="sm:col-span-6">
                 <div className="flex items-start">
                   <div className="flex items-center h-5">
-                    <input
-                      id="isActive"
-                      name="isActive"
-                      type="checkbox"
-                      checked={formData.isActive}
-                      onChange={handleChange}
-                      className="focus:ring-green-500 h-4 w-4 text-green-600 border-gray-300 rounded"
-                    />
+                    <input id="isActive" name="isActive" type="checkbox" checked={formData.isActive} onChange={handleChange}
+                      className="focus:ring-green-500 h-4 w-4 text-green-600 border-gray-300 rounded" />
                   </div>
                   <div className="ml-3 text-sm">
-                    <label htmlFor="isActive" className="font-medium text-gray-700">
-                      Active Account
-                    </label>
-                    <p className="text-gray-500">Allow this user to log in.</p>
+                    <label htmlFor="isActive" className="font-medium text-gray-700">Active Account</label>
+                    <p className="text-gray-500">Allow this user to log in immediately.</p>
                   </div>
                 </div>
               </div>
+
             </div>
 
             <div className="flex justify-end">
-              <Link
-                href="/users"
-                className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mr-3"
-              >
+              <Link href="/users"
+                className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 mr-3">
                 Cancel
               </Link>
-              <button
-                type="submit"
-                disabled={loading}
-                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
-              >
+              <button type="submit" disabled={loading}
+                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50">
                 {loading ? 'Creating...' : 'Create User'}
               </button>
             </div>

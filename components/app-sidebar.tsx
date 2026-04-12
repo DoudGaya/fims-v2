@@ -24,7 +24,8 @@ import {
   Leaf,
   BriefcaseBusiness,
   Key,
-  ClipboardList
+  ClipboardList,
+  ClipboardCheck,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -114,6 +115,18 @@ const navigationConfig = [
     url: '/settings',
     icon: Settings,
     requiredPermission: PERMISSIONS.SETTINGS_READ
+  },
+  {
+    title: 'Surveys',
+    url: '/surveys',
+    icon: ClipboardList,
+    requiredPermission: PERMISSIONS.SURVEYS_READ,
+  },
+  {
+    title: 'Corrections',
+    url: '/corrections',
+    icon: ClipboardCheck,
+    requiredPermission: PERMISSIONS.CORRECTIONS_READ,
   },
   {
     title: 'API Keys',

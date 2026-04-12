@@ -57,6 +57,14 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     // Requests - Read and Manage
     PERMISSIONS.REQUESTS_READ,
     PERMISSIONS.REQUESTS_MANAGE,
+    // Surveys - Full CRUD + Responses
+    PERMISSIONS.SURVEYS_CREATE,
+    PERMISSIONS.SURVEYS_READ,
+    PERMISSIONS.SURVEYS_UPDATE,
+    PERMISSIONS.SURVEYS_DELETE,
+    PERMISSIONS.SURVEYS_RESPONSES_READ,
+    // Corrections - Read audit history
+    PERMISSIONS.CORRECTIONS_READ,
     // System - No system permissions for admin (only super_admin)
   ],
   manager: [

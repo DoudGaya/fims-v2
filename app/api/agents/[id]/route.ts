@@ -12,6 +12,14 @@ const checkPermission = (permissions: string[] | undefined, permission: string) 
   return permissions?.includes(permission) || false;
 };
 
+const MOBILE_AGENT_ROLES = ['agent', 'data_correction_agent', 'survey_agent'] as const;
+
+const AGENT_TYPE_ROLE_MAP: Record<string, string> = {
+  enrollment: 'agent',
+  correction: 'data_correction_agent',
+  survey:     'survey_agent',
+};
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -42,7 +50,7 @@ export async function GET(
       }
     });
 
-    if (!agent || agent.role !== 'agent') {
+    if (!agent || !MOBILE_AGENT_ROLES.includes(agent.role as any)) {
       return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
     }
 
@@ -99,6 +107,9 @@ export async function PUT(
       userUpdateData.isActive = body.isActive;
     } else if (body.status) {
       userUpdateData.isActive = body.status === 'active' || body.status === 'Enrolled';
+    }
+    if (body.agentType && AGENT_TYPE_ROLE_MAP[body.agentType]) {
+      userUpdateData.role = AGENT_TYPE_ROLE_MAP[body.agentType];
     }
 
     // Prepare agent update data - only include provided fields
@@ -260,7 +271,7 @@ export async function PATCH(
       include: { agent: true }
     });
 
-    if (!existingAgent || existingAgent.role !== 'agent') {
+    if (!existingAgent || !MOBILE_AGENT_ROLES.includes(existingAgent.role as any)) {
       return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
     }
 
@@ -292,17 +303,38 @@ export async function PATCH(
       }
     }
 
-    // Quick update for status or simple fields
+    // Quick update for status or simple fields.
+    // Agent model has no isActive — that field lives on User.
+    // Build a whitelist of valid Agent fields only.
+    const agentPatchData: any = {};
+    if (body.status !== undefined)               agentPatchData.status               = body.status;
+    if (body.phone !== undefined)                agentPatchData.phone                = body.phone;
+    if (body.nin !== undefined)                  agentPatchData.nin                  = body.nin;
+    if (body.bvn !== undefined)                  agentPatchData.bvn                  = body.bvn;
+    if (body.gender !== undefined)               agentPatchData.gender               = body.gender;
+    if (body.maritalStatus !== undefined)        agentPatchData.maritalStatus        = body.maritalStatus;
+    if (body.assignedState !== undefined)        agentPatchData.assignedState        = body.assignedState;
+    if (body.assignedLGA !== undefined)          agentPatchData.assignedLGA          = body.assignedLGA;
+    if (body.address !== undefined)              agentPatchData.address              = body.address;
+    if (body.state !== undefined)                agentPatchData.state                = body.state;
+    if (body.localGovernment !== undefined)      agentPatchData.localGovernment      = body.localGovernment;
+    if (body.performanceRating !== undefined)    agentPatchData.performanceRating    = body.performanceRating;
+    if (body.totalFarmersRegistered !== undefined) agentPatchData.totalFarmersRegistered = body.totalFarmersRegistered;
+
+    if (Object.keys(agentPatchData).length === 0) {
+      return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
+    }
+
     const result = await prisma.$transaction(async (tx) => {
       // Update Agent profile if it exists
       if (existingAgent.agent) {
         const agentProfile = await tx.agent.update({
           where: { userId: id },
-          data: body
+          data: agentPatchData        // safe — no User fields present
         });
 
-        // Update user isActive if status changed
-        if (body.status) {
+        // isActive lives on User, not Agent — update separately
+        if (body.status !== undefined) {
           await tx.user.update({
             where: { id },
             data: {

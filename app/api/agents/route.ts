@@ -15,6 +15,16 @@ const checkPermission = (permissions: string[] | undefined, permission: string) 
   return permissions?.includes(permission) || false;
 };
 
+// All mobile agent roles managed from this dashboard
+const MOBILE_AGENT_ROLES = ['agent', 'data_correction_agent', 'survey_agent'] as const;
+
+// Map agentType param → User.role value
+const AGENT_TYPE_ROLE_MAP: Record<string, string> = {
+  enrollment: 'agent',
+  correction: 'data_correction_agent',
+  survey:     'survey_agent',
+};
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -39,12 +49,16 @@ export async function GET(req: NextRequest) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
+    const roleType = searchParams.get('roleType') || '';
     const skip = (page - 1) * limit;
 
-    // Build where clause
-    // We want to fetch all users with role 'agent', even if they don't have a complete agent profile yet
+    // Build where clause — include all three mobile agent role types
+    const roleFilter = roleType && AGENT_TYPE_ROLE_MAP[roleType]
+      ? AGENT_TYPE_ROLE_MAP[roleType]
+      : undefined;
+
     const where: Prisma.UserWhereInput = {
-      role: 'agent',
+      role: roleFilter ? roleFilter : { in: [...MOBILE_AGENT_ROLES] },
     };
 
     if (search) {
@@ -105,7 +119,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Execute query — cache keyed by all filter/pagination params
-    const key = cacheKey('agents', { page, limit, search, status, state, lga, startDate, endDate });
+    const key = cacheKey('agents', { page, limit, search, status, state, lga, startDate, endDate, roleType });
     const result = await getCached(key, 300, async () => {
     const [agents, total] = await Promise.all([
       prisma.user.findMany({
@@ -120,7 +134,7 @@ export async function GET(req: NextRequest) {
           firstName: true,
           lastName: true,
           phoneNumber: true,
-          role: true,
+          role: true,   // enrollment role type returned here
           isActive: true,
           lastLogin: true,
           createdAt: true,
@@ -139,15 +153,36 @@ export async function GET(req: NextRequest) {
               assignedLGA: true,
               status: true,
               nin: true,
-              gender: true
+              gender: true,
+              totalFarmersRegistered: true,  // correction agents track corrections here
+              performanceRating: true,
             }
           }
         }
       }),
       prisma.user.count({ where })
     ]);
+
+      // Build survey-response count map for survey agents on this page
+      const surveyAgentIds = agents
+        .filter(a => a.role === 'survey_agent')
+        .map(a => a.id);
+      const surveyCountMap: Record<string, number> = {};
+      if (surveyAgentIds.length > 0) {
+        const rows = await prisma.surveyResponse.groupBy({
+          by: ['submittedByUserId'],
+          where: { submittedByUserId: { in: surveyAgentIds } },
+          _count: { id: true },
+        });
+        for (const row of rows) {
+          if (row.submittedByUserId) surveyCountMap[row.submittedByUserId] = row._count.id;
+        }
+      }
+
+      const agentsWithPerf = agents.map(a => ({ ...a, surveyCount: surveyCountMap[a.id] ?? 0 }));
+
       return {
-        agents,
+        agents: agentsWithPerf,
         pagination: {
           page,
           limit,
@@ -252,9 +287,9 @@ export async function POST(req: NextRequest) {
           lastName: body.lastName,
           displayName: `${body.firstName} ${body.lastName}`,
           phoneNumber: body.phone,
-          role: 'agent',
+          role: AGENT_TYPE_ROLE_MAP[body.agentType ?? 'enrollment'] ?? 'agent',
           isActive: true,
-          isVerified: true, // Auto-verify created agents?
+          isVerified: true,
         }
       });
 

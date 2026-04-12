@@ -27,20 +27,27 @@ export async function GET(req: NextRequest) {
           'fims:v1:agents:analytics',
           600, // 10 minutes
           async () => {
+        const AGENT_ROLES = ['agent', 'data_correction_agent', 'survey_agent'] as const;
         const [
             totalAgents,
             activeAgents,
             inactiveAgents,
             newApplications,
             interviewing,
+            enrollmentCount,
+            correctionCount,
+            surveyCount,
             agentsByStatusRaw,
             agentsByStateRaw
         ] = await Promise.all([
-            prisma.user.count({ where: { role: 'agent' } }),
-            prisma.user.count({ where: { role: 'agent', isActive: true, agent: { status: 'active' } } }),
-            prisma.user.count({ where: { role: 'agent', isActive: false } }),
+            prisma.user.count({ where: { role: { in: [...AGENT_ROLES] } } }),
+            prisma.user.count({ where: { role: { in: [...AGENT_ROLES] }, isActive: true, agent: { status: 'active' } } }),
+            prisma.user.count({ where: { role: { in: [...AGENT_ROLES] }, isActive: false } }),
             prisma.agent.count({ where: { status: 'Applied' } }),
             prisma.agent.count({ where: { status: 'CallForInterview' } }),
+            prisma.user.count({ where: { role: 'agent' } }),
+            prisma.user.count({ where: { role: 'data_correction_agent' } }),
+            prisma.user.count({ where: { role: 'survey_agent' } }),
             // Group by Status
             prisma.agent.groupBy({
                 by: ['status'],
@@ -71,6 +78,9 @@ export async function GET(req: NextRequest) {
               inactiveAgents,
               newApplications,
               interviewing,
+              enrollmentCount,
+              correctionCount,
+              surveyCount,
               agentsByStatus,
               agentsByState,
             };

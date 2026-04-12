@@ -58,6 +58,16 @@ export const PERMISSIONS = {
   REQUESTS_READ: 'requests.read',
   REQUESTS_MANAGE: 'requests.manage',
 
+  // Surveys
+  SURVEYS_CREATE: 'surveys.create',
+  SURVEYS_READ: 'surveys.read',
+  SURVEYS_UPDATE: 'surveys.update',
+  SURVEYS_DELETE: 'surveys.delete',
+  SURVEYS_RESPONSES_READ: 'surveys.responses.read',
+
+  // Corrections audit
+  CORRECTIONS_READ: 'corrections.read',
+
   // System Administration
   SYSTEM_MANAGE_PERMISSIONS: 'system.manage_permissions',
   SYSTEM_MANAGE_ROLES: 'system.manage_roles',

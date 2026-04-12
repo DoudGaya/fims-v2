@@ -80,9 +80,11 @@ interface Agent {
   displayName: string;
   email: string;
   phoneNumber: string;
+  role: string;
   isActive: boolean;
   lastLogin: string;
   createdAt: string;
+  surveyCount: number;
   _count: {
     farmers: number;
   };
@@ -94,6 +96,8 @@ interface Agent {
     status: string;
     nin?: string;
     gender?: string;
+    totalFarmersRegistered?: number;
+    performanceRating?: number | null;
   } | null;
 }
 
@@ -103,6 +107,9 @@ interface AnalyticsData {
   inactiveAgents: number;
   newApplications: number;
   interviewing: number;
+  enrollmentCount: number;
+  correctionCount: number;
+  surveyCount: number;
   agentsByStatus: Record<string, number>;
   agentsByState: { state: string; count: number }[];
 }
@@ -137,6 +144,7 @@ export default function AgentsClient() {
   });
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterType, setFilterType] = useState('all');
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
   const [filterState, setFilterState] = useState('');
   const [filterLGA, setFilterLGA] = useState('');
@@ -195,14 +203,15 @@ export default function AgentsClient() {
       params.append('limit', pagination.limit.toString());
       if (search) params.append('search', search);
       if (filterStatus && filterStatus !== 'all') params.append('status', filterStatus);
+      if (filterType && filterType !== 'all') params.append('roleType', filterType);
       if (filterState && filterState !== 'all') params.append('state', filterState);
       if (filterLGA) params.append('lga', filterLGA);
-      
+
       if (dateRange.from) params.append('startDate', dateRange.from.toISOString());
       if (dateRange.to) params.append('endDate', dateRange.to.toISOString());
 
       const res = await fetch(`/api/agents?${params.toString()}`);
-      
+
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.details || errData.error || 'Failed to fetch agents');
@@ -218,7 +227,7 @@ export default function AgentsClient() {
     } finally {
       setLoading(false);
     }
-  }, [status, pagination.page, pagination.limit, search, filterStatus, filterState, filterLGA, dateRange]);
+  }, [status, pagination.page, pagination.limit, search, filterStatus, filterType, filterState, filterLGA, dateRange]);
 
   // Initial Load
   useEffect(() => {
@@ -235,6 +244,7 @@ export default function AgentsClient() {
   const handleReset = () => {
     setSearch('');
     setFilterStatus('all');
+    setFilterType('all');
     setFilterState('all');
     setFilterLGA('');
     setDateRange({ from: undefined, to: undefined });
@@ -273,6 +283,7 @@ export default function AgentsClient() {
       const params = new URLSearchParams();
       if (search) params.append('search', search);
       if (filterStatus && filterStatus !== 'all') params.append('status', filterStatus);
+      if (filterType && filterType !== 'all') params.append('roleType', filterType);
       if (filterState && filterState !== 'all') params.append('state', filterState);
       if (filterLGA) params.append('lga', filterLGA);
       if (dateRange.from) params.append('startDate', dateRange.from.toISOString());
@@ -333,6 +344,19 @@ export default function AgentsClient() {
     return <div className="p-8 text-center">Loading...</div>;
   }
 
+  const getRoleTypeBadge = (role: string) => {
+    switch (role) {
+      case 'agent':
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800">Enrollment</Badge>;
+      case 'data_correction_agent':
+        return <Badge className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800">Correction</Badge>;
+      case 'survey_agent':
+        return <Badge className="bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800">Survey</Badge>;
+      default:
+        return <Badge variant="outline">{role}</Badge>;
+    }
+  };
+
   const getStatusBadge = (agent: Agent) => {
     const status = agent.agent?.status || (agent.isActive ? 'active' : 'inactive');
 
@@ -385,7 +409,7 @@ export default function AgentsClient() {
       </div>
 
       {/* Analytics Cards */}
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-8">
         <Card className="col-span-1 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
             <CardTitle className="text-xs font-medium text-blue-800 dark:text-blue-300">Applications</CardTitle>
@@ -441,6 +465,42 @@ export default function AgentsClient() {
           <CardContent className="p-3 pt-0">
             <div className="text-2xl font-bold text-red-900 dark:text-red-200">
               {analyticsLoading ? '...' : analytics?.inactiveAgents || 0}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-1 border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-900/10">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+            <CardTitle className="text-xs font-medium text-blue-700 dark:text-blue-400">Enrollment</CardTitle>
+            <UserIcon className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent className="p-3 pt-0">
+            <div className="text-2xl font-bold text-blue-800 dark:text-blue-300">
+              {analyticsLoading ? '...' : analytics?.enrollmentCount || 0}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-1 border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/10">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+            <CardTitle className="text-xs font-medium text-amber-700 dark:text-amber-400">Correction</CardTitle>
+            <PencilIcon className="h-4 w-4 text-amber-500" />
+          </CardHeader>
+          <CardContent className="p-3 pt-0">
+            <div className="text-2xl font-bold text-amber-800 dark:text-amber-300">
+              {analyticsLoading ? '...' : analytics?.correctionCount || 0}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="col-span-1 border-purple-200 dark:border-purple-800 bg-purple-50/60 dark:bg-purple-900/10">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
+            <CardTitle className="text-xs font-medium text-purple-700 dark:text-purple-400">Survey</CardTitle>
+            <CheckCircleIcon className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent className="p-3 pt-0">
+            <div className="text-2xl font-bold text-purple-800 dark:text-purple-300">
+              {analyticsLoading ? '...' : analytics?.surveyCount || 0}
             </div>
           </CardContent>
         </Card>
@@ -620,6 +680,20 @@ export default function AgentsClient() {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="w-full md:w-[180px]">
+              <Select value={filterType} onValueChange={setFilterType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="enrollment">Enrollment</SelectItem>
+                  <SelectItem value="correction">Correction</SelectItem>
+                  <SelectItem value="survey">Survey</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Button type="submit" className="bg-ccsa-blue hover:bg-blue-800">
               Filter
             </Button>
@@ -640,6 +714,7 @@ export default function AgentsClient() {
               <TableHead>Gender</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Performance</TableHead>
               <TableHead>Joined</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -648,16 +723,16 @@ export default function AgentsClient() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">
-                  <div className="flex justify-center items-center">
-                    <ArrowPathIcon className="h-6 w-6 animate-spin text-gray-500" />
-                    <span className="ml-2">Loading agents...</span>
-                  </div>
-                </TableCell>
+                <TableCell colSpan={9} className="h-24 text-center">
+                    <div className="flex justify-center items-center">
+                      <ArrowPathIcon className="h-6 w-6 animate-spin text-gray-500" />
+                      <span className="ml-2">Loading agents...</span>
+                    </div>
+                  </TableCell>
               </TableRow>
             ) : agents.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                   No agents found.
                 </TableCell>
               </TableRow>
@@ -703,10 +778,42 @@ export default function AgentsClient() {
                     {getStatusBadge(agent)}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="text-sm font-medium">{agent._count.farmers}</div>
-                      <span className="text-xs text-muted-foreground">Farmers</span>
-                    </div>
+                    {getRoleTypeBadge(agent.role)}
+                  </TableCell>
+                  <TableCell>
+                    {agent.role === 'agent' && (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">{agent._count.farmers}</span>
+                          <span className="text-xs text-muted-foreground">enrolled</span>
+                        </div>
+                        {agent.agent?.performanceRating != null && (
+                          <div className="text-[11px] text-gray-400">{agent.agent.performanceRating.toFixed(1)} / 5.0</div>
+                        )}
+                      </div>
+                    )}
+                    {agent.role === 'data_correction_agent' && (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">{agent.agent?.totalFarmersRegistered ?? 0}</span>
+                          <span className="text-xs text-muted-foreground">corrected</span>
+                        </div>
+                        {agent.agent?.performanceRating != null && (
+                          <div className="text-[11px] text-gray-400">{agent.agent.performanceRating.toFixed(1)} / 5.0</div>
+                        )}
+                      </div>
+                    )}
+                    {agent.role === 'survey_agent' && (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-semibold text-purple-700 dark:text-purple-400">{agent.surveyCount}</span>
+                          <span className="text-xs text-muted-foreground">surveys</span>
+                        </div>
+                        {agent.agent?.performanceRating != null && (
+                          <div className="text-[11px] text-gray-400">{agent.agent.performanceRating.toFixed(1)} / 5.0</div>
+                        )}
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-gray-500 dark:text-gray-400 text-sm">
                     {new Date(agent.createdAt).toLocaleDateString()}

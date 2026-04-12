@@ -105,73 +105,237 @@ export async function sendPasswordResetEmail(email: string, resetToken: string, 
   }
 }
 
+// ─── Agent status email helpers ────────────────────────────────────────────
+
+interface StatusContent {
+  subject: string;
+  accentColor: string;
+  statusLabel: string;
+  headline: string;
+  intro: string;
+  bodyHtml: string;
+  showLoginButton: boolean;
+}
+
+function getStatusContent(name: string, status: string): StatusContent {
+  const loginUrl = `${process.env.NEXTAUTH_URL || 'https://fims.ccsa.edu.ng'}/login`;
+  const n = name || 'Applicant';
+
+  switch (status) {
+    case 'Applied':
+      return {
+        subject: 'We received your Field Agent application — CCSA',
+        accentColor: '#0052CC',
+        statusLabel: 'Application Received',
+        headline: 'Thank you for applying!',
+        intro: `Dear ${n},`,
+        bodyHtml: `
+          <p>We have successfully received your application to join the CCSA Field Agent programme. Our recruitment team will review your details and get back to you shortly.</p>
+          <p>Here is what to expect next:</p>
+          <ol style="padding-left:18px;color:#444;">
+            <li style="margin-bottom:6px;">Application review by the recruitment panel</li>
+            <li style="margin-bottom:6px;">Interview invitation (if shortlisted)</li>
+            <li style="margin-bottom:6px;">Onboarding and account activation</li>
+          </ol>
+          <p>Please keep an eye on this email address for further updates. If you have any questions, contact us at <a href="mailto:agents@ccsa.edu.ng" style="color:#0052CC;">agents@ccsa.edu.ng</a>.</p>`,
+        showLoginButton: false,
+      };
+
+    case 'CallForInterview':
+      return {
+        subject: 'Interview Invitation — CCSA Field Agent Programme',
+        accentColor: '#FF8B00',
+        statusLabel: 'Interview Scheduled',
+        headline: 'Congratulations — you have been shortlisted!',
+        intro: `Dear ${n},`,
+        bodyHtml: `
+          <p>We are pleased to inform you that your application has been reviewed and you have been shortlisted for an interview as part of the CCSA Field Agent recruitment process.</p>
+          <p>Our team will reach out to you shortly with the interview schedule. Please ensure:</p>
+          <ul style="padding-left:18px;color:#444;">
+            <li style="margin-bottom:6px;">Your phone number is reachable</li>
+            <li style="margin-bottom:6px;">You have your NIN and any relevant identification documents ready</li>
+            <li style="margin-bottom:6px;">You check this email for the confirmed time and venue</li>
+          </ul>
+          <p>We look forward to speaking with you.</p>`,
+        showLoginButton: false,
+      };
+
+    case 'Accepted':
+      return {
+        subject: 'Application Accepted — Welcome to the CCSA Field Agent Programme',
+        accentColor: '#006644',
+        statusLabel: 'Application Accepted',
+        headline: 'Your application has been accepted!',
+        intro: `Dear ${n},`,
+        bodyHtml: `
+          <p>We are delighted to inform you that your application to join the CCSA Field Agent Programme has been <strong>accepted</strong>. Welcome aboard!</p>
+          <p>Your account is currently being set up. Once activated, you will receive a separate email with your login credentials for the CCSA Mobile application.</p>
+          <p><strong>What happens next:</strong></p>
+          <ul style="padding-left:18px;color:#444;">
+            <li style="margin-bottom:6px;">Account activation and credential delivery</li>
+            <li style="margin-bottom:6px;">Onboarding briefing and training schedule</li>
+            <li style="margin-bottom:6px;">Assignment to your state and LGA</li>
+          </ul>`,
+        showLoginButton: false,
+      };
+
+    case 'Enrolled':
+    case 'active':
+      return {
+        subject: 'Your CCSA Field Agent Account is Now Active',
+        accentColor: '#00875A',
+        statusLabel: 'Account Activated',
+        headline: 'Your account is live — start enrolling!',
+        intro: `Dear ${n},`,
+        bodyHtml: `
+          <p>Your CCSA Field Agent account has been <strong>activated</strong>. You can now log in to the CCSA Mobile application and begin enrolling farmers in your assigned area.</p>
+          <p><strong>Getting started:</strong></p>
+          <ol style="padding-left:18px;color:#444;">
+            <li style="margin-bottom:6px;">Download the CCSA Mobile app (if not already installed)</li>
+            <li style="margin-bottom:6px;">Log in using your registered email and password</li>
+            <li style="margin-bottom:6px;">Follow your supervisor's instructions for your first assignment</li>
+          </ol>
+          <p>If you have not yet received your login password, please contact <a href="mailto:agents@ccsa.edu.ng" style="color:#00875A;">agents@ccsa.edu.ng</a>.</p>`,
+        showLoginButton: true,
+      };
+
+    case 'Rejected':
+      return {
+        subject: 'CCSA Field Agent Application — Update',
+        accentColor: '#BF2600',
+        statusLabel: 'Application Unsuccessful',
+        headline: 'Thank you for your interest',
+        intro: `Dear ${n},`,
+        bodyHtml: `
+          <p>After careful review of all applications, we regret to inform you that your application for the CCSA Field Agent Programme has not been successful at this time.</p>
+          <p>This decision is not a reflection of your personal qualities. We receive a large number of applications and the selection process is highly competitive.</p>
+          <p>We encourage you to:</p>
+          <ul style="padding-left:18px;color:#444;">
+            <li style="margin-bottom:6px;">Check back for future recruitment opportunities on our website</li>
+            <li style="margin-bottom:6px;">Contact <a href="mailto:agents@ccsa.edu.ng" style="color:#BF2600;">agents@ccsa.edu.ng</a> if you would like feedback on your application</li>
+          </ul>
+          <p>Thank you sincerely for your time and interest in the CCSA programme.</p>`,
+        showLoginButton: false,
+      };
+
+    case 'inactive':
+    case 'Inactive':
+      return {
+        subject: 'Your CCSA Field Agent Account has been Deactivated',
+        accentColor: '#6B7280',
+        statusLabel: 'Account Deactivated',
+        headline: 'Account deactivation notice',
+        intro: `Dear ${n},`,
+        bodyHtml: `
+          <p>Your CCSA Field Agent account has been <strong>deactivated</strong>. You will no longer be able to log in to the CCSA Mobile application until your account is reactivated.</p>
+          <p>If you believe this is an error or would like more information, please contact your supervisor or reach us at <a href="mailto:agents@ccsa.edu.ng" style="color:#6B7280;">agents@ccsa.edu.ng</a>.</p>`,
+        showLoginButton: false,
+      };
+
+    default:
+      return {
+        subject: `CCSA Field Agent — Status Update: ${status}`,
+        accentColor: '#013358',
+        statusLabel: status,
+        headline: 'Your application status has been updated',
+        intro: `Dear ${n},`,
+        bodyHtml: `<p>Your agent application status has been updated to <strong>${status}</strong>. Please log in to the admin portal for further details.</p>`,
+        showLoginButton: true,
+      };
+  }
+}
+
 export async function sendAgentStatusEmail(email: string, name: string, status: string) {
   const transporter = createTransporter();
   if (!transporter) {
     console.warn('Email service not configured - skipping agent status email');
-    return;
+    return null;
   }
-  
-  const subject = `Agent Application Status Updated: ${status.charAt(0).toUpperCase() + status.slice(1)}`;
-  
-  const mailOptions = {
-    from: `"CCSA Admin" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
-    to: email,
-    subject: subject,
-    html: `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>${subject}</title>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background-color: #013358; color: white; padding: 20px; text-align: center; }
-            .content { padding: 20px; background-color: #f9f9f9; }
-            .footer { padding: 20px; text-align: center; font-size: 12px; color: #666; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>CCSA Mobile</h1>
-            </div>
-            <div class="content">
-              <h2>Application Status Update</h2>
-              <p>Hello ${name},</p>
-              <p>Your agent application status has been updated to: <strong>${status.toUpperCase()}</strong>.</p>
-              <p>Please log in to the dashboard to view more details.</p>
-            </div>
-            <div class="footer">
-              <p>Centre for Climate Smart Agriculture<br>
-              Cosmopolitan University Abuja</p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `,
-    text: `
-      Application Status Update
-      
-      Hello ${name},
-      
-      Your agent application status has been updated to: ${status.toUpperCase()}.
-      
-      Centre for Climate Smart Agriculture
-      Cosmopolitan University Abuja
-    `,
-  };
+
+  const c = getStatusContent(name, status);
+  const loginUrl = `${process.env.NEXTAUTH_URL || 'https://fims.ccsa.edu.ng'}/login`;
+  const year = new Date().getFullYear();
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${c.subject}</title>
+</head>
+<body style="margin:0;padding:0;background:#F4F6F9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F4F6F9;padding:32px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+        <!-- Logo bar -->
+        <tr>
+          <td style="background:#013358;padding:20px 32px;border-radius:8px 8px 0 0;">
+            <table width="100%" cellpadding="0" cellspacing="0"><tr>
+              <td>
+                <span style="font-size:20px;font-weight:700;color:#fff;letter-spacing:0.5px;">CCSA</span>
+                <span style="font-size:13px;color:#93C5FD;margin-left:8px;">Field Agent Programme</span>
+              </td>
+              <td align="right">
+                <span style="display:inline-block;background:${c.accentColor};color:#fff;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;letter-spacing:0.5px;">${c.statusLabel.toUpperCase()}</span>
+              </td>
+            </tr></table>
+          </td>
+        </tr>
+
+        <!-- Accent strip -->
+        <tr><td style="background:${c.accentColor};height:4px;"></td></tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="background:#fff;padding:36px 32px;">
+            <h2 style="margin:0 0 8px;font-size:22px;font-weight:700;color:#111827;">${c.headline}</h2>
+            <p style="margin:0 0 24px;font-size:14px;color:${c.accentColor};font-weight:600;">${c.statusLabel}</p>
+            <p style="margin:0 0 16px;font-size:15px;color:#374151;">${c.intro}</p>
+            <div style="font-size:15px;color:#374151;line-height:1.7;">${c.bodyHtml}</div>
+            ${c.showLoginButton ? `
+            <div style="margin:32px 0 0;text-align:center;">
+              <a href="${loginUrl}" style="display:inline-block;background:${c.accentColor};color:#fff;text-decoration:none;font-size:15px;font-weight:600;padding:13px 32px;border-radius:6px;letter-spacing:0.3px;">Open CCSA App</a>
+            </div>` : ''}
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#F9FAFB;border-top:1px solid #E5E7EB;padding:20px 32px;border-radius:0 0 8px 8px;">
+            <table width="100%" cellpadding="0" cellspacing="0"><tr>
+              <td style="font-size:12px;color:#9CA3AF;">
+                Centre for Climate Smart Agriculture &mdash; Cosmopolitan University Abuja<br>
+                &copy; ${year} CCSA. All rights reserved.
+              </td>
+              <td align="right" style="font-size:12px;color:#9CA3AF;">
+                This is an automated message &mdash; do not reply.
+              </td>
+            </tr></table>
+          </td>
+        </tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `${c.statusLabel}\n\n${c.intro}\n\n${c.bodyHtml.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()}\n\n---\nCentre for Climate Smart Agriculture, Cosmopolitan University Abuja`;
 
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Agent status email sent:', info.messageId);
+    const info = await transporter.sendMail({
+      from: `"CCSA Field Agent Programme" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+      to: email,
+      subject: c.subject,
+      html,
+      text,
+    });
+    console.log(`Agent status email sent [${status}]:`, info.messageId);
     return info;
   } catch (error) {
-    console.error('Error sending email:', error);
-    // Don't throw for status updates to avoid blocking main flow
-    return null; 
+    console.error('Error sending agent status email:', error);
+    return null; // never block the main status-update flow
   }
 }
 

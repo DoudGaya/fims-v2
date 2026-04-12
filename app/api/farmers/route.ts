@@ -36,6 +36,11 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status') || '';
     const startDate = searchParams.get('startDate') || '';
     const endDate = searchParams.get('endDate') || '';
+    const lga = searchParams.get('lga') || '';
+    const ward = searchParams.get('ward') || '';
+    const pollingUnit = searchParams.get('pollingUnit') || '';
+    const nin = searchParams.get('nin') || '';
+    const bvn = searchParams.get('bvn') || '';
 
     const skip = (page - 1) * limit;
 
@@ -74,8 +79,28 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    if (lga) {
+      where.lga = { contains: lga, mode: 'insensitive' };
+    }
+
+    if (ward) {
+      where.ward = { contains: ward, mode: 'insensitive' };
+    }
+
+    if (pollingUnit) {
+      where.pollingUnit = { contains: pollingUnit, mode: 'insensitive' };
+    }
+
+    if (nin) {
+      where.nin = { contains: nin, mode: 'insensitive' };
+    }
+
+    if (bvn) {
+      where.bvn = { contains: bvn, mode: 'insensitive' };
+    }
+
     // Execute query — cache keyed by all filter/pagination params
-    const key = cacheKey('farmers', { page, limit, search, state, cluster, status, startDate, endDate });
+    const key = cacheKey('farmers', { page, limit, search, state, cluster, status, startDate, endDate, lga, ward, pollingUnit, nin, bvn });
     const result = await getCached(key, 300, async () => {
     const [farmers, total, stats] = await Promise.all([
       prisma.farmer.findMany({

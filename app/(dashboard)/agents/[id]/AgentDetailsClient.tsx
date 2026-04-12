@@ -23,6 +23,7 @@ interface AgentDetails {
   lastName: string;
   email: string;
   phoneNumber: string;
+  role: string;
   isActive: boolean;
   lastLogin: string;
   createdAt: string;
@@ -148,6 +149,20 @@ export default function AgentDetailsClient({ id }: { id: string }) {
                     }`}>
                       {agent.isActive ? 'Active' : 'Inactive'}
                     </span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500">Agent Type</label>
+                  <div className="mt-1">
+                    {agent.role === 'agent' && (
+                      <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20">Enrollment</span>
+                    )}
+                    {agent.role === 'data_correction_agent' && (
+                      <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20">Correction</span>
+                    )}
+                    {agent.role === 'survey_agent' && (
+                      <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-600/20">Survey</span>
+                    )}
                   </div>
                 </div>
                 <div>

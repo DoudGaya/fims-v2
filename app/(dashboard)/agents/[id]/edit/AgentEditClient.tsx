@@ -57,9 +57,22 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
         pollingUnit: '',
         assignedState: '',
         assignedLGA: '',
+        agentType: 'enrollment' as 'enrollment' | 'correction' | 'survey',
         status: 'active',
         isActive: true
     });
+
+    const ROLE_TO_AGENT_TYPE: Record<string, 'enrollment' | 'correction' | 'survey'> = {
+        agent: 'enrollment',
+        data_correction_agent: 'correction',
+        survey_agent: 'survey',
+    };
+
+    const AGENT_TYPE_TO_ROLE: Record<string, string> = {
+        enrollment: 'agent',
+        correction: 'data_correction_agent',
+        survey: 'survey_agent',
+    };
 
     useEffect(() => {
         const fetchAgent = async () => {
@@ -95,6 +108,7 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                     pollingUnit: agentProfile.pollingUnit || '',
                     assignedState: agentProfile.assignedState || '',
                     assignedLGA: agentProfile.assignedLGA || '',
+                    agentType: (ROLE_TO_AGENT_TYPE[data.role] || 'enrollment') as 'enrollment' | 'correction' | 'survey',
                     status: agentProfile.status || (data.isActive ? 'active' : 'inactive'),
                     isActive: data.isActive
                 });
@@ -253,6 +267,9 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                 updatePayload.status = formData.status;
                 updatePayload.isActive = formData.status === 'Enrolled' || formData.status === 'active';
             }
+            if (formData.agentType) {
+                updatePayload.agentType = formData.agentType;
+            }
 
             const res = await fetch(`/api/agents/${id}`, {
                 method: 'PUT',
@@ -374,6 +391,17 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                                     <CardDescription>Banking and identification.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label>Agent Type</Label>
+                                        <Select value={formData.agentType} onValueChange={(val) => handleChange('agentType', val)}>
+                                            <SelectTrigger><SelectValue placeholder="Select Type" /></SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="enrollment">Enrollment Agent</SelectItem>
+                                                <SelectItem value="correction">Correction Agent</SelectItem>
+                                                <SelectItem value="survey">Survey Agent</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                     <div className="space-y-2">
                                         <Label>Status</Label>
                                         <Select value={formData.status} onValueChange={(val) => handleChange('status', val)}>
