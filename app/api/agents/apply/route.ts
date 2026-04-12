@@ -12,18 +12,24 @@ import prisma from '@/lib/prisma';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as {
-      firstName?:   string;
-      lastName?:    string;
-      email?:       string;
-      phone?:       string;
-      state?:       string;
-      lga?:         string;
-      ward?:        string;
-      pollingUnit?: string;
-      education?:   string;
-      jobHistory?:  string;
-      nin?:         string;
-      message?:     string;
+      firstName?:     string;
+      lastName?:      string;
+      email?:         string;
+      phone?:         string;
+      state?:         string;
+      lga?:           string;
+      ward?:          string;
+      pollingUnit?:   string;
+      education?:     string;
+      courseOfStudy?: string;
+      jobHistory?:    string;
+      nin?:           string;
+      message?:       string;
+      bankName?:      string;
+      bankCode?:      string;
+      accountName?:   string;
+      accountNumber?: string;
+      photoUrl?:      string;
     };
 
     // ── Validate required fields ──────────────────────────────────────────
@@ -63,6 +69,9 @@ export async function POST(req: NextRequest) {
 
     // ── Build address from job history + cover message ────────────────────
     const addressParts: string[] = [];
+    if (body.courseOfStudy?.trim()) {
+      addressParts.push(`Course of Study: ${body.courseOfStudy.trim()}`);
+    }
     if (body.jobHistory?.trim()) {
       addressParts.push(`Job History:\n${body.jobHistory.trim()}`);
     }
@@ -101,6 +110,11 @@ export async function POST(req: NextRequest) {
           assignedState:    body.state?.trim()        || null,
           assignedLGA:      body.lga?.trim()          || null,
           employmentStatus: body.education?.trim()    || null,
+          employmentType:   body.courseOfStudy?.trim() || null,
+          bankName:         body.bankName?.trim()      || null,
+          accountName:      body.accountName?.trim()   || null,
+          accountNumber:    body.accountNumber?.trim() || null,
+          photoUrl:         body.photoUrl?.trim()      || null,
           status:           'Applied',
           address,
         },
