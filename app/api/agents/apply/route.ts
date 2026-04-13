@@ -17,10 +17,15 @@ export async function POST(req: NextRequest) {
       lastName?:      string;
       email?:         string;
       phone?:         string;
+      gender?:        string;
+      maritalStatus?: string;
+      dateOfBirth?:   string;
       state?:         string;
       lga?:           string;
       ward?:          string;
       pollingUnit?:   string;
+      city?:          string;
+      whatsAppNumber?: string;
       education?:     string;
       courseOfStudy?: string;
       cluster?:       string;
@@ -121,19 +126,24 @@ export async function POST(req: NextRequest) {
           email,
           phone,
           nin,
-          state:            body.state?.trim()       || null,
-          localGovernment:  body.lga?.trim()         || null,
-          ward:             body.ward?.trim()         || null,
-          pollingUnit:      body.pollingUnit?.trim()  || null,
-          assignedState:    body.state?.trim()        || null,
-          assignedLGA:      body.lga?.trim()          || null,
-          employmentStatus: body.education?.trim()    || null,
-          employmentType:   body.courseOfStudy?.trim() || null,
-          bankName:         body.bankName?.trim()      || null,
-          accountName:      body.accountName?.trim()   || null,
-          accountNumber:    body.accountNumber?.trim() || null,
-          bvn:              providedBvn                || null,
-          photoUrl:         body.photoUrl?.trim()      || null,
+          gender:           body.gender?.trim()          || null,
+          maritalStatus:    body.maritalStatus?.trim()   || null,
+          dateOfBirth:      body.dateOfBirth ? new Date(body.dateOfBirth) : null,
+          state:            body.state?.trim()           || null,
+          localGovernment:  body.lga?.trim()             || null,
+          ward:             body.ward?.trim()            || null,
+          pollingUnit:      body.pollingUnit?.trim()     || null,
+          city:             body.city?.trim()            || null,
+          whatsAppNumber:   body.whatsAppNumber?.trim()  || null,
+          assignedState:    body.state?.trim()           || null,
+          assignedLGA:      body.lga?.trim()             || null,
+          employmentStatus: body.education?.trim()       || null,
+          employmentType:   body.courseOfStudy?.trim()   || null,
+          bankName:         body.bankName?.trim()        || null,
+          accountName:      body.accountName?.trim()     || null,
+          accountNumber:    body.accountNumber?.trim()   || null,
+          bvn:              providedBvn                  || null,
+          photoUrl:         body.photoUrl?.trim()        || null,
           status:           'Applied',
           address,
         },

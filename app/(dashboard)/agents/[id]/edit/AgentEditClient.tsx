@@ -42,12 +42,20 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
         middleName: '',
         email: '',
         phone: '',
+        whatsAppNumber: '',
+        alternativePhone: '',
         nin: '',
         bvn: '',
         gender: '',
         maritalStatus: '',
         dateOfBirth: '',
         address: '',
+        education: '',
+        courseOfStudy: '',
+        enrollmentCode: '',
+        cluster: '',
+        jobHistory: '',
+        motivation: '',
         bankName: '',
         accountNumber: '',
         accountName: '',
@@ -100,12 +108,20 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                     middleName: agentProfile.middleName || '',
                     email: data.email || '',
                     phone: data.phoneNumber || '',
+                    whatsAppNumber: agentProfile.whatsAppNumber || '',
+                    alternativePhone: agentProfile.alternativePhone || '',
                     nin: agentProfile.nin || '',
                     bvn: agentProfile.bvn || '',
                     gender: agentProfile.gender || '',
                     maritalStatus: agentProfile.maritalStatus || '',
                     dateOfBirth: agentProfile.dateOfBirth ? new Date(agentProfile.dateOfBirth).toISOString().split('T')[0] : '',
                     address: agentProfile.address || '',
+                    education: agentProfile.employmentStatus || '',
+                    courseOfStudy: agentProfile.employmentType || '',
+                    enrollmentCode: '',
+                    cluster: '',
+                    jobHistory: '',
+                    motivation: '',
                     bankName: agentProfile.bankName || '',
                     accountNumber: agentProfile.accountNumber || '',
                     accountName: agentProfile.accountName || '',
@@ -120,6 +136,29 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                     isActive: data.isActive,
                     photoUrl: agentProfile.photoUrl || ''
                 });
+
+                // Parse address blob back into individual fields
+                const rawAddress: string = agentProfile.address || '';
+                if (rawAddress) {
+                    const extractLine = (label: string) => {
+                        const m = rawAddress.match(new RegExp(`${label}:\\s*([^\\n]+)`, 'i'));
+                        return m ? m[1].trim() : '';
+                    };
+                    const extractMulti = (label: string) => {
+                        const sentinel = ['Enrollment Code', 'Cluster', 'Course of Study', 'Job History', 'Cover Note'].join('|');
+                        const m = rawAddress.match(new RegExp(`${label}:\\n?([\\s\\S]*?)(?=\\n\\n(?:${sentinel}):)`, 'i'));
+                        if (m) return m[1].trim();
+                        const m2 = rawAddress.match(new RegExp(`${label}:\\n?([\\s\\S]*)$`, 'i'));
+                        return m2 ? m2[1].trim() : '';
+                    };
+                    setFormData(prev => ({
+                        ...prev,
+                        enrollmentCode: extractLine('Enrollment Code'),
+                        cluster: extractLine('Cluster'),
+                        jobHistory: extractMulti('Job History'),
+                        motivation: extractMulti('Cover Note'),
+                    }));
+                }
 
                 if (agentProfile.photoUrl) {
                     setPhotoPreview(agentProfile.photoUrl);
@@ -301,6 +340,21 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
             if (formData.maritalStatus) updatePayload.maritalStatus = formData.maritalStatus;
             if (formData.dateOfBirth) updatePayload.dateOfBirth = formData.dateOfBirth;
             if (formData.address?.trim()) updatePayload.address = formData.address.trim();
+            if (formData.whatsAppNumber?.trim()) updatePayload.whatsAppNumber = formData.whatsAppNumber.trim();
+            if (formData.alternativePhone?.trim()) updatePayload.alternativePhone = formData.alternativePhone.trim();
+            if (formData.education?.trim()) updatePayload.employmentStatus = formData.education.trim();
+            if (formData.courseOfStudy?.trim()) updatePayload.employmentType = formData.courseOfStudy.trim();
+            // Rebuild address blob from structured fields
+            const blobParts: string[] = [];
+            if (formData.enrollmentCode?.trim()) blobParts.push(`Enrollment Code: ${formData.enrollmentCode.trim()}`);
+            if (formData.cluster?.trim()) blobParts.push(`Cluster: ${formData.cluster.trim()}`);
+            if (formData.jobHistory?.trim()) blobParts.push(`Job History:\n${formData.jobHistory.trim()}`);
+            if (formData.motivation?.trim()) blobParts.push(`Cover Note:\n${formData.motivation.trim()}`);
+            if (blobParts.length > 0) {
+                updatePayload.address = blobParts.join('\n\n');
+            } else if (formData.address?.trim()) {
+                updatePayload.address = formData.address.trim();
+            }
             if (formData.bankName?.trim()) updatePayload.bankName = formData.bankName.trim();
             if (formData.accountNumber?.trim()) updatePayload.accountNumber = formData.accountNumber.trim();
             if (formData.accountName?.trim()) updatePayload.accountName = formData.accountName.trim();
@@ -457,6 +511,14 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                                         <Label>Phone</Label>
                                         <Input required value={formData.phone} onChange={(e) => handleChange('phone', e.target.value)} />
                                     </div>
+                                    <div className="space-y-2">
+                                        <Label>WhatsApp Number</Label>
+                                        <Input value={formData.whatsAppNumber} onChange={(e) => handleChange('whatsAppNumber', e.target.value)} placeholder="+234..." />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Alternative Phone</Label>
+                                        <Input value={formData.alternativePhone} onChange={(e) => handleChange('alternativePhone', e.target.value)} placeholder="+234..." />
+                                    </div>
 
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
@@ -576,6 +638,56 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                                     </div>
                                 </CardContent>
                             </Card>
+
+                            {/* Education & Background */}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Education &amp; Background</CardTitle>
+                                    <CardDescription>Academic background, work history and application details.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Education Level</Label>
+                                            <Select value={formData.education} onValueChange={(val) => handleChange('education', val)}>
+                                                <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="FSLC">FSLC</SelectItem>
+                                                    <SelectItem value="SSCE/WAEC">SSCE / WAEC</SelectItem>
+                                                    <SelectItem value="OND">OND</SelectItem>
+                                                    <SelectItem value="HND">HND</SelectItem>
+                                                    <SelectItem value="BSc/BA">BSc / BA</SelectItem>
+                                                    <SelectItem value="MSc/MA">MSc / MA</SelectItem>
+                                                    <SelectItem value="PhD">PhD</SelectItem>
+                                                    <SelectItem value="Other">Other</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Course of Study</Label>
+                                            <Input value={formData.courseOfStudy} onChange={(e) => handleChange('courseOfStudy', e.target.value)} placeholder="e.g. Agriculture" />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label>Enrollment Code</Label>
+                                            <Input value={formData.enrollmentCode} onChange={(e) => handleChange('enrollmentCode', e.target.value.toUpperCase())} placeholder="e.g. CCSA-001" className="font-mono" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Cluster</Label>
+                                            <Input value={formData.cluster} onChange={(e) => handleChange('cluster', e.target.value)} placeholder="e.g. Kano North" />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Work / Job History</Label>
+                                        <Textarea rows={4} value={formData.jobHistory} onChange={(e) => handleChange('jobHistory', e.target.value)} placeholder={"List previous work experience, e.g.:\nNGO Field Officer, ActionAid, 2021–2023"} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Motivation / Cover Note</Label>
+                                        <Textarea rows={3} value={formData.motivation} onChange={(e) => handleChange('motivation', e.target.value)} placeholder="Why do you want to be a field agent?" />
+                                    </div>
+                                </CardContent>
+                            </Card>
                         </div>
 
                         {/* Column 3: Location & Assignment */}
@@ -658,7 +770,7 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
 
                     <div className="flex justify-end gap-4 bg-white dark:bg-gray-800 p-4 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm sticky bottom-4 z-10">
                         <Button variant="outline" type="button" onClick={() => router.back()}>Cancel</Button>
-                        <Button type="submit" className="bg-blue-600 hover:bg-blue-700 min-w-[150px]" disabled={saving}>
+                        <Button type="submit" className="bg-blue-600 hover:bg-blue-700 min-w-37.5" disabled={saving}>
                             {saving ? 'Saving...' : 'Save Changes'}
                         </Button>
                     </div>

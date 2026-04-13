@@ -79,6 +79,10 @@ export default function AgentApplicationPage() {
         accountNumber: '',
         photoUrl:      '',
         message:       '',
+        maritalStatus: '',
+        dateOfBirth:   '',
+        city:          '',
+        whatsAppNumber: '',
     });
 
     // ── Confirmation fields (UI-only, never sent) ──────────────────────────────────────────
@@ -353,6 +357,15 @@ export default function AgentApplicationPage() {
                             </div>
                         </div>
 
+                        {/* WhatsApp */}
+                        <div className="space-y-2">
+                            <Label htmlFor="whatsAppNumber">WhatsApp Number</Label>
+                            <Input id="whatsAppNumber" type="tel" placeholder="e.g. 08012345678 (if same as phone, leave blank)"
+                                value={formData.whatsAppNumber}
+                                onChange={(e) => handleChange('whatsAppNumber', e.target.value)} />
+                            <p className="text-[10px] text-muted-foreground">Optional — used for updates and communication.</p>
+                        </div>
+
                         {/* NIN + confirm */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
@@ -380,14 +393,36 @@ export default function AgentApplicationPage() {
                             </div>
                         </div>
 
-                        {/* Gender */}
+                        {/* Gender + Date of Birth */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="gender">Gender *</Label>
+                                <Select required onValueChange={(val) => handleChange('gender', val)}>
+                                    <SelectTrigger id="gender"><SelectValue placeholder="Select gender" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Male">Male</SelectItem>
+                                        <SelectItem value="Female">Female</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                                <Input id="dateOfBirth" type="date"
+                                    value={formData.dateOfBirth}
+                                    onChange={(e) => handleChange('dateOfBirth', e.target.value)} />
+                            </div>
+                        </div>
+
+                        {/* Marital Status */}
                         <div className="space-y-2">
-                            <Label htmlFor="gender">Gender *</Label>
-                            <Select required onValueChange={(val) => handleChange('gender', val)}>
-                                <SelectTrigger id="gender"><SelectValue placeholder="Select gender" /></SelectTrigger>
+                            <Label htmlFor="maritalStatus">Marital Status</Label>
+                            <Select onValueChange={(val) => handleChange('maritalStatus', val)}>
+                                <SelectTrigger id="maritalStatus"><SelectValue placeholder="Select marital status" /></SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Male">Male</SelectItem>
-                                    <SelectItem value="Female">Female</SelectItem>
+                                    <SelectItem value="Single">Single</SelectItem>
+                                    <SelectItem value="Married">Married</SelectItem>
+                                    <SelectItem value="Divorced">Divorced</SelectItem>
+                                    <SelectItem value="Widowed">Widowed</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -573,6 +608,14 @@ export default function AgentApplicationPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
+                        </div>
+
+                        {/* City */}
+                        <div className="space-y-2">
+                            <Label htmlFor="city">City / Town</Label>
+                            <Input id="city" placeholder="e.g. Kano, Ibadan, Abuja"
+                                value={formData.city}
+                                onChange={(e) => handleChange('city', e.target.value)} />
                         </div>
 
                         {/* ════════════════════════════════════════════
