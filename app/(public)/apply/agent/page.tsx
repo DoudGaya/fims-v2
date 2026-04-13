@@ -57,14 +57,17 @@ export default function AgentApplicationPage() {
 
     // ── Form data (sent to API) ───────────────────────────────────────────────────────────
     const [formData, setFormData] = useState({
+        enrollmentCode: '',
         firstName:     '',
         lastName:      '',
         email:         '',
         phone:         '',
         nin:           '',
+        bvn:           '',
         gender:        '',
         education:     '',
         courseOfStudy: '',
+        cluster:       '',
         jobHistory:    '',
         state:         '',
         lga:           '',
@@ -82,6 +85,7 @@ export default function AgentApplicationPage() {
     const [confirmEmail,         setConfirmEmail]         = useState('');
     const [confirmPhone,         setConfirmPhone]         = useState('');
     const [confirmNin,           setConfirmNin]           = useState('');
+    const [confirmBvn,           setConfirmBvn]           = useState('');
     const [confirmAccountNumber, setConfirmAccountNumber] = useState('');
     const [courseOfStudyOther, setCourseOfStudyOther]     = useState('');
 
@@ -177,6 +181,8 @@ export default function AgentApplicationPage() {
         if (formData.accountNumber && formData.accountNumber !== confirmAccountNumber) {
             setErrorMsg('Account numbers do not match.'); return;
         }
+        if (formData.bvn && !/^\d{11}$/.test(formData.bvn)) { setErrorMsg('BVN must be exactly 11 digits.'); return; }
+        if (formData.bvn && formData.bvn !== confirmBvn)      { setErrorMsg('BVN entries do not match.'); return; }
         if (!formData.photoUrl) { setErrorMsg('Please upload a passport photograph before submitting.'); return; }
 
         setLoading(true);
@@ -266,6 +272,18 @@ export default function AgentApplicationPage() {
                                 </div>
                             </div>
                         )}
+
+                        {/* ════════════════════════════════════════════
+                            0. ENROLLMENT CODE
+                        ════════════════════════════════════════════ */}
+                        <div className="space-y-2">
+                            <Label htmlFor="enrollmentCode">Enrollment Code *</Label>
+                            <Input id="enrollmentCode" required
+                                placeholder="Enter your enrollment / referral code"
+                                value={formData.enrollmentCode}
+                                onChange={(e) => handleChange('enrollmentCode', e.target.value.toUpperCase())} />
+                            <p className="text-[10px] text-muted-foreground">This code is provided by the institution or coordinator that referred you.</p>
+                        </div>
 
                         {/* ════════════════════════════════════════════
                             1. PERSONAL DETAILS
@@ -476,6 +494,27 @@ export default function AgentApplicationPage() {
                         </div>
 
                         <div className="space-y-2">
+                            <Label htmlFor="cluster">Cluster / Institution</Label>
+                            <Select onValueChange={(val) => handleChange('cluster', val)} value={formData.cluster}>
+                                <SelectTrigger id="cluster"><SelectValue placeholder="Select your cluster" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Audu Bako College of Agriculture, Danbatta, Kano State">
+                                        Audu Bako College of Agriculture, Danbatta, Kano State
+                                    </SelectItem>
+                                    <SelectItem value="Oyo State College of Agriculture and Technology (OYSCATECH)">
+                                        Oyo State College of Agriculture and Technology (OYSCATECH)
+                                    </SelectItem>
+                                    <SelectItem value="Adamawa State College of Education, Hong">
+                                        Adamawa State College of Education, Hong
+                                    </SelectItem>
+                                    <SelectItem value="College of Agriculture, Science and Technology, Lafia">
+                                        College of Agriculture, Science and Technology, Lafia
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
                             <Label htmlFor="jobHistory">Work Experience</Label>
                             <Textarea id="jobHistory" className="h-28"
                                 placeholder={"List your previous work experience. e.g.:\nNGO Field Officer, ActionAid Nigeria, 2021–2023\nFarm Supervisor, Kebbi State ADP, 2019–2021"}
@@ -566,6 +605,33 @@ export default function AgentApplicationPage() {
                                     </SelectGroup>
                                 </SelectContent>
                             </Select>
+                        </div>
+
+                        {/* BVN + confirm */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="bvn">BVN (Bank Verification Number)</Label>
+                                <Input id="bvn" maxLength={11}
+                                    placeholder="11-digit BVN"
+                                    value={formData.bvn}
+                                    onChange={(e) => handleChange('bvn', e.target.value.replace(/\D/g, ''))} />
+                                <p className="text-[10px] text-muted-foreground">Optional — will be verified during onboarding.</p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="confirmBvn">Confirm BVN</Label>
+                                <Input id="confirmBvn" maxLength={11}
+                                    placeholder="Re-enter BVN"
+                                    value={confirmBvn}
+                                    onChange={(e) => setConfirmBvn(e.target.value.replace(/\D/g, ''))}
+                                    className={confirmBvn
+                                        ? formData.bvn !== confirmBvn
+                                            ? 'border-red-400 focus-visible:ring-red-400'
+                                            : 'border-green-400 focus-visible:ring-green-400'
+                                        : ''} />
+                                {confirmBvn && formData.bvn !== confirmBvn && (
+                                    <p className="text-xs text-red-500">BVN entries don&apos;t match</p>
+                                )}
+                            </div>
                         </div>
 
                         <div className="space-y-2">
