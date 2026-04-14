@@ -23,6 +23,12 @@ function escapeCsv(value: any): string {
     return stringValue;
 }
 
+function extractFromBlob(address: string | null | undefined, label: string): string {
+    if (!address) return '';
+    const m = address.match(new RegExp(`${label}:\\s*([^\\n]+)`, 'i'));
+    return m?.[1]?.trim() ?? '';
+}
+
 export async function GET(req: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
@@ -42,6 +48,7 @@ export async function GET(req: NextRequest) {
         const status = searchParams.get('status') || '';
         const state = searchParams.get('state') || '';
         const lga = searchParams.get('lga') || '';
+        const cluster = searchParams.get('cluster') || '';
         const startDate = searchParams.get('startDate');
         const endDate = searchParams.get('endDate');
 
@@ -76,6 +83,10 @@ export async function GET(req: NextRequest) {
         
         if (lga) {
             agentWhere.assignedLGA = { contains: lga, mode: 'insensitive' };
+        }
+
+        if (cluster) {
+            agentWhere.address = { contains: cluster, mode: 'insensitive' };
         }
 
         if (Object.keys(agentWhere).length > 0) {
@@ -139,7 +150,12 @@ export async function GET(req: NextRequest) {
                         gender: true,
                         dateOfBirth: true,
                         employmentStatus: true,
-                        maritalStatus: true
+                        maritalStatus: true,
+                        whatsAppNumber: true,
+                        phone: true,
+                        city: true,
+                        pollingUnit: true,
+                        employmentType: true,
                     }
                 }
             }
@@ -172,7 +188,14 @@ export async function GET(req: NextRequest) {
             'Gender',
             'Date of Birth',
             'Employment Status',
-            'Marital Status'
+            'Marital Status',
+            'WhatsApp Number',
+            'Agent Direct Phone',
+            'City',
+            'Polling Unit',
+            'Course of Study',
+            'Enrollment Code',
+            'Cluster',
         ];
 
         const csvRows = [headers.join(',')];
@@ -204,7 +227,14 @@ export async function GET(req: NextRequest) {
                 agent.agent?.gender,
                 agent.agent?.dateOfBirth ? new Date(agent.agent.dateOfBirth).toISOString().split('T')[0] : '',
                 agent.agent?.employmentStatus,
-                agent.agent?.maritalStatus
+                agent.agent?.maritalStatus,
+                agent.agent?.whatsAppNumber,
+                agent.agent?.phone,
+                agent.agent?.city,
+                agent.agent?.pollingUnit,
+                agent.agent?.employmentType,
+                extractFromBlob(agent.agent?.address, 'Enrollment Code'),
+                extractFromBlob(agent.agent?.address, 'Cluster'),
             ].map(escapeCsv);
 
             csvRows.push(row.join(','));

@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status') || '';
     const state = searchParams.get('state') || '';
     const lga = searchParams.get('lga') || '';
+    const cluster = searchParams.get('cluster') || '';
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
@@ -93,6 +94,10 @@ export async function GET(req: NextRequest) {
       agentWhere.assignedLGA = { contains: lga, mode: 'insensitive' };
     }
 
+    if (cluster) {
+      agentWhere.address = { contains: cluster, mode: 'insensitive' };
+    }
+
     // Assign collected agent filters to the main where clause
     if (Object.keys(agentWhere).length > 0) {
       where.agent = agentWhere;
@@ -119,7 +124,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Execute query — cache keyed by all filter/pagination params
-    const key = cacheKey('agents', { page, limit, search, status, state, lga, startDate, endDate, roleType });
+    const key = cacheKey('agents', { page, limit, search, status, state, lga, cluster, startDate, endDate, roleType });
     const result = await getCached(key, 300, async () => {
     const [agents, total] = await Promise.all([
       prisma.user.findMany({
@@ -154,6 +159,7 @@ export async function GET(req: NextRequest) {
               status: true,
               nin: true,
               gender: true,
+              employmentStatus: true,
               totalFarmersRegistered: true,  // correction agents track corrections here
               performanceRating: true,
             }

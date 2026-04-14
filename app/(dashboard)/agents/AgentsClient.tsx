@@ -96,6 +96,7 @@ interface Agent {
     status: string;
     nin?: string;
     gender?: string;
+    employmentStatus?: string;
     totalFarmersRegistered?: number;
     performanceRating?: number | null;
   } | null;
@@ -148,6 +149,7 @@ export default function AgentsClient() {
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
   const [filterState, setFilterState] = useState('');
   const [filterLGA, setFilterLGA] = useState('');
+  const [filterCluster, setFilterCluster] = useState('all');
   const [locations, setLocations] = useState<{ states: string[], lgas: Record<string, string[]> }>({ states: [], lgas: {} });
 
   // Fetch Locations
@@ -206,6 +208,7 @@ export default function AgentsClient() {
       if (filterType && filterType !== 'all') params.append('roleType', filterType);
       if (filterState && filterState !== 'all') params.append('state', filterState);
       if (filterLGA) params.append('lga', filterLGA);
+      if (filterCluster && filterCluster !== 'all') params.append('cluster', filterCluster);
 
       if (dateRange.from) params.append('startDate', dateRange.from.toISOString());
       if (dateRange.to) params.append('endDate', dateRange.to.toISOString());
@@ -227,7 +230,7 @@ export default function AgentsClient() {
     } finally {
       setLoading(false);
     }
-  }, [status, pagination.page, pagination.limit, search, filterStatus, filterType, filterState, filterLGA, dateRange]);
+  }, [status, pagination.page, pagination.limit, search, filterStatus, filterType, filterState, filterLGA, filterCluster, dateRange]);
 
   // Initial Load
   useEffect(() => {
@@ -247,6 +250,7 @@ export default function AgentsClient() {
     setFilterType('all');
     setFilterState('all');
     setFilterLGA('');
+    setFilterCluster('all');
     setDateRange({ from: undefined, to: undefined });
     setPagination(prev => ({ ...prev, page: 1 }));
   };
@@ -286,6 +290,7 @@ export default function AgentsClient() {
       if (filterType && filterType !== 'all') params.append('roleType', filterType);
       if (filterState && filterState !== 'all') params.append('state', filterState);
       if (filterLGA) params.append('lga', filterLGA);
+      if (filterCluster && filterCluster !== 'all') params.append('cluster', filterCluster);
       if (dateRange.from) params.append('startDate', dateRange.from.toISOString());
       if (dateRange.to) params.append('endDate', dateRange.to.toISOString());
 
@@ -694,6 +699,22 @@ export default function AgentsClient() {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="w-full md:w-60">
+              <Select value={filterCluster} onValueChange={setFilterCluster}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Cluster" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Clusters</SelectItem>
+                  <SelectItem value="Audu Bako">Audu Bako College, Kano</SelectItem>
+                  <SelectItem value="OYSCATECH">OYSCATECH, Oyo</SelectItem>
+                  <SelectItem value="Adamawa State College">Adamawa State College</SelectItem>
+                  <SelectItem value="College of Agriculture, Science">CAST, Lafia</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <Button type="submit" className="bg-ccsa-blue hover:bg-blue-800">
               Filter
             </Button>
@@ -752,6 +773,11 @@ export default function AgentsClient() {
                         <div className="text-xs text-gray-400 font-mono mt-0.5">
                           {agent.phoneNumber && !agent.phoneNumber.startsWith('temp_') ? agent.phoneNumber : <span className="italic opacity-50">No Phone</span>}
                         </div>
+                        {agent.agent?.employmentStatus && (
+                          <span className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 text-[10px] text-gray-600 dark:text-gray-300 mt-0.5">
+                            {agent.agent.employmentStatus}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </TableCell>
@@ -832,28 +858,6 @@ export default function AgentsClient() {
                           <PencilIcon className="mr-2 h-4 w-4" />
                           View/Edit Details
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuLabel>Change Status</DropdownMenuLabel>
-                        {hasPermission(PERMISSIONS.AGENTS_UPDATE) && (
-                          <>
-                            <DropdownMenuItem onClick={() => handleStatusChange(agent.id, 'CallForInterview')}>
-                              <PhoneIcon className="mr-2 h-4 w-4" />
-                              Call For Interview
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusChange(agent.id, 'Accepted')}>
-                              <CheckCircleIcon className="mr-2 h-4 w-4 text-green-600" />
-                              Accept Application
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusChange(agent.id, 'Rejected')}>
-                              <XCircleIcon className="mr-2 h-4 w-4 text-red-600" />
-                              Reject Application
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusChange(agent.id, 'Enrolled')}>
-                              <UserIcon className="mr-2 h-4 w-4 text-blue-600" />
-                              Enroll / Activate
-                            </DropdownMenuItem>
-                          </>
-                        )}
                         {hasPermission(PERMISSIONS.AGENTS_DELETE) && (
                           <>
                             <DropdownMenuSeparator />

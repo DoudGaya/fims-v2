@@ -4,6 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePermissions } from '@/components/PermissionProvider';
 import { PERMISSIONS } from '@/lib/permissions';
+import { Button } from '@/components/ui/button';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import {
   ArrowLeftIcon,
   PencilIcon,
@@ -124,6 +128,9 @@ export default function AgentDetailsClient({ id }: { id: string }) {
   const [agent, setAgent] = useState<AgentDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [statusUpdating, setStatusUpdating] = useState(false);
+  const [newStatus, setNewStatus] = useState('');
+  const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     fetchAgentDetails();
@@ -143,6 +150,30 @@ export default function AgentDetailsClient({ id }: { id: string }) {
     }
   };
 
+  const handleStatusUpdate = async () => {
+    if (!newStatus) return;
+    setStatusUpdating(true);
+    setStatusMsg(null);
+    try {
+      const res = await fetch(`/api/agents/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to update status');
+      }
+      setStatusMsg({ type: 'success', text: `Status updated to "${newStatus}"` });
+      setNewStatus('');
+      await fetchAgentDetails();
+    } catch (err: any) {
+      setStatusMsg({ type: 'error', text: err.message || 'Failed to update status' });
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
   if (loading) return <div className="p-6 text-center text-gray-500 dark:text-gray-400">Loading agent details…</div>;
   if (error) return <div className="p-6 text-center text-red-500">{error}</div>;
   if (!agent) return <div className="p-6 text-center text-gray-500 dark:text-gray-400">Agent not found</div>;
@@ -153,44 +184,85 @@ export default function AgentDetailsClient({ id }: { id: string }) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/agents"
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400"
-          >
-            <ArrowLeftIcon className="h-5 w-5" />
-          </Link>
-          <div className="flex items-center gap-4">
-            {/* Avatar */}
+      {/* Breadcrumb Nav */}
+      <div className="flex items-center gap-2 text-sm">
+        <Link href="/agents" className="p-2 -ml-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400">
+          <ArrowLeftIcon className="h-5 w-5" />
+        </Link>
+        <Link href="/agents" className="text-gray-500 dark:text-gray-400 hover:underline">Agents</Link>
+        <span className="text-gray-300 dark:text-gray-600">/</span>
+        <span className="font-medium text-gray-900 dark:text-gray-100 truncate max-w-xs">{agent.displayName}</span>
+      </div>
+
+      {/* Profile Banner */}
+      <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+        <div className="px-6 py-6 flex flex-col sm:flex-row gap-6 items-start">
+          {/* Passport Photo — single instance */}
+          <div className="shrink-0">
             {photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={photoUrl}
                 alt={agent.displayName}
-                className="h-14 w-14 rounded-full object-cover ring-2 ring-white dark:ring-gray-800 shadow"
+                className="h-28 w-28 rounded-xl object-cover ring-2 ring-gray-200 dark:ring-gray-700 shadow"
               />
             ) : (
-              <div className="h-14 w-14 rounded-full bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center text-indigo-600 dark:text-indigo-300 font-bold text-xl shadow ring-2 ring-white dark:ring-gray-800 select-none">
-                {initials}
+              <div className="h-28 w-28 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 flex flex-col items-center justify-center text-indigo-600 dark:text-indigo-300 shadow ring-2 ring-gray-200 dark:ring-gray-700 select-none">
+                <span className="text-4xl font-bold">{initials}</span>
+                <span className="mt-1 text-[10px] text-indigo-400 dark:text-indigo-500">No photo</span>
               </div>
             )}
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{agent.displayName}</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Agent Profile</p>
-            </div>
           </div>
-        </div>
-        <div className="flex gap-3">
+
+          {/* Identity & quick stats */}
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-start gap-3">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{agent.displayName}</h1>
+              <div className="flex gap-2 flex-wrap pt-0.5">
+                <AgentTypeBadge role={agent.role} />
+                <ApplicationStatusBadge status={agent.agent?.status} isActive={agent.isActive} />
+              </div>
+            </div>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-x-8 gap-y-3">
+              <div className="text-sm">
+                <p className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-0.5">Email</p>
+                <p className="text-gray-800 dark:text-gray-200 truncate">{agent.email}</p>
+              </div>
+              <div className="text-sm">
+                <p className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-0.5">Phone</p>
+                <p className="text-gray-800 dark:text-gray-200">{agent.agent?.phone || agent.phoneNumber || '—'}</p>
+              </div>
+              <div className="text-sm">
+                <p className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-0.5">Location</p>
+                <p className="text-gray-800 dark:text-gray-200">
+                  {agent.agent?.state || '—'}{agent.agent?.localGovernment ? `, ${agent.agent.localGovernment}` : ''}
+                </p>
+              </div>
+              <div className="text-sm">
+                <p className="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 mb-0.5">Joined</p>
+                <p className="text-gray-800 dark:text-gray-200">{new Date(agent.createdAt).toLocaleDateString()}</p>
+              </div>
+            </div>
+            {agent._count.farmers > 0 && (
+              <div className="mt-3">
+                <Link href={`/farmers?agentId=${agent.id}`} className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
+                  {agent._count.farmers} farmer{agent._count.farmers !== 1 ? 's' : ''} registered &rarr;
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Edit action */}
           {hasPermission(PERMISSIONS.AGENTS_UPDATE) && (
-            <Link
-              href={`/agents/${id}/edit`}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-            >
-              <PencilIcon className="-ml-1 mr-2 h-5 w-5 text-gray-500 dark:text-gray-400" />
-              Edit
-            </Link>
+            <div className="shrink-0 self-start">
+              <Link
+                href={`/agents/${id}/edit`}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+              >
+                <PencilIcon className="-ml-1 mr-2 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                Edit Profile
+              </Link>
+            </div>
           )}
         </div>
       </div>
@@ -340,27 +412,44 @@ export default function AgentDetailsClient({ id }: { id: string }) {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Passport Photo */}
-          <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
-            <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-base font-medium text-gray-900 dark:text-gray-100">Passport Photo</h3>
-            </div>
-            <div className="px-4 py-5 flex justify-center">
-              {photoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={photoUrl}
-                  alt={agent.displayName}
-                  className="h-40 w-40 rounded-lg object-cover ring-2 ring-gray-200 dark:ring-gray-700 shadow"
-                />
-              ) : (
-                <div className="h-40 w-40 rounded-lg bg-indigo-100 dark:bg-indigo-900/40 flex flex-col items-center justify-center text-indigo-600 dark:text-indigo-300 shadow ring-2 ring-gray-200 dark:ring-gray-700 select-none">
-                  <span className="text-5xl font-bold">{initials}</span>
-                  <span className="mt-2 text-xs text-indigo-400 dark:text-indigo-500">No photo</span>
+          {/* Application Status update */}
+          {hasPermission(PERMISSIONS.AGENTS_UPDATE) && (
+            <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+              <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-base font-medium text-gray-900 dark:text-gray-100">Application Status</h3>
+              </div>
+              <div className="px-4 py-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500 dark:text-gray-400">Current</span>
+                  <ApplicationStatusBadge status={agent.agent?.status} isActive={agent.isActive} />
                 </div>
-              )}
+                <Select value={newStatus} onValueChange={setNewStatus}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Change status to…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Applied">Applied</SelectItem>
+                    <SelectItem value="CallForInterview">Call For Interview</SelectItem>
+                    <SelectItem value="Accepted">Accepted</SelectItem>
+                    <SelectItem value="Enrolled">Enrolled / Active</SelectItem>
+                    <SelectItem value="Rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  className="w-full"
+                  onClick={handleStatusUpdate}
+                  disabled={!newStatus || statusUpdating}
+                >
+                  {statusUpdating ? 'Updating…' : 'Update Status'}
+                </Button>
+                {statusMsg && (
+                  <p className={`text-xs ${statusMsg.type === 'success' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {statusMsg.text}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Performance */}
           <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
