@@ -178,15 +178,21 @@ export default function AgentApplicationPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setErrorMsg('');
+        if (!/^CCSA[A-Z0-9]{4}$/i.test(formData.enrollmentCode)) {
+            setErrorMsg('Enrollment code must be in the format CCSA followed by exactly 4 alphanumeric characters (e.g. CCSA1A2B).');
+            return;
+        }
         if (formData.email !== confirmEmail) { setErrorMsg('Email addresses do not match.'); return; }
         if (formData.phone !== confirmPhone) { setErrorMsg('Phone numbers do not match.'); return; }
+        if (!formData.dateOfBirth)           { setErrorMsg('Date of Birth is required.'); return; }
+        if (!formData.maritalStatus)         { setErrorMsg('Marital Status is required.'); return; }
         if (!/^\d{11}$/.test(formData.nin))  { setErrorMsg('NIN must be exactly 11 digits.'); return; }
         if (formData.nin !== confirmNin)      { setErrorMsg('NIN entries do not match.'); return; }
+        if (!/^\d{11}$/.test(formData.bvn))  { setErrorMsg('BVN must be exactly 11 digits.'); return; }
+        if (formData.bvn !== confirmBvn)      { setErrorMsg('BVN entries do not match.'); return; }
         if (formData.accountNumber && formData.accountNumber !== confirmAccountNumber) {
             setErrorMsg('Account numbers do not match.'); return;
         }
-        if (formData.bvn && !/^\d{11}$/.test(formData.bvn)) { setErrorMsg('BVN must be exactly 11 digits.'); return; }
-        if (formData.bvn && formData.bvn !== confirmBvn)      { setErrorMsg('BVN entries do not match.'); return; }
         if (!formData.photoUrl) { setErrorMsg('Please upload a passport photograph before submitting.'); return; }
 
         setLoading(true);
@@ -283,10 +289,10 @@ export default function AgentApplicationPage() {
                         <div className="space-y-2">
                             <Label htmlFor="enrollmentCode">Enrollment Code *</Label>
                             <Input id="enrollmentCode" required
-                                placeholder="Enter your enrollment / referral code"
+                                placeholder="e.g. CCSA1A2B"
                                 value={formData.enrollmentCode}
                                 onChange={(e) => handleChange('enrollmentCode', e.target.value.toUpperCase())} />
-                            <p className="text-[10px] text-muted-foreground">This code is provided by the institution or coordinator that referred you.</p>
+                            <p className="text-[10px] text-muted-foreground">Format: CCSA followed by 4 alphanumeric characters (e.g. CCSA1A2B). Provided by your institution or coordinator.</p>
                         </div>
 
                         {/* ════════════════════════════════════════════
@@ -406,8 +412,8 @@ export default function AgentApplicationPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="dateOfBirth">Date of Birth</Label>
-                                <Input id="dateOfBirth" type="date"
+                                <Label htmlFor="dateOfBirth">Date of Birth *</Label>
+                                <Input id="dateOfBirth" type="date" required
                                     value={formData.dateOfBirth}
                                     onChange={(e) => handleChange('dateOfBirth', e.target.value)} />
                             </div>
@@ -415,8 +421,8 @@ export default function AgentApplicationPage() {
 
                         {/* Marital Status */}
                         <div className="space-y-2">
-                            <Label htmlFor="maritalStatus">Marital Status</Label>
-                            <Select onValueChange={(val) => handleChange('maritalStatus', val)}>
+                            <Label htmlFor="maritalStatus">Marital Status *</Label>
+                            <Select required onValueChange={(val) => handleChange('maritalStatus', val)}>
                                 <SelectTrigger id="maritalStatus"><SelectValue placeholder="Select marital status" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="Single">Single</SelectItem>
@@ -653,16 +659,16 @@ export default function AgentApplicationPage() {
                         {/* BVN + confirm */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <Label htmlFor="bvn">BVN (Bank Verification Number)</Label>
-                                <Input id="bvn" maxLength={11}
+                                <Label htmlFor="bvn">BVN (Bank Verification Number) *</Label>
+                                <Input id="bvn" required minLength={11} maxLength={11}
                                     placeholder="11-digit BVN"
                                     value={formData.bvn}
                                     onChange={(e) => handleChange('bvn', e.target.value.replace(/\D/g, ''))} />
-                                <p className="text-[10px] text-muted-foreground">Optional — will be verified during onboarding.</p>
+                                <p className="text-[10px] text-muted-foreground">Will be verified during onboarding.</p>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="confirmBvn">Confirm BVN</Label>
-                                <Input id="confirmBvn" maxLength={11}
+                                <Label htmlFor="confirmBvn">Confirm BVN *</Label>
+                                <Input id="confirmBvn" required maxLength={11}
                                     placeholder="Re-enter BVN"
                                     value={confirmBvn}
                                     onChange={(e) => setConfirmBvn(e.target.value.replace(/\D/g, ''))}
