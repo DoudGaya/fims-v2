@@ -179,7 +179,7 @@ export default function AgentApplicationPage() {
         e.preventDefault();
         setErrorMsg('');
         if (!/^CCSA[A-Z0-9]{4}$/i.test(formData.enrollmentCode)) {
-            setErrorMsg('Enrollment code must be in the format CCSA followed by exactly 4 alphanumeric characters (e.g. CCSA1A2B).');
+            setErrorMsg('Invalid Enrollment code. Please input a valid one');
             return;
         }
         if (formData.email !== confirmEmail) { setErrorMsg('Email addresses do not match.'); return; }
