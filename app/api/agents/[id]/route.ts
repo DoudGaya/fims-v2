@@ -86,7 +86,7 @@ export async function PUT(
       include: { agent: true }
     });
 
-    if (!existingAgent || existingAgent.role !== 'agent') {
+    if (!existingAgent || !MOBILE_AGENT_ROLES.includes(existingAgent.role as any)) {
       return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
     }
 

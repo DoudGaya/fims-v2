@@ -296,7 +296,7 @@ export default function AgentApplicationPage() {
                         </div>
 
                         {/* ════════════════════════════════════════════
-                            1. PERSONAL DETAILS
+                            1. PERSONAL DETAILSn
                         ════════════════════════════════════════════ */}
                         <SectionHeader title="Personal Details" />
 

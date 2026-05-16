@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { usePermissions } from '@/components/PermissionProvider';
+import { PERMISSIONS } from '@/lib/permissions';
 import {
   PlusIcon,
   TrashIcon,
@@ -63,6 +65,7 @@ interface SurveySummary {
 export default function SurveysClient() {
   const { status } = useSession();
   const router = useRouter();
+  const { hasPermission } = usePermissions();
 
   const [surveys, setSurveys] = useState<SurveySummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -149,6 +152,16 @@ export default function SurveysClient() {
   const totalPublished = surveys.filter((s) => s.isActive).length;
   const totalDraft = surveys.filter((s) => !s.isActive).length;
   const totalResponses = surveys.reduce((acc, s) => acc + s._count.responses, 0);
+
+  if (status === 'authenticated' && !hasPermission(PERMISSIONS.SURVEYS_READ)) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center gap-3">
+        <ClipboardDocumentListIcon className="h-12 w-12 text-muted-foreground opacity-40" />
+        <p className="text-lg font-semibold">Access Denied</p>
+        <p className="text-sm text-muted-foreground">You do not have permission to view surveys.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

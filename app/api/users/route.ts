@@ -242,3 +242,45 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
   }
 }
+
+// ─── PATCH /api/users — batch activate / deactivate / delete ─────────────────
+export async function PATCH(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const body = await req.json() as { ids?: string[]; action?: string };
+    const { ids, action } = body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ error: 'ids array is required' }, { status: 400 });
+    }
+
+    if (!['activate', 'deactivate', 'delete'].includes(action ?? '')) {
+      return NextResponse.json({ error: 'action must be activate, deactivate, or delete' }, { status: 400 });
+    }
+
+    // Prevent acting on own account
+    const filteredIds = ids.filter((id) => id !== session.user!.id);
+
+    if (action === 'delete') {
+      if (!(await hasPermission(session.user.id, PERMISSIONS.USERS_DELETE))) {
+        return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+      }
+      await prisma.user.deleteMany({ where: { id: { in: filteredIds } } });
+      return NextResponse.json({ success: true, affected: filteredIds.length });
+    }
+
+    if (!(await hasPermission(session.user.id, PERMISSIONS.USERS_UPDATE))) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    const isActive = action === 'activate';
+    await prisma.user.updateMany({ where: { id: { in: filteredIds } }, data: { isActive } });
+    return NextResponse.json({ success: true, affected: filteredIds.length });
+
+  } catch (error) {
+    console.error('Error in batch user action:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

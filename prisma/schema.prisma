@@ -41,6 +41,9 @@ model User {
   farmDeleteRequestsAsRequester     FarmDeleteRequest[]  @relation("DeleteRequestedBy")
   farmDeleteRequestsAsReviewer      FarmDeleteRequest[]  @relation("DeleteReviewedBy")
   surveys                           Survey[]             @relation("SurveysCreated")
+  submittedCorrections              DataCorrection[]     @relation("SubmittedCorrections")
+  reviewedCorrections               DataCorrection[]     @relation("ReviewedCorrections")
+  surveyAssignments                 SurveyAssignment[]   @relation("SurveyAssignments")
 
   @@map("users")
 }
@@ -235,6 +238,7 @@ model Farmer {
   farms            Farm[]
   referees         Referee[]
   surveyResponses  SurveyResponse[]
+  dataCorrections  DataCorrection[]
 
   @@index([agentId, createdAt(sort: Desc)]) // Optimize agent queries with date sorting
   @@index([status, createdAt(sort: Desc)]) // Optimize status filtering
@@ -279,6 +283,7 @@ model Farm {
   farmer              Farmer   @relation(fields: [farmerId], references: [id], onDelete: Cascade)
   analysisResults     FarmAnalysisResult[]
   deleteRequests      FarmDeleteRequest[]
+  dataCorrections     DataCorrection[]
 
   @@map("farms")
 }
@@ -435,6 +440,7 @@ model Cluster {
   createdAt                     DateTime  @default(now())
   updatedAt                     DateTime  @default(now()) @updatedAt
   farmers                       Farmer[]
+  surveyAssignments             SurveyAssignment[]
 
   @@map("clusters")
 }
@@ -572,17 +578,18 @@ model PermissionAuditLog {
 // ─── Survey / Questionnaire ───────────────────────────────────────────────────
 
 model Survey {
-  id              String           @id @default(cuid())
+  id              String             @id @default(cuid())
   title           String
   description     String?
-  isActive        Boolean          @default(false)
+  isActive        Boolean            @default(false)
   publishedAt     DateTime?
   createdByUserId String
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  createdBy       User             @relation("SurveysCreated", fields: [createdByUserId], references: [id])
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  createdBy       User               @relation("SurveysCreated", fields: [createdByUserId], references: [id])
   questions       SurveyQuestion[]
   responses       SurveyResponse[]
+  assignments     SurveyAssignment[]
 
   @@map("surveys")
 }
@@ -645,4 +652,57 @@ model SurveyAnswer {
 
   @@unique([responseId, questionId])
   @@map("survey_answers")
+}
+
+/// Links a survey to specific agents or clusters. If no assignments exist, survey is visible to all.
+model SurveyAssignment {
+  id         String   @id @default(cuid())
+  surveyId   String
+  agentId    String?
+  clusterId  String?
+  assignedAt DateTime @default(now())
+  survey     Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  agent      User?    @relation("SurveyAssignments", fields: [agentId], references: [id], onDelete: Cascade)
+  cluster    Cluster? @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+
+  @@index([surveyId])
+  @@index([agentId])
+  @@index([clusterId])
+  @@map("survey_assignments")
+}
+
+// ─── Data Correction Workflow ─────────────────────────────────────────────────
+
+enum CorrectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// A pending correction submitted by a mobile agent. Admin must approve or reject before data changes.
+model DataCorrection {
+  id             String           @id @default(cuid())
+  farmerId       String
+  farmId         String?          // populated for FARM and REFEREE correction types
+  correctionType String           @default("FARMER") // "FARMER" | "FARM" | "REFEREE"
+  submittedBy    String           // User.id of the mobile data_correction_agent
+  status         CorrectionStatus @default(PENDING)
+  /// JSON map of changed fields: { "firstName": { "from": "Musa", "to": "Musa" }, ... }
+  /// For REFEREE type: { "ops": [{ "type": "add"|"update"|"delete", "refereeId": "...", ...fields }] }
+  changes        Json
+  reviewedBy     String?
+  reviewedAt     DateTime?
+  adminNotes     String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  farmer         Farmer           @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  farm           Farm?            @relation(fields: [farmId], references: [id], onDelete: SetNull)
+  submitter      User             @relation("SubmittedCorrections", fields: [submittedBy], references: [id])
+  reviewer       User?            @relation("ReviewedCorrections", fields: [reviewedBy], references: [id])
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([farmerId])
+  @@index([farmId])
+  @@index([submittedBy])
+  @@map("data_corrections")
 }

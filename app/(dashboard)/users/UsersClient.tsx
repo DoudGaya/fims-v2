@@ -56,6 +56,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   PieChart,
   Pie,
@@ -123,6 +124,10 @@ export default function UsersClient() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [deleting, setDeleting] = useState<string | null>(null);
+
+  // Batch selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchLoading, setBatchLoading] = useState(false);
 
   // Role Form States
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
@@ -203,6 +208,42 @@ export default function UsersClient() {
       alert('Failed to delete user');
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const toggleSelectUser = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAllUsers = () => {
+    if (users.every(u => selectedIds.has(u.id))) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(users.map(u => u.id)));
+    }
+  };
+
+  const handleBatchUserAction = async (action: 'activate' | 'deactivate' | 'delete') => {
+    const label = action === 'delete' ? 'permanently delete' : action;
+    if (!confirm(`${label.charAt(0).toUpperCase() + label.slice(1)} ${selectedIds.size} user(s)?`)) return;
+    setBatchLoading(true);
+    try {
+      const res = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedIds), action }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Batch action failed'); }
+      setSelectedIds(new Set());
+      fetchUsers();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setBatchLoading(false);
     }
   };
 
@@ -387,9 +428,28 @@ export default function UsersClient() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="md:col-span-2">
               <div className="rounded-md border">
+                {/* Batch action bar */}
+                {selectedIds.size > 0 && (
+                  <div className="flex items-center gap-3 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b dark:border-gray-700">
+                    <span className="text-sm font-medium text-blue-800 dark:text-blue-300">{selectedIds.size} selected</span>
+                    <Button size="sm" variant="outline" disabled={batchLoading} onClick={() => handleBatchUserAction('activate')}>Activate</Button>
+                    <Button size="sm" variant="outline" disabled={batchLoading} onClick={() => handleBatchUserAction('deactivate')}>Deactivate</Button>
+                    {hasPermission(PERMISSIONS.USERS_DELETE) && (
+                      <Button size="sm" variant="destructive" disabled={batchLoading} onClick={() => handleBatchUserAction('delete')}>Delete</Button>
+                    )}
+                    <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>Clear</Button>
+                  </div>
+                )}
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={users.length > 0 && users.every(u => selectedIds.has(u.id))}
+                          onCheckedChange={toggleSelectAllUsers}
+                          aria-label="Select all"
+                        />
+                      </TableHead>
                       <TableHead>User</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>Status</TableHead>
@@ -398,12 +458,20 @@ export default function UsersClient() {
                   </TableHeader>
                   <TableBody>
                     {loading ? (
-                      <TableRow><TableCell colSpan={4} className="text-center h-24"><div className="flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div></TableCell></TableRow>
+                      <TableRow><TableCell colSpan={5} className="text-center h-24"><div className="flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" /></div></TableCell></TableRow>
                     ) : users.length === 0 ? (
-                      <TableRow><TableCell colSpan={4} className="text-center h-24">No users found.</TableCell></TableRow>
+                      <TableRow><TableCell colSpan={5} className="text-center h-24">No users found.</TableCell></TableRow>
                     ) : (
                       users.map((user) => (
                         <TableRow key={user.id}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedIds.has(user.id)}
+                              onCheckedChange={() => toggleSelectUser(user.id)}
+                              disabled={user.id === session?.user?.id}
+                              aria-label={`Select ${user.name}`}
+                            />
+                          </TableCell>
                           <TableCell>
                             <div className="flex flex-col">
                               <span className="font-medium">{user.name}</span>

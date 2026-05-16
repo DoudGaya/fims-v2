@@ -71,6 +71,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { Checkbox } from "@/components/ui/checkbox"
 import { format } from "date-fns"
 import { CalendarIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -135,6 +136,10 @@ export default function AgentsClient() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Batch selection
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchLoading, setBatchLoading] = useState(false);
 
   // Filter States
   const [pagination, setPagination] = useState<Pagination>({
@@ -277,6 +282,43 @@ export default function AgentsClient() {
       alert(err.message);
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (agents.every(a => selectedIds.has(a.id))) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(agents.map(a => a.id)));
+    }
+  };
+
+  const handleBatchAction = async (action: 'activate' | 'deactivate' | 'delete') => {
+    const label = action === 'delete' ? 'permanently delete' : action;
+    if (!confirm(`${label.charAt(0).toUpperCase() + label.slice(1)} ${selectedIds.size} agent(s)?`)) return;
+    setBatchLoading(true);
+    try {
+      const res = await fetch('/api/agents', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedIds), action }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Batch action failed'); }
+      setSelectedIds(new Set());
+      fetchAgents();
+      fetchAnalytics();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setBatchLoading(false);
     }
   };
 
@@ -727,9 +769,28 @@ export default function AgentsClient() {
 
       {/* Table */}
       <div className="rounded-md border dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
+        {/* Batch action bar */}
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-3 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b dark:border-gray-700">
+            <span className="text-sm font-medium text-blue-800 dark:text-blue-300">{selectedIds.size} selected</span>
+            <Button size="sm" variant="outline" disabled={batchLoading} onClick={() => handleBatchAction('activate')}>Activate</Button>
+            <Button size="sm" variant="outline" disabled={batchLoading} onClick={() => handleBatchAction('deactivate')}>Deactivate</Button>
+            {hasPermission(PERMISSIONS.AGENTS_DELETE) && (
+              <Button size="sm" variant="destructive" disabled={batchLoading} onClick={() => handleBatchAction('delete')}>Delete</Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}>Clear</Button>
+          </div>
+        )}
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50/50 dark:bg-gray-800/50">
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={agents.length > 0 && agents.every(a => selectedIds.has(a.id))}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Select all"
+                />
+              </TableHead>
               <TableHead>Agent</TableHead>
               <TableHead>NIN</TableHead>
               <TableHead>Gender</TableHead>
@@ -744,7 +805,7 @@ export default function AgentsClient() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center">
+                <TableCell colSpan={10} className="h-24 text-center">
                     <div className="flex justify-center items-center">
                       <ArrowPathIcon className="h-6 w-6 animate-spin text-gray-500" />
                       <span className="ml-2">Loading agents...</span>
@@ -753,13 +814,20 @@ export default function AgentsClient() {
               </TableRow>
             ) : agents.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
                   No agents found.
                 </TableCell>
               </TableRow>
             ) : (
               agents.map((agent) => (
                 <TableRow key={agent.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50">
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedIds.has(agent.id)}
+                      onCheckedChange={() => toggleSelect(agent.id)}
+                      aria-label={`Select ${agent.displayName}`}
+                    />
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="h-9 w-9 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-300 font-bold text-xs">

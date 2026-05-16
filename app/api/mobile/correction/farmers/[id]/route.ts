@@ -106,32 +106,32 @@ export async function PATCH(
     }
   }
 
-  // Build audit diff — record only fields that actually changed
-  const oldValues: Record<string, unknown> = {};
-  const newValues: Record<string, unknown> = {};
+  // Build diff — record only fields that actually changed
+  const changes: Record<string, { from: unknown; to: unknown }> = {};
 
   for (const [key, newVal] of Object.entries(sanitized)) {
     const oldVal = (existing as Record<string, unknown>)[key];
     if (String(oldVal ?? '') !== String(newVal ?? '')) {
-      oldValues[key] = oldVal;
-      newValues[key] = newVal;
+      changes[key] = { from: oldVal ?? null, to: newVal ?? null };
     }
   }
 
-  // Run update + audit log in a single transaction
-  const [updatedFarmer] = await prisma.$transaction([
-    prisma.farmer.update({ where: { id }, data: sanitized }),
-    prisma.auditLog.create({
-      data: {
-        action:    'CORRECTION',
-        tableName: 'farmers',
-        recordId:  id,
-        oldValues: Object.keys(oldValues).length > 0 ? (oldValues as object) : undefined,
-        newValues: Object.keys(newValues).length > 0 ? (newValues as object) : undefined,
-        userId:    user.id,
-      },
-    }),
-  ]);
+  if (Object.keys(changes).length === 0) {
+    return NextResponse.json({ error: 'No fields changed' }, { status: 400 });
+  }
 
-  return NextResponse.json(updatedFarmer);
+  // Create a pending DataCorrection — admin must approve before changes are applied
+  const correction = await prisma.dataCorrection.create({
+    data: {
+      farmerId:       id,
+      correctionType: 'FARMER',
+      submittedBy:    user.id,
+      changes,
+    },
+  });
+
+  return NextResponse.json(
+    { pending: true, correctionId: correction.id, message: 'Correction submitted for admin review' },
+    { status: 202 },
+  );
 }

@@ -143,7 +143,7 @@ export default function SurveyDetailClient({ id }: { id: string }) {
   const [savingQuestion, setSavingQuestion] = useState(false);
 
   // Responses tab
-  const [activeTab, setActiveTab] = useState<'questions' | 'responses'>('questions');
+  const [activeTab, setActiveTab] = useState<'questions' | 'responses' | 'assignments'>('questions');
   const [responses, setResponses] = useState<SurveyResponse[]>([]);
   const [responsesLoading, setResponsesLoading] = useState(false);
   const [responsePage, setResponsePage] = useState(1);
@@ -152,6 +152,14 @@ export default function SurveyDetailClient({ id }: { id: string }) {
     pages: 0,
   });
   const [expandedResponse, setExpandedResponse] = useState<string | null>(null);
+
+  // Assignments tab
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
+  const [agents, setAgents] = useState<any[]>([]);
+  const [assignAgentId, setAssignAgentId] = useState('');
+  const [savingAssignment, setSavingAssignment] = useState(false);
+  const [assignError, setAssignError] = useState<string | null>(null);
 
   // Fetch survey
   const fetchSurvey = useCallback(async () => {
@@ -193,7 +201,55 @@ export default function SurveyDetailClient({ id }: { id: string }) {
 
   useEffect(() => {
     if (activeTab === 'responses') fetchResponses();
+    if (activeTab === 'assignments') { fetchAssignments(); fetchAgents(); }
   }, [activeTab, fetchResponses]);
+
+  // Assignments
+  const fetchAssignments = async () => {
+    setAssignmentsLoading(true);
+    try {
+      const res = await fetch(`/api/surveys/${id}/assignments`);
+      const data = await res.json();
+      setAssignments(data.assignments ?? []);
+    } catch { /* ignore */ } finally { setAssignmentsLoading(false); }
+  };
+
+  const fetchAgents = async () => {
+    try {
+      const res = await fetch('/api/users?role=data_correction_agent&limit=200');
+      const data = await res.json();
+      setAgents(data.users ?? []);
+    } catch { /* ignore */ }
+  };
+
+  const handleAddAssignment = async () => {
+    if (!assignAgentId) { setAssignError('Please select an agent.'); return; }
+    setAssignError(null);
+    setSavingAssignment(true);
+    try {
+      const res = await fetch(`/api/surveys/${id}/assignments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId: assignAgentId }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Failed'); }
+      setAssignAgentId('');
+      await fetchAssignments();
+    } catch (err: any) { setAssignError(err.message); }
+    finally { setSavingAssignment(false); }
+  };
+
+  const handleRemoveAssignment = async (assignmentId: string) => {
+    try {
+      await fetch(`/api/surveys/${id}/assignments`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: assignmentId }),
+      });
+      await fetchAssignments();
+    } catch { /* ignore */ }
+  };
+
 
   // Save metadata
   const handleSaveMeta = async () => {
@@ -483,6 +539,16 @@ export default function SurveyDetailClient({ id }: { id: string }) {
         >
           Responses ({survey._count.responses})
         </button>
+        <button
+          onClick={() => setActiveTab('assignments')}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'assignments'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          Assignments ({assignments.length})
+        </button>
       </div>
 
       {/* Questions Tab */}
@@ -682,6 +748,86 @@ export default function SurveyDetailClient({ id }: { id: string }) {
                 </div>
               )}
             </>
+          )}
+        </div>
+      )}
+
+      {/* Assignments Tab */}
+      {activeTab === 'assignments' && (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Assign Agents</CardTitle>
+              <CardDescription>
+                If assignments are set, only assigned agents will see this survey. Leave empty to show to all agents.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex gap-2">
+                <Select value={assignAgentId} onValueChange={setAssignAgentId}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select an agent…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {agents.map((a) => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.name ?? a.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button onClick={handleAddAssignment} disabled={savingAssignment || !assignAgentId}>
+                  {savingAssignment ? 'Assigning…' : 'Assign'}
+                </Button>
+              </div>
+              {assignError && <p className="text-sm text-destructive">{assignError}</p>}
+            </CardContent>
+          </Card>
+
+          {assignmentsLoading ? (
+            <div className="p-8 text-center text-muted-foreground">Loading assignments…</div>
+          ) : assignments.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center text-muted-foreground">
+                No assignments — survey is visible to all agents.
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Agent</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Assigned At</TableHead>
+                      <TableHead className="w-20" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {assignments.map((a) => (
+                      <TableRow key={a.id}>
+                        <TableCell className="font-medium">{a.agent?.name ?? '—'}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{a.agent?.email ?? '—'}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {format(new Date(a.assignedAt), 'MMM d, yyyy')}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleRemoveAssignment(a.id)}
+                          >
+                            Remove
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           )}
         </div>
       )}

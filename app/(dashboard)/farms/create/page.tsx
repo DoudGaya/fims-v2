@@ -4,6 +4,18 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface Farmer {
   id: string;
@@ -19,24 +31,30 @@ function CreateFarmForm() {
 
   const [loading, setLoading] = useState(false);
   const [farmers, setFarmers] = useState<Farmer[]>([]);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     farmerId: preselectedFarmerId || '',
     farmSize: '',
     primaryCrop: '',
     secondaryCrop: '',
+    farmOwnership: '',
     farmState: '',
     farmLocalGovernment: '',
-    farmCity: '',
-    farmCoordinates: '', // JSON string or simple format
-    farmPolygon: '' // JSON string
+    farmWard: '',
+    farmPollingUnit: '',
+    farmingSeason: '',
+    farmingExperience: '',
+    farmLatitude: '',
+    farmLongitude: '',
+    soilType: '',
+    soilFertility: '',
+    farmPolygon: '',
   });
-  const [error, setError] = useState('');
 
   useEffect(() => {
-    // Fetch farmers for the dropdown
     const fetchFarmers = async () => {
       try {
-        const res = await fetch('/api/farmers?limit=100'); // Fetch first 100 for now
+        const res = await fetch('/api/farmers?limit=200');
         if (res.ok) {
           const data = await res.json();
           setFarmers(data.farmers);
@@ -48,10 +66,11 @@ function CreateFarmForm() {
     fetchFarmers();
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+  const set = (name: string, value: string) =>
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    set(e.target.name, e.target.value);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,24 +78,40 @@ function CreateFarmForm() {
     setError('');
 
     try {
-      // Basic validation
-      if (!formData.farmerId) {
-        throw new Error('Please select a farmer');
+      if (!formData.farmerId) throw new Error('Please select a farmer');
+
+      let farmPolygon: any[] | undefined;
+      if (formData.farmPolygon.trim()) {
+        try {
+          farmPolygon = JSON.parse(formData.farmPolygon);
+        } catch {
+          throw new Error('GPS Boundary must be valid JSON. Leave empty or fix the JSON array.');
+        }
       }
 
-      // Prepare payload
-      const payload = {
-        ...formData,
-        farmSize: formData.farmSize ? parseFloat(formData.farmSize) : undefined,
-        // Try to parse JSON fields if provided, otherwise send as is (API might handle or reject)
-        // For this simple form, we'll assume the user might paste JSON or we leave it empty
+      const payload: Record<string, any> = {
+        farmerId: formData.farmerId,
+        primaryCrop: formData.primaryCrop,
+        farmOwnership: formData.farmOwnership,
+        farmState: formData.farmState,
+        farmLocalGovernment: formData.farmLocalGovernment,
+        farmWard: formData.farmWard,
+        farmPollingUnit: formData.farmPollingUnit,
+        farmingSeason: formData.farmingSeason,
       };
+
+      if (formData.farmSize) payload.farmSize = parseFloat(formData.farmSize);
+      if (formData.secondaryCrop) payload.secondaryCrop = formData.secondaryCrop;
+      if (formData.farmingExperience) payload.farmingExperience = parseInt(formData.farmingExperience);
+      if (formData.farmLatitude) payload.farmLatitude = parseFloat(formData.farmLatitude);
+      if (formData.farmLongitude) payload.farmLongitude = parseFloat(formData.farmLongitude);
+      if (formData.soilType) payload.soilType = formData.soilType;
+      if (formData.soilFertility) payload.soilFertility = formData.soilFertility;
+      if (farmPolygon) payload.farmPolygon = farmPolygon;
 
       const res = await fetch('/api/farms', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
@@ -85,7 +120,8 @@ function CreateFarmForm() {
         throw new Error(data.error || 'Failed to create farm');
       }
 
-      router.push('/farms');
+      const { farm } = await res.json();
+      router.push(`/farmers/${farm.farmerId}`);
       router.refresh();
     } catch (err: any) {
       setError(err.message);
@@ -95,202 +131,197 @@ function CreateFarmForm() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto py-6">
-      <div className="mb-6">
-        <Link
-          href="/farms"
-          className="flex items-center text-sm text-gray-500 hover:text-gray-700"
-        >
+    <div className="max-w-3xl mx-auto py-6 space-y-6">
+      <div>
+        <Link href="/farms" className="flex items-center text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeftIcon className="h-4 w-4 mr-1" />
           Back to Farms
         </Link>
       </div>
 
-      <div className="bg-white shadow sm:rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900">
-            Register New Farm
-          </h3>
-          <div className="mt-2 max-w-xl text-sm text-gray-500">
-            <p>Enter the details of the farm.</p>
-          </div>
-
-          {error && (
-            <div className="mt-4 bg-red-50 border-l-4 border-red-400 p-4">
-              <div className="flex">
-                <div className="ml-3">
-                  <p className="text-sm text-red-700">{error}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="mt-5 space-y-6">
-            {/* Farmer Selection */}
-            <div>
-              <label htmlFor="farmerId" className="block text-sm font-medium text-gray-700">
-                Farmer
-              </label>
-              <select
-                id="farmerId"
-                name="farmerId"
-                required
-                value={formData.farmerId}
-                onChange={handleChange}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm rounded-md"
-              >
-                <option value="">Select a Farmer</option>
-                {farmers.map((farmer) => (
-                  <option key={farmer.id} value={farmer.id}>
-                    {farmer.firstName} {farmer.lastName} ({farmer.nin})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-              {/* Farm Size */}
-              <div className="sm:col-span-3">
-                <label htmlFor="farmSize" className="block text-sm font-medium text-gray-700">
-                  Farm Size (Hectares)
-                </label>
-                <div className="mt-1">
-                  <input
-                    type="number"
-                    name="farmSize"
-                    id="farmSize"
-                    step="0.01"
-                    value={formData.farmSize}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                  />
-                </div>
-              </div>
-
-              {/* Primary Crop */}
-              <div className="sm:col-span-3">
-                <label htmlFor="primaryCrop" className="block text-sm font-medium text-gray-700">
-                  Primary Crop
-                </label>
-                <div className="mt-1">
-                  <input
-                    type="text"
-                    name="primaryCrop"
-                    id="primaryCrop"
-                    value={formData.primaryCrop}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                  />
-                </div>
-              </div>
-
-              {/* Secondary Crop */}
-              <div className="sm:col-span-6">
-                <label htmlFor="secondaryCrop" className="block text-sm font-medium text-gray-700">
-                  Secondary Crops (comma separated)
-                </label>
-                <div className="mt-1">
-                  <input
-                    type="text"
-                    name="secondaryCrop"
-                    id="secondaryCrop"
-                    value={formData.secondaryCrop}
-                    onChange={handleChange}
-                    placeholder="e.g. Maize, Beans"
-                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                  />
-                </div>
-              </div>
-
-              {/* State */}
-              <div className="sm:col-span-2">
-                <label htmlFor="farmState" className="block text-sm font-medium text-gray-700">
-                  State
-                </label>
-                <div className="mt-1">
-                  <input
-                    type="text"
-                    name="farmState"
-                    id="farmState"
-                    value={formData.farmState}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                  />
-                </div>
-              </div>
-
-              {/* LGA */}
-              <div className="sm:col-span-2">
-                <label htmlFor="farmLocalGovernment" className="block text-sm font-medium text-gray-700">
-                  LGA
-                </label>
-                <div className="mt-1">
-                  <input
-                    type="text"
-                    name="farmLocalGovernment"
-                    id="farmLocalGovernment"
-                    value={formData.farmLocalGovernment}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                  />
-                </div>
-              </div>
-
-              {/* City */}
-              <div className="sm:col-span-2">
-                <label htmlFor="farmCity" className="block text-sm font-medium text-gray-700">
-                  City/Village
-                </label>
-                <div className="mt-1">
-                  <input
-                    type="text"
-                    name="farmCity"
-                    id="farmCity"
-                    value={formData.farmCity}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                  />
-                </div>
-              </div>
-              
-              {/* Coordinates (JSON) */}
-              <div className="sm:col-span-6">
-                <label htmlFor="farmCoordinates" className="block text-sm font-medium text-gray-700">
-                  Coordinates (JSON)
-                </label>
-                <div className="mt-1">
-                  <textarea
-                    name="farmCoordinates"
-                    id="farmCoordinates"
-                    rows={3}
-                    value={formData.farmCoordinates}
-                    onChange={handleChange}
-                    placeholder='[{"lat": 12.34, "lng": 56.78}]'
-                    className="shadow-sm focus:ring-green-500 focus:border-green-500 block w-full sm:text-sm border-gray-300 rounded-md font-mono"
-                  />
-                </div>
-                <p className="mt-1 text-xs text-gray-500">Optional: Enter raw JSON for coordinates.</p>
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <Link
-                href="/farms"
-                className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 mr-3"
-              >
-                Cancel
-              </Link>
-              <button
-                type="submit"
-                disabled={loading}
-                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
-              >
-                {loading ? 'Saving...' : 'Save Farm'}
-              </button>
-            </div>
-          </form>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Register New Farm</h1>
+        <p className="text-sm text-muted-foreground mt-1">Add farm details for a registered farmer.</p>
       </div>
+
+      {error && (
+        <div className="p-4 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Farmer */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Farmer</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label htmlFor="farmerId">Select Farmer <span className="text-red-500">*</span></Label>
+              <Select value={formData.farmerId} onValueChange={(v) => set('farmerId', v)}>
+                <SelectTrigger id="farmerId">
+                  <SelectValue placeholder="— Select a Farmer —" />
+                </SelectTrigger>
+                <SelectContent>
+                  {farmers.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {f.firstName} {f.lastName} — {f.nin}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Crop & Farm Details */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Crop & Farm Details</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="primaryCrop">Primary Crop <span className="text-red-500">*</span></Label>
+              <Input id="primaryCrop" name="primaryCrop" value={formData.primaryCrop} onChange={handleChange} placeholder="e.g. Rice" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="secondaryCrop">Secondary Crops</Label>
+              <Input id="secondaryCrop" name="secondaryCrop" value={formData.secondaryCrop} onChange={handleChange} placeholder="e.g. Maize, Beans" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="farmSize">Farm Size (hectares)</Label>
+              <Input id="farmSize" name="farmSize" type="number" step="0.01" min="0" value={formData.farmSize} onChange={handleChange} placeholder="e.g. 2.5" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="farmOwnership">Farm Ownership <span className="text-red-500">*</span></Label>
+              <Select value={formData.farmOwnership} onValueChange={(v) => set('farmOwnership', v)}>
+                <SelectTrigger id="farmOwnership"><SelectValue placeholder="Select type" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Owner">Owner</SelectItem>
+                  <SelectItem value="Tenant">Tenant</SelectItem>
+                  <SelectItem value="Leasehold">Leasehold</SelectItem>
+                  <SelectItem value="Family Land">Family Land</SelectItem>
+                  <SelectItem value="Communal">Communal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="farmingSeason">Farming Season <span className="text-red-500">*</span></Label>
+              <Select value={formData.farmingSeason} onValueChange={(v) => set('farmingSeason', v)}>
+                <SelectTrigger id="farmingSeason"><SelectValue placeholder="Select season" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Wet Season">Wet Season</SelectItem>
+                  <SelectItem value="Dry Season">Dry Season</SelectItem>
+                  <SelectItem value="Year Round">Year Round</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="farmingExperience">Farming Experience (years)</Label>
+              <Input id="farmingExperience" name="farmingExperience" type="number" min="0" value={formData.farmingExperience} onChange={handleChange} placeholder="e.g. 5" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Location */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Farm Location</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="farmState">State <span className="text-red-500">*</span></Label>
+              <Input id="farmState" name="farmState" value={formData.farmState} onChange={handleChange} placeholder="e.g. Kano" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="farmLocalGovernment">LGA <span className="text-red-500">*</span></Label>
+              <Input id="farmLocalGovernment" name="farmLocalGovernment" value={formData.farmLocalGovernment} onChange={handleChange} placeholder="e.g. Nassarawa" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="farmWard">Ward <span className="text-red-500">*</span></Label>
+              <Input id="farmWard" name="farmWard" value={formData.farmWard} onChange={handleChange} placeholder="e.g. Kabuwaya" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="farmPollingUnit">Polling Unit <span className="text-red-500">*</span></Label>
+              <Input id="farmPollingUnit" name="farmPollingUnit" value={formData.farmPollingUnit} onChange={handleChange} placeholder="e.g. Polling Unit 003" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="farmLatitude">Latitude (GPS)</Label>
+              <Input id="farmLatitude" name="farmLatitude" type="number" step="any" value={formData.farmLatitude} onChange={handleChange} placeholder="e.g. 11.9964" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="farmLongitude">Longitude (GPS)</Label>
+              <Input id="farmLongitude" name="farmLongitude" type="number" step="any" value={formData.farmLongitude} onChange={handleChange} placeholder="e.g. 8.5172" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Soil */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Soil Information <span className="text-xs font-normal text-muted-foreground">(optional)</span></CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="soilType">Soil Type</Label>
+              <Select value={formData.soilType} onValueChange={(v) => set('soilType', v)}>
+                <SelectTrigger id="soilType"><SelectValue placeholder="Select type" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Clay">Clay</SelectItem>
+                  <SelectItem value="Sandy">Sandy</SelectItem>
+                  <SelectItem value="Loam">Loam</SelectItem>
+                  <SelectItem value="Sandy Loam">Sandy Loam</SelectItem>
+                  <SelectItem value="Clay Loam">Clay Loam</SelectItem>
+                  <SelectItem value="Silt">Silt</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="soilFertility">Soil Fertility</Label>
+              <Select value={formData.soilFertility} onValueChange={(v) => set('soilFertility', v)}>
+                <SelectTrigger id="soilFertility"><SelectValue placeholder="Select level" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="Low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* GPS Boundary */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">GPS Boundary <span className="text-xs font-normal text-muted-foreground">(optional)</span></CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label htmlFor="farmPolygon">Polygon Coordinates (JSON array)</Label>
+              <Textarea
+                id="farmPolygon"
+                name="farmPolygon"
+                value={formData.farmPolygon}
+                onChange={handleChange}
+                rows={4}
+                placeholder={'[{"latitude": 11.99, "longitude": 8.51}, {"latitude": 12.00, "longitude": 8.52}, {"latitude": 11.98, "longitude": 8.53}]'}
+                className="font-mono text-xs"
+              />
+              <p className="text-xs text-muted-foreground">Paste at least 3 coordinate points as a JSON array. Leave empty if not available.</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-end gap-3">
+          <Button type="button" variant="outline" asChild>
+            <Link href="/farms">Cancel</Link>
+          </Button>
+          <Button type="submit" disabled={loading || !formData.farmerId}>
+            {loading ? 'Saving...' : 'Register Farm'}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

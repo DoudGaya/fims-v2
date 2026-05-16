@@ -27,7 +27,7 @@ const farmSchema = z.object({
     longitude: z.number(),
     timestamp: z.number().optional().nullable(),
     accuracy: z.number().optional().nullable()
-  })).min(3, "Farm boundary must have at least 3 points"),
+  })).min(3, "Farm boundary must have at least 3 points").optional().nullable(),
   soilType: z.string().optional().nullable(),
   soilPH: z.number().optional().nullable(),
   soilFertility: z.string().optional().nullable(),

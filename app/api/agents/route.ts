@@ -329,3 +329,52 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+// ─── PATCH /api/agents — batch activate / deactivate / delete ────────────────
+export async function PATCH(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const userPermissions = (session.user as any).permissions as string[];
+
+    const body = await req.json() as { ids?: string[]; action?: string };
+    const { ids, action } = body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ error: 'ids array is required' }, { status: 400 });
+    }
+
+    if (!['activate', 'deactivate', 'delete'].includes(action ?? '')) {
+      return NextResponse.json({ error: 'action must be activate, deactivate, or delete' }, { status: 400 });
+    }
+
+    if (action === 'delete') {
+      if (!checkPermission(userPermissions, PERMISSIONS.AGENTS_DELETE)) {
+        return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+      }
+      await prisma.user.deleteMany({ where: { id: { in: ids }, role: { in: [...MOBILE_AGENT_ROLES] } } });
+      await invalidateByPrefix('fims:v1:agents');
+      return NextResponse.json({ success: true, affected: ids.length });
+    }
+
+    if (!checkPermission(userPermissions, PERMISSIONS.AGENTS_UPDATE)) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+
+    const isActive = action === 'activate';
+    const agentStatus = isActive ? 'active' : 'inactive';
+
+    await prisma.$transaction([
+      prisma.user.updateMany({ where: { id: { in: ids }, role: { in: [...MOBILE_AGENT_ROLES] } }, data: { isActive } }),
+      prisma.agent.updateMany({ where: { userId: { in: ids } }, data: { status: agentStatus } }),
+    ]);
+
+    await invalidateByPrefix('fims:v1:agents');
+    return NextResponse.json({ success: true, affected: ids.length });
+
+  } catch (error) {
+    console.error('Error in batch agent action:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
