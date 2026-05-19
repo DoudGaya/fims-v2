@@ -18,6 +18,7 @@ const agentSchema = z.object({
   email: z.string().email('Invalid email address'),
   phone: z.string().min(10, 'Phone number is required'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
+  agentType: z.enum(['enrollment', 'correction', 'survey']).default('enrollment'),
   state: z.string().optional(),
   lga: z.string().optional(),
   assignedState: z.string().optional(),
@@ -203,6 +204,28 @@ export default function CreateAgentPage() {
                   {...register('nin')}
                   className="shadow-sm focus:ring-ccsa-blue focus:border-ccsa-blue block w-full sm:text-sm border-gray-300 rounded-md"
                 />
+              </div>
+            </div>
+
+            {/* Agent Role */}
+            <div className="sm:col-span-6 pt-4 border-t border-gray-200">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">Agent Role</h3>
+            </div>
+
+            <div className="sm:col-span-6">
+              <label htmlFor="agentType" className="block text-sm font-medium text-gray-700">
+                Agent Type
+              </label>
+              <div className="mt-1">
+                <select
+                  id="agentType"
+                  {...register('agentType')}
+                  className="shadow-sm focus:ring-ccsa-blue focus:border-ccsa-blue block w-full sm:text-sm border-gray-300 rounded-md"
+                >
+                  <option value="enrollment">Enrollment Agent</option>
+                  <option value="correction">Data Correction Agent</option>
+                  <option value="survey">Survey Agent</option>
+                </select>
               </div>
             </div>
 

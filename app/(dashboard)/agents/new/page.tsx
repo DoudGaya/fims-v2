@@ -40,6 +40,7 @@ export default function NewAgentPage() {
         lga: '',
         assignedState: '',
         assignedLGA: '',
+        agentType: 'enrollment',
         status: 'active'
     });
 
@@ -153,6 +154,21 @@ export default function NewAgentPage() {
                             <div className="space-y-2">
                                 <Label htmlFor="nin">NIN</Label>
                                 <Input required minLength={11} maxLength={11} value={formData.nin} onChange={(e) => handleChange('nin', e.target.value)} />
+                            </div>
+                        </div>
+
+                        <div className="border-t pt-4">
+                            <h3 className="text-sm font-medium mb-4">Agent Role</h3>
+                            <div className="space-y-2">
+                                <Label htmlFor="agentType">Agent Type</Label>
+                                <Select required onValueChange={(v) => handleChange('agentType', v)} value={formData.agentType}>
+                                    <SelectTrigger><SelectValue placeholder="Select Agent Type" /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="enrollment">Enrollment Agent</SelectItem>
+                                        <SelectItem value="correction">Data Correction Agent</SelectItem>
+                                        <SelectItem value="survey">Survey Agent</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
 
