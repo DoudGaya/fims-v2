@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeftIcon,
@@ -80,6 +80,7 @@ interface ResponseFarmer {
   phone: string | null;
   state: string | null;
   lga: string | null;
+  agent: { id: string; firstName: string | null; lastName: string | null } | null;
 }
 
 interface SurveyAnswer {
@@ -662,14 +663,15 @@ export default function SurveyDetailClient({ id }: { id: string }) {
                         <TableHead>Farmer</TableHead>
                         <TableHead>NIN</TableHead>
                         <TableHead>Location</TableHead>
+                        <TableHead>Enrolled By</TableHead>
                         <TableHead>Completed</TableHead>
                         <TableHead className="w-24" />
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {responses.map((resp) => (
-                        <>
-                          <TableRow key={resp.id}>
+                        <Fragment key={resp.id}>
+                          <TableRow>
                             <TableCell className="font-medium">
                               {resp.farmer.firstName} {resp.farmer.middleName ?? ''}{' '}
                               {resp.farmer.lastName}
@@ -680,6 +682,11 @@ export default function SurveyDetailClient({ id }: { id: string }) {
                             <TableCell className="text-sm text-muted-foreground">
                               {[resp.farmer.lga, resp.farmer.state].filter(Boolean).join(', ') ||
                                 '—'}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {resp.farmer.agent
+                                ? `${resp.farmer.agent.firstName ?? ''} ${resp.farmer.agent.lastName ?? ''}`.trim() || '—'
+                                : '—'}
                             </TableCell>
                             <TableCell className="text-xs text-muted-foreground">
                               {format(new Date(resp.completedAt), 'MMM d, yyyy HH:mm')}
@@ -700,7 +707,7 @@ export default function SurveyDetailClient({ id }: { id: string }) {
                           </TableRow>
                           {expandedResponse === resp.id && (
                             <TableRow key={`${resp.id}-answers`}>
-                              <TableCell colSpan={5} className="bg-muted/40 p-4">
+                              <TableCell colSpan={6} className="bg-muted/40 p-4">
                                 <div className="space-y-2">
                                   {resp.answers.map((ans) => (
                                     <div key={ans.id} className="text-sm">
@@ -717,7 +724,7 @@ export default function SurveyDetailClient({ id }: { id: string }) {
                               </TableCell>
                             </TableRow>
                           )}
-                        </>
+                        </Fragment>
                       ))}
                     </TableBody>
                   </Table>

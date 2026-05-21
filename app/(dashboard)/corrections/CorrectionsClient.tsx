@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Fragment } from 'react';
 import { useSession } from 'next-auth/react';
 import { usePermissions } from '@/components/PermissionProvider';
 import { PERMISSIONS } from '@/lib/permissions';
@@ -376,9 +376,8 @@ export default function CorrectionsClient() {
                         .filter(Boolean).join(' ');
                       const agentName  = `${c.submitter.firstName} ${c.submitter.lastName}`;
                       return (
-                        <>
+                        <Fragment key={c.id}>
                           <TableRow
-                            key={c.id}
                             className="cursor-pointer hover:bg-muted/40"
                             onClick={() => setExpanded(isExpanded ? null : c.id)}
                           >
@@ -437,7 +436,22 @@ export default function CorrectionsClient() {
 
                           {isExpanded && (
                             <TableRow key={`${c.id}-detail`}>
-                              <TableCell colSpan={7} className="bg-muted/30 p-4">
+                              <TableCell colSpan={8} className="bg-muted/30 p-4">
+                                <div className="mb-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+                                  <span><span className="font-medium text-foreground">Submitted by:</span> {agentName}</span>
+                                  {c.reviewer && (
+                                    <span>
+                                      <span className="font-medium text-foreground">
+                                        {c.status === 'APPROVED' ? 'Approved' : 'Reviewed'} by:
+                                      </span>{' '}
+                                      {c.reviewer.firstName} {c.reviewer.lastName}
+                                      {c.reviewedAt ? ` · ${format(new Date(c.reviewedAt), 'MMM d, yyyy')}` : ''}
+                                    </span>
+                                  )}
+                                  {c.adminNotes && (
+                                    <span><span className="font-medium text-foreground">Notes:</span> {c.adminNotes}</span>
+                                  )}
+                                </div>
                                 <table className="w-full text-sm">
                                   <thead>
                                     <tr className="text-left text-muted-foreground border-b">
@@ -459,7 +473,7 @@ export default function CorrectionsClient() {
                               </TableCell>
                             </TableRow>
                           )}
-                        </>
+                        </Fragment>
                       );
                     })}
                   </TableBody>
@@ -518,9 +532,8 @@ export default function CorrectionsClient() {
                         : log.userId ?? '—';
 
                       return (
-                        <>
+                        <Fragment key={log.id}>
                           <TableRow
-                            key={log.id}
                             className="cursor-pointer hover:bg-muted/40"
                             onClick={() => setExpanded(isExpanded ? null : log.id)}
                           >
@@ -570,7 +583,7 @@ export default function CorrectionsClient() {
                               </TableCell>
                             </TableRow>
                           )}
-                        </>
+                        </Fragment>
                       );
                     })}
                   </TableBody>

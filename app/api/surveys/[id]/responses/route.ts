@@ -29,6 +29,7 @@ export async function GET(req: NextRequest, { params }: Params) {
             id: true, firstName: true, middleName: true,
             lastName: true, nin: true, phone: true,
             state: true, lga: true,
+            agent: { select: { id: true, firstName: true, lastName: true } },
           },
         },
         answers: {

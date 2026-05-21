@@ -4,6 +4,21 @@ import { authOptions } from '@/lib/authOptions';
 import { hasPermission, PERMISSIONS } from '@/lib/permissions';
 import prisma from '@/lib/prisma';
 
+/** Prisma expects full ISO-8601 DateTime strings, but corrections stored from
+ *  the mobile app may contain date-only values like "1997-10-18".
+ *  This helper converts any YYYY-MM-DD string to a proper Date object. */
+function normalizeDates(values: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(values)) {
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      result[key] = new Date(value + 'T00:00:00.000Z');
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
 // ─── PATCH /api/corrections/[id] ──────────────────────────────────────────────
 // Approve or reject a pending DataCorrection.
 // Body: { action: 'approve' | 'reject', adminNotes?: string }
@@ -70,7 +85,7 @@ export async function PATCH(
       }
 
       await prisma.$transaction([
-        prisma.farm.update({ where: { id: correction.farmId }, data: newValues }),
+        prisma.farm.update({ where: { id: correction.farmId }, data: normalizeDates(newValues) }),
         prisma.auditLog.create({
           data: {
             action: 'CORRECTION', tableName: 'farms', recordId: correction.farmId,
@@ -134,7 +149,7 @@ export async function PATCH(
     await prisma.$transaction([
       prisma.farmer.update({
         where: { id: correction.farmerId },
-        data: newValues,
+        data: normalizeDates(newValues),
       }),
       prisma.auditLog.create({
         data: {
