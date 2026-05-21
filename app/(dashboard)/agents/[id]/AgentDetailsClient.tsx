@@ -17,6 +17,7 @@ import {
   AcademicCapIcon,
   BuildingLibraryIcon,
 } from '@heroicons/react/24/outline';
+import { SendMessageDialog } from '@/components/communications/SendMessageDialog';
 
 interface AgentDetails {
   id: string;
@@ -262,6 +263,17 @@ export default function AgentDetailsClient({ id }: { id: string }) {
                 <PencilIcon className="-ml-1 mr-2 h-4 w-4 text-gray-500 dark:text-gray-400" />
                 Edit Profile
               </Link>
+            </div>
+          )}
+          {hasPermission(PERMISSIONS.COMMUNICATIONS_SEND) && (
+            <div className="shrink-0 self-start">
+              <SendMessageDialog
+                recipientType="agent"
+                recipientId={agent.id}
+                recipientName={agent.displayName}
+                recipientEmail={agent.email}
+                recipientPhone={agent.agent?.phone || agent.phoneNumber}
+              />
             </div>
           )}
         </div>

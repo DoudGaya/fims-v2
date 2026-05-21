@@ -68,6 +68,10 @@ export const PERMISSIONS = {
   // Corrections audit
   CORRECTIONS_READ: 'corrections.read',
 
+  // Communications
+  COMMUNICATIONS_SEND: 'communications.send',
+  COMMUNICATIONS_READ: 'communications.read',
+
   // System Administration
   SYSTEM_MANAGE_PERMISSIONS: 'system.manage_permissions',
   SYSTEM_MANAGE_ROLES: 'system.manage_roles',

@@ -126,7 +126,7 @@ export async function PATCH(
       farmerId:       id,
       correctionType: 'FARMER',
       submittedBy:    user.id,
-      changes,
+      changes: changes as any,
     },
   });
 

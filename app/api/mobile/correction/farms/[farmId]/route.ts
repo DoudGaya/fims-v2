@@ -98,7 +98,7 @@ export async function PATCH(
       farmId,
       correctionType: 'FARM',
       submittedBy:    user.id,
-      changes,
+      changes: changes as any,
     },
   });
 

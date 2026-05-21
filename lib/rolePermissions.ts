@@ -61,6 +61,9 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     PERMISSIONS.SURVEYS_RESPONSES_READ,
     // Corrections - Read audit history
     PERMISSIONS.CORRECTIONS_READ,
+    // Communications - Send and read
+    PERMISSIONS.COMMUNICATIONS_SEND,
+    PERMISSIONS.COMMUNICATIONS_READ,
     // System - No system permissions for admin (only super_admin)
   ],
   manager: [
@@ -79,6 +82,8 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     PERMISSIONS.ANALYTICS_READ,
     // Requests - Read only
     PERMISSIONS.REQUESTS_READ,
+    // Communications - Read only
+    PERMISSIONS.COMMUNICATIONS_READ,
   ],
   agent: [
     // Farmers - Create, Read, Update

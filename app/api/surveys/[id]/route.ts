@@ -56,7 +56,12 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  await prisma.survey.delete({ where: { id } });
+  // SurveyAnswer.questionId FK has no ON DELETE CASCADE, so we must
+  // remove answers referencing this survey's questions before deleting.
+  await prisma.$transaction(async (tx) => {
+    await tx.surveyAnswer.deleteMany({ where: { question: { surveyId: id } } });
+    await tx.survey.delete({ where: { id } });
+  });
 
   return NextResponse.json({ success: true });
 }

@@ -61,7 +61,7 @@ export async function POST(
       farmerId,
       correctionType: 'REFEREE',
       submittedBy:    user.id,
-      changes:        { ops },
+      changes:        { ops } as any,
     },
   });
 

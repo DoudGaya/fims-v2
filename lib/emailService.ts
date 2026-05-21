@@ -453,3 +453,84 @@ Cosmopolitan University Abuja
     return null;
   }
 }
+
+/**
+ * Send a custom admin-composed message to a farmer or agent.
+ * Returns { success, messageId?, error? }
+ */
+export async function sendCustomEmail(
+  to: string,
+  name: string,
+  subject: string,
+  body: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const transporter = createTransporter();
+  if (!transporter) {
+    return { success: false, error: 'Email service not configured' };
+  }
+
+  const year = new Date().getFullYear();
+  // Convert newlines to <br> for HTML rendering
+  const bodyHtml = body.replace(/\n/g, '<br>');
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="margin:0;padding:0;background:#F4F6F9;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#F4F6F9;padding:32px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+        <!-- Header -->
+        <tr>
+          <td style="background:#013358;padding:20px 32px;border-radius:8px 8px 0 0;">
+            <span style="font-size:20px;font-weight:700;color:#fff;letter-spacing:0.5px;">CCSA</span>
+            <span style="font-size:13px;color:#93C5FD;margin-left:8px;">Farmers Information Management System</span>
+          </td>
+        </tr>
+        <!-- Accent strip -->
+        <tr><td style="background:#16A34A;height:4px;"></td></tr>
+        <!-- Body -->
+        <tr>
+          <td style="background:#fff;padding:36px 32px;">
+            <p style="margin:0 0 12px;font-size:15px;color:#374151;">Dear ${name || 'Valued Member'},</p>
+            <div style="font-size:15px;color:#374151;line-height:1.7;">${bodyHtml}</div>
+          </td>
+        </tr>
+        <!-- Footer -->
+        <tr>
+          <td style="background:#F9FAFB;border-top:1px solid #E5E7EB;padding:20px 32px;border-radius:0 0 8px 8px;">
+            <table width="100%" cellpadding="0" cellspacing="0"><tr>
+              <td style="font-size:12px;color:#9CA3AF;">
+                Centre for Climate Smart Agriculture &mdash; Cosmopolitan University Abuja<br>
+                &copy; ${year} CCSA. All rights reserved.
+              </td>
+              <td align="right" style="font-size:12px;color:#9CA3AF;">
+                This is an official message from CCSA admin.
+              </td>
+            </tr></table>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  try {
+    const info = await transporter.sendMail({
+      from: `"CCSA Admin" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+      to,
+      subject,
+      html,
+      text: `Dear ${name || 'Valued Member'},\n\n${body}\n\n---\nCentre for Climate Smart Agriculture, Cosmopolitan University Abuja`,
+    });
+    return { success: true, messageId: info.messageId };
+  } catch (error: any) {
+    console.error('Error sending custom email:', error);
+    return { success: false, error: error.message };
+  }
+}

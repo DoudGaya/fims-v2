@@ -44,6 +44,7 @@ model User {
   submittedCorrections              DataCorrection[]     @relation("SubmittedCorrections")
   reviewedCorrections               DataCorrection[]     @relation("ReviewedCorrections")
   surveyAssignments                 SurveyAssignment[]   @relation("SurveyAssignments")
+  sentCommunications                CommunicationLog[]   @relation("SentCommunications")
 
   @@map("users")
 }
@@ -648,7 +649,7 @@ model SurveyAnswer {
   selectedOptionIds String[]
   createdAt         DateTime       @default(now())
   response          SurveyResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
-  question          SurveyQuestion @relation(fields: [questionId], references: [id])
+  question          SurveyQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@unique([responseId, questionId])
   @@map("survey_answers")
@@ -705,4 +706,30 @@ model DataCorrection {
   @@index([farmId])
   @@index([submittedBy])
   @@map("data_corrections")
+}
+
+// ─── Communications ───────────────────────────────────────────────────────────
+
+/// Log of every email/SMS message sent by an admin to farmers or agents.
+model CommunicationLog {
+  id               String   @id @default(cuid())
+  subject          String?
+  body             String
+  channel          String   // 'email' | 'sms' | 'both'
+  recipientType    String   // 'farmer' | 'agent' | 'bulk_farmer' | 'bulk_agent'
+  recipientId      String?  // null for bulk sends
+  recipientName    String?
+  recipientContact String?  // email or phone used
+  recipientCount   Int      @default(1)
+  status           String   // 'sent' | 'failed' | 'partial'
+  failureDetails   Json?    // [{id, name, error}] for bulk
+  filters          Json?    // filter criteria used for bulk sends
+  sentById         String
+  sentBy           User     @relation("SentCommunications", fields: [sentById], references: [id])
+  sentAt           DateTime @default(now())
+
+  @@index([sentById])
+  @@index([sentAt(sort: Desc)])
+  @@index([recipientType])
+  @@map("communication_logs")
 }

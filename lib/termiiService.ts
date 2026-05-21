@@ -167,6 +167,59 @@ class TermiiService {
       }
     }
   }
+
+  /**
+   * Send a plain SMS message (not OTP) to a phone number.
+   * @param phoneNumber - Phone number (Nigerian format accepted)
+   * @param message - SMS body text
+   */
+  async sendMessage(phoneNumber: string, message: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      if (!this.apiKey) {
+        return { success: false, error: 'Termii API key not configured' };
+      }
+
+      // Normalise to +234 format
+      let normalised = phoneNumber.trim().replace(/\s+/g, '');
+      if (normalised.startsWith('0') && normalised.length === 11) {
+        normalised = '+234' + normalised.slice(1);
+      } else if (/^234\d{10}$/.test(normalised)) {
+        normalised = '+' + normalised;
+      } else if (!/^\+/.test(normalised)) {
+        normalised = '+' + normalised;
+      }
+
+      const payload = {
+        to: normalised,
+        from: this.senderId,
+        sms: message,
+        type: 'plain',
+        api_key: this.apiKey,
+        channel: 'generic',
+      };
+
+      const response = await fetch(`${this.baseUrl}/api/sms/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return { success: false, error: `Termii error ${response.status}: ${JSON.stringify(errorData)}` };
+      }
+
+      const result = await response.json();
+      if (result.code !== 'ok') {
+        return { success: false, error: result.message || 'Termii rejected the message' };
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      ProductionLogger.error('Termii sendMessage error', { error: error.message });
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 export default TermiiService;

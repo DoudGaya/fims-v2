@@ -26,6 +26,7 @@ import {
   Key,
   ClipboardList,
   ClipboardCheck,
+  MessageSquare,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -87,6 +88,12 @@ const navigationConfig = [
     url: '/certificates',
     icon: FileText,
     requiredPermission: PERMISSIONS.CERTIFICATES_READ
+  },
+  {
+    title: 'Communications',
+    url: '/communications',
+    icon: MessageSquare,
+    requiredPermission: PERMISSIONS.COMMUNICATIONS_READ
   },
   {
     title: 'Users',

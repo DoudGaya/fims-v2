@@ -13,7 +13,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const canManage = await hasPermission(session.user.id, PERMISSIONS.SURVEYS_WRITE);
+  const canManage = await hasPermission(session.user.id, PERMISSIONS.SURVEYS_UPDATE);
   if (!canManage) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const body = await req.json() as { publish: boolean };

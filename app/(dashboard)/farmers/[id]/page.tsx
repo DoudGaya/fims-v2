@@ -62,6 +62,7 @@ import {
 import dynamic from 'next/dynamic';
 import { AnalysisModal } from '@/components/analysis/AnalysisModal';
 import { ChevronDownIcon, Trash2Icon } from 'lucide-react';
+import { SendMessageDialog } from '@/components/communications/SendMessageDialog';
 
 const FarmPolygonMapLibre = dynamic(() => import('@/components/maps/FarmPolygonMapLibre'), { ssr: false });
 
@@ -254,6 +255,15 @@ export default function FarmerDetailsPage() {
           <Button variant="outline" asChild>
             <Link href="/farmers"><ArrowLeftIcon className="mr-2 size-4" /> Back</Link>
           </Button>
+          {hasPermission(PERMISSIONS.COMMUNICATIONS_SEND) && farmer && (
+            <SendMessageDialog
+              recipientType="farmer"
+              recipientId={farmer.id}
+              recipientName={`${farmer.firstName} ${farmer.lastName}`}
+              recipientEmail={farmer.email}
+              recipientPhone={farmer.phone}
+            />
+          )}
           {/* Global Edit or Actions could go here */}
         </div>
       </div>
