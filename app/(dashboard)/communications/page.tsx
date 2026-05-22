@@ -108,6 +108,7 @@ function StatsBar({ refresh }: { refresh: number }) {
     stats?.total ? `${Math.round((n / stats.total) * 100)}%` : '0%';
 
   const statCards = [
+    
     {
       label: 'Total Messages',
       value: stats?.total ?? 0,
