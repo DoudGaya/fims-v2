@@ -390,7 +390,7 @@ function ComposeTab({ onSent }: { onSent: () => void }) {
                   {searching && <Loader2Icon className="absolute right-2.5 top-2.5 h-3.5 w-3.5 animate-spin text-gray-400" />}
                 </div>
                 {selectedRecipient ? (
-                  <div className="flex items-center justify-between p-2 bg-[#013358]/5 dark:bg-[#013358]/20 rounded-md border border-[#013358]/20 dark:border-[#013358]/40 text-xs">
+                  <div className="flex items-center justify-between p-2  rounded-md border  text-xs">
                     <div>
                       <p className="font-medium text-ccsa-blue dark:text-blue-300">{selectedRecipient.name}</p>
                       <p className="text-ccsa-blue/70 dark:text-blue-400">{selectedRecipient.email ?? selectedRecipient.phone ?? '—'}</p>
@@ -674,14 +674,14 @@ function HistoryTab({ onAction }: { onAction: () => void }) {
         <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="bg-[#013358]/5 dark:bg-gray-800/50">
+              <TableRow className="bg-ccsa-blue/5 dark:bg-gray-800/50">
                 <TableHead>Date</TableHead>
                 <TableHead>Recipient(s)</TableHead>
                 <TableHead>Channel</TableHead>
                 <TableHead>Subject / Preview</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Sent By</TableHead>
-                <TableHead className="text-right w-[80px]">Actions</TableHead>
+                <TableHead className="text-right w-20">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -692,7 +692,7 @@ function HistoryTab({ onAction }: { onAction: () => void }) {
                     <span className="text-gray-400">{new Date(log.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   </TableCell>
                   <TableCell>
-                    <p className="font-medium text-gray-800 dark:text-gray-200 truncate max-w-[140px]">
+                    <p className="font-medium text-gray-800 dark:text-gray-200 truncate max-w-35">
                       {log.recipientName ?? log.recipientType.replace('_', ' ')}
                     </p>
                     <p className="text-xs text-gray-400 capitalize">
@@ -703,12 +703,12 @@ function HistoryTab({ onAction }: { onAction: () => void }) {
                   <TableCell>{channelBadge(log.channel)}</TableCell>
                   <TableCell>
                     {log.subject ? (
-                      <p className="font-medium text-gray-800 dark:text-gray-200 truncate max-w-[180px]">{log.subject}</p>
+                      <p className="font-medium text-gray-800 dark:text-gray-200 truncate max-w-45">{log.subject}</p>
                     ) : null}
-                    <p className="text-xs text-gray-400 truncate max-w-[180px]">{log.body}</p>
+                    <p className="text-xs text-gray-400 truncate max-w-45">{log.body}</p>
                   </TableCell>
                   <TableCell>{statusBadge(log.status)}</TableCell>
-                  <TableCell className="text-xs text-gray-500 truncate max-w-[120px]">{senderName(log)}</TableCell>
+                  <TableCell className="text-xs text-gray-500 truncate max-w-30">{senderName(log)}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">
                     {processingIds.has(log.id) ? (
                       <div className="flex justify-end pr-2">
