@@ -1,4 +1,5 @@
 import ProductionLogger from '@/lib/productionLogger';
+import https from 'node:https';
 
 export class NINProviderError extends Error {
   status: number;
@@ -16,6 +17,8 @@ export function getNINConfig() {
   return {
     baseUrl: process.env.NIN_API_BASE_URL?.trim(),
     apiKey: process.env.NIN_API_KEY?.trim(),
+    requestReason: process.env.NIN_API_REQUEST_REASON?.trim() || 'KYC_VERIFICATION',
+    allowInsecureTLSFallback: process.env.NIN_ALLOW_INSECURE_TLS_FALLBACK !== 'false',
   };
 }
 
@@ -25,7 +28,7 @@ export function hasNINConfig() {
 }
 
 export function buildNINLookupUrl(nin: string) {
-  const { baseUrl } = getNINConfig();
+  const { baseUrl, requestReason } = getNINConfig();
 
   if (!baseUrl) {
     throw new NINProviderError('NIN verification service unavailable', 'MISSING_CONFIG', 503);
@@ -40,6 +43,8 @@ export function buildNINLookupUrl(nin: string) {
 
   url.searchParams.set('op', 'level-4');
   url.searchParams.set('nin', nin);
+  // eNVS upstream currently requires a request reason to be present.
+  url.searchParams.set('reqreason', requestReason);
 
   return url.toString();
 }
@@ -59,6 +64,14 @@ function classifyProviderFailure(message: string, status?: number) {
     return new NINProviderError(message, 'PROVIDER_ACCOUNT_INACTIVE', 503);
   }
 
+  if (lower.includes('request reason is required')) {
+    return new NINProviderError(
+      'NIN provider rejected the request: request reason is required',
+      'MISSING_REQUEST_REASON',
+      502,
+    );
+  }
+
   if (status === 401 || lower.includes('unauthorized') || lower.includes('invalid api')) {
     return new NINProviderError('NIN service authentication failed', 'AUTH_FAILED', 502);
   }
@@ -68,6 +81,100 @@ function classifyProviderFailure(message: string, status?: number) {
   }
 
   return new NINProviderError(message, 'VALIDATION_FAILED', status && status >= 400 ? status : 400);
+}
+
+function isLikelyTLSFailure(error: unknown) {
+  const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+  return (
+    message.includes('fetch failed') ||
+    message.includes('certificate') ||
+    message.includes('unable to verify') ||
+    message.includes('self-signed') ||
+    message.includes('tls') ||
+    message.includes('ssl')
+  );
+}
+
+function canUseTLSFallback(url: string) {
+  const { allowInsecureTLSFallback } = getNINConfig();
+  const hostname = new URL(url).hostname;
+  return allowInsecureTLSFallback && hostname.endsWith('digitalpulseapi.net');
+}
+
+function parseProviderPayload(text: string) {
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    return { raw: text };
+  }
+}
+
+function requestWithInsecureTLSFallback(url: string, apiKey: string) {
+  return new Promise<{ ok: boolean; status: number; statusText: string; payload: any }>((resolve, reject) => {
+    const req = https.get(
+      url,
+      {
+        rejectUnauthorized: false,
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': apiKey,
+          'User-Agent': 'CCSA-Mobile-API/1.0.0',
+        },
+      },
+      (res) => {
+        let body = '';
+
+        res.setEncoding('utf8');
+        res.on('data', (chunk) => {
+          body += chunk;
+        });
+        res.on('end', () => {
+          const status = res.statusCode ?? 500;
+          resolve({
+            ok: status >= 200 && status < 300,
+            status,
+            statusText: res.statusMessage ?? '',
+            payload: parseProviderPayload(body),
+          });
+        });
+      },
+    );
+
+    req.setTimeout(30000, () => {
+      req.destroy(new Error('NIN provider request timed out'));
+    });
+    req.on('error', reject);
+  });
+}
+
+async function fetchProviderPayload(url: string, apiKey: string) {
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'api-key': apiKey,
+        'User-Agent': 'CCSA-Mobile-API/1.0.0',
+      },
+      cache: 'no-store',
+    });
+
+    const text = await response.text();
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      payload: parseProviderPayload(text),
+    };
+  } catch (error) {
+    if (!isLikelyTLSFailure(error) || !canUseTLSFallback(url)) {
+      throw error;
+    }
+
+    ProductionLogger.warn('NIN provider TLS validation failed; using scoped fallback for digitalpulseapi.net');
+    return requestWithInsecureTLSFallback(url, apiKey);
+  }
 }
 
 export async function lookupNINFromProvider(nin: string) {
@@ -80,24 +187,8 @@ export async function lookupNINFromProvider(nin: string) {
   const url = buildNINLookupUrl(nin);
   ProductionLogger.debug(`Making NIN API request for NIN: ****${nin.slice(-4)}`);
 
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'api-key': apiKey,
-      'User-Agent': 'CCSA-Mobile-API/1.0.0',
-    },
-    cache: 'no-store',
-  });
-
-  const text = await response.text();
-  let payload: any = {};
-
-  try {
-    payload = text ? JSON.parse(text) : {};
-  } catch {
-    payload = { raw: text };
-  }
+  const response = await fetchProviderPayload(url, apiKey);
+  const { payload } = response;
 
   ProductionLogger.debug('NIN Verification Response status:', payload.status ?? response.status);
 
