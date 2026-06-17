@@ -12,6 +12,21 @@ const ACCOUNT_TYPE_ROLE: Record<string, string> = {
   survey_agent:      'survey_agent',
 };
 
+function roleFilter(role: string) {
+  return {
+    OR: [
+      { role },
+      {
+        userRoles: {
+          some: {
+            role: { name: role },
+          },
+        },
+      },
+    ],
+  };
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -36,22 +51,21 @@ export async function GET(req: NextRequest) {
     const where: any = {};
 
     if (search) {
-      where.OR = [
-        { firstName: { contains: search, mode: 'insensitive' } },
-        { lastName: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { displayName: { contains: search, mode: 'insensitive' } },
+      where.AND = [
+        ...(where.AND ?? []),
+        {
+          OR: [
+            { firstName: { contains: search, mode: 'insensitive' } },
+            { lastName: { contains: search, mode: 'insensitive' } },
+            { email: { contains: search, mode: 'insensitive' } },
+            { displayName: { contains: search, mode: 'insensitive' } },
+          ],
+        },
       ];
     }
 
     if (role) {
-      where.userRoles = {
-        some: {
-          role: {
-            name: role
-          }
-        }
-      };
+      where.AND = [...(where.AND ?? []), roleFilter(role)];
     }
 
     const [users, total] = await Promise.all([
@@ -63,6 +77,7 @@ export async function GET(req: NextRequest) {
           firstName: true,
           lastName: true,
           email: true,
+          role: true,
           isActive: true,
           lastLogin: true,
           createdAt: true,
@@ -94,7 +109,9 @@ export async function GET(req: NextRequest) {
     const transformedUsers = users.map(user => ({
       ...user,
       name: user.displayName || `${user.firstName || ''} ${user.lastName || ''}`.trim(),
-      roles: user.userRoles.map(ur => ur.role),
+      roles: user.userRoles.length > 0
+        ? user.userRoles.map(ur => ur.role)
+        : [{ id: user.role, name: user.role, description: null, permissions: [], isSystem: false }],
       permissions: user.userRoles.flatMap(ur => (ur.role.permissions as string[]) || [])
     }));
 
@@ -157,6 +174,19 @@ export async function POST(req: NextRequest) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
+    const simpleRole = isAgentType ? ACCOUNT_TYPE_ROLE[accountType] ?? 'agent' : undefined;
+    const assignedRole = isAgentType
+      ? await prisma.roles.findUnique({ where: { name: simpleRole } })
+      : roleId
+        ? await prisma.roles.findUnique({ where: { id: roleId } })
+        : null;
+
+    if (isAgentType && !assignedRole) {
+      return NextResponse.json(
+        { error: `Required role "${simpleRole}" is not configured` },
+        { status: 400 }
+      );
+    }
 
     if (isAgentType) {
       // --- Agent accounts: create Firebase user + user record + agent profile ---
@@ -194,9 +224,12 @@ export async function POST(req: NextRequest) {
             lastName,
             displayName: `${firstName} ${lastName}`,
             phoneNumber: phone,
-            role: ACCOUNT_TYPE_ROLE[accountType] ?? 'agent',
+            role: simpleRole,
             isActive,
             isVerified: true,
+            userRoles: assignedRole
+              ? { create: { roleId: assignedRole.id } }
+              : undefined,
           },
         });
 
@@ -232,6 +265,7 @@ export async function POST(req: NextRequest) {
         password: hashedPassword,
         isActive,
         displayName: `${firstName} ${lastName}`,
+        role: assignedRole?.name ?? 'admin',
         userRoles: roleId ? { create: { roleId } } : undefined,
       },
     });

@@ -211,13 +211,13 @@ export default function SurveyDetailClient({ id }: { id: string }) {
     try {
       const res = await fetch(`/api/surveys/${id}/assignments`);
       const data = await res.json();
-      setAssignments(data.assignments ?? []);
+      setAssignments(Array.isArray(data) ? data : data.assignments ?? []);
     } catch { /* ignore */ } finally { setAssignmentsLoading(false); }
   };
 
   const fetchAgents = async () => {
     try {
-      const res = await fetch('/api/users?role=data_correction_agent&limit=200');
+      const res = await fetch('/api/users?role=survey_agent&limit=200');
       const data = await res.json();
       setAgents(data.users ?? []);
     } catch { /* ignore */ }
@@ -245,7 +245,7 @@ export default function SurveyDetailClient({ id }: { id: string }) {
       await fetch(`/api/surveys/${id}/assignments`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: assignmentId }),
+        body: JSON.stringify({ assignmentId }),
       });
       await fetchAssignments();
     } catch { /* ignore */ }
@@ -778,7 +778,7 @@ export default function SurveyDetailClient({ id }: { id: string }) {
                   <SelectContent>
                     {agents.map((a) => (
                       <SelectItem key={a.id} value={a.id}>
-                        {a.name ?? a.email}
+                        {a.name ?? ([a.firstName, a.lastName].filter(Boolean).join(' ') || a.email)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -814,7 +814,11 @@ export default function SurveyDetailClient({ id }: { id: string }) {
                   <TableBody>
                     {assignments.map((a) => (
                       <TableRow key={a.id}>
-                        <TableCell className="font-medium">{a.agent?.name ?? '—'}</TableCell>
+                        <TableCell className="font-medium">
+                          {a.agent
+                            ? [a.agent.firstName, a.agent.lastName].filter(Boolean).join(' ') || a.agent.email
+                            : '—'}
+                        </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{a.agent?.email ?? '—'}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {format(new Date(a.assignedAt), 'MMM d, yyyy')}

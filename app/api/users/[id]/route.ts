@@ -90,6 +90,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       }
     }
 
+    const roleRecord = role
+      ? await prisma.roles.findUnique({ where: { id: role } })
+      : null;
+
+    if (role && !roleRecord) {
+      return NextResponse.json({ error: 'Role not found' }, { status: 400 });
+    }
+
     // Update user
     const updatedUser = await prisma.user.update({
       where: { id },
@@ -99,23 +107,21 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         lastName,
         email,
         isActive,
+        ...(roleRecord && { role: roleRecord.name }),
         ...(hashedPassword && { password: hashedPassword }),
       }
     });
 
-    // Update roles if provided
-    if (role) {
-      // Remove existing roles
-      await prisma.user_roles.deleteMany({
-        where: { userId: id }
-      });
-      
-      // Add new role
-      await prisma.user_roles.create({
-        data: {
+    // Add the requested role if missing. Do not delete existing role links here:
+    // production role cleanup should be a deliberate admin/backfill task.
+    if (roleRecord) {
+      await prisma.user_roles.upsert({
+        where: { userId_roleId: { userId: id, roleId: roleRecord.id } },
+        update: {},
+        create: {
           userId: id,
-          roleId: role
-        }
+          roleId: roleRecord.id
+        },
       });
     }
 

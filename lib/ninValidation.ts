@@ -1,3 +1,5 @@
+import { buildNINLookupUrl, getNINConfig } from '@/lib/ninProvider';
+
 // NIN validation service for production use
 
 export interface ValidationSuccess<T> {
@@ -72,8 +74,7 @@ export async function validateNIN(nin: string): Promise<ValidationResult<NINData
         }
 
         // Check for required environment variables
-        const ninApiUrl = process.env.NIN_API_BASE_URL?.trim();
-        const ninApiKey = process.env.NIN_API_KEY?.trim();
+        const { baseUrl: ninApiUrl, apiKey: ninApiKey } = getNINConfig();
 
         if (!ninApiUrl) {
             console.error('❌ NIN_API_BASE_URL environment variable not set');
@@ -84,10 +85,10 @@ export async function validateNIN(nin: string): Promise<ValidationResult<NINData
             };
         }
 
-        console.log('🌐 Making NIN API request to:', `"${ninApiUrl}/verify"`);
+        console.log('🌐 Making NIN API request for NIN:', `****${nin.slice(-4)}`);
 
         // Real NIN validation using production API
-        const response = await fetch(`${ninApiUrl}/api/lookup/nin?op=level-4&nin=${nin}`, {
+        const response = await fetch(buildNINLookupUrl(nin), {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -111,6 +112,16 @@ export async function validateNIN(nin: string): Promise<ValidationResult<NINData
             }
 
             console.error('❌ NIN API error:', response.status, errorData);
+
+            const serializedError = JSON.stringify(errorData).toLowerCase();
+
+            if (serializedError.includes('inactive') || serializedError.includes('suspended')) {
+                return {
+                    success: false,
+                    message: (errorData as any).message || (errorData as any).error || 'NIN provider account is inactive',
+                    error: 'PROVIDER_ACCOUNT_INACTIVE'
+                };
+            }
 
             // Handle specific API error codes
             if (response.status === 404) {

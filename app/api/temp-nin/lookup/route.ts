@@ -16,8 +16,8 @@ async function handleLookup(nin: string | null) {
           data: {
             firstname: 'Test',
             lastname: 'User',
-            nin: nin
-          }
+            nin,
+          },
         });
       }
       return NextResponse.json({ error: 'NIN verification service unavailable' }, { status: 503 });
@@ -27,11 +27,10 @@ async function handleLookup(nin: string | null) {
 
     return NextResponse.json({
       success: true,
-      data: result
+      data: result,
     });
-
   } catch (error: any) {
-    ProductionLogger.error('NIN lookup error:', error.message);
+    ProductionLogger.error('Temp NIN lookup error:', error.message);
     const { body, status } = toNINErrorPayload(error, 'Failed to lookup NIN');
     return NextResponse.json(body, { status });
   }

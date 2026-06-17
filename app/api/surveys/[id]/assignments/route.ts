@@ -28,7 +28,7 @@ export async function GET(
     orderBy: { assignedAt: 'asc' },
   });
 
-  return NextResponse.json(assignments);
+  return NextResponse.json({ assignments });
 }
 
 export async function POST(
@@ -55,6 +55,33 @@ export async function POST(
 
   if (!body.agentId && !body.clusterId) {
     return NextResponse.json({ error: 'agentId or clusterId is required' }, { status: 400 });
+  }
+
+  if (body.agentId) {
+    const agent = await prisma.user.findUnique({
+      where: { id: body.agentId },
+      select: {
+        id: true,
+        role: true,
+        userRoles: {
+          select: {
+            role: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    const roleNames = new Set([
+      agent?.role,
+      ...(agent?.userRoles.map((ur) => ur.role.name) ?? []),
+    ].filter(Boolean));
+
+    if (!agent || (!roleNames.has('survey_agent') && !roleNames.has('admin'))) {
+      return NextResponse.json(
+        { error: 'Only survey agents can be assigned to surveys' },
+        { status: 400 },
+      );
+    }
   }
 
   const assignment = await prisma.surveyAssignment.create({
@@ -84,19 +111,21 @@ export async function DELETE(
 
   await params; // consume
 
-  let body: { assignmentId?: string };
+  let body: { assignmentId?: string; id?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  if (!body.assignmentId) {
+  const assignmentId = body.assignmentId ?? body.id;
+
+  if (!assignmentId) {
     return NextResponse.json({ error: 'assignmentId is required' }, { status: 400 });
   }
 
   try {
-    await prisma.surveyAssignment.delete({ where: { id: body.assignmentId } });
+    await prisma.surveyAssignment.delete({ where: { id: assignmentId } });
   } catch {
     return NextResponse.json({ error: 'Assignment not found' }, { status: 404 });
   }
