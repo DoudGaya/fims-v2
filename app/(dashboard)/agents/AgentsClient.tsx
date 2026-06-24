@@ -562,7 +562,7 @@ export default function AgentsClient() {
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={Object.entries(analytics?.agentsByStatus || {}).map(([name, value]) => ({ name, value }))}
@@ -602,7 +602,7 @@ export default function AgentsClient() {
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
                 <BarChart
                   data={analytics?.agentsByState?.map(item => ({ name: item.state, value: item.count })) || []}
                   layout="vertical"

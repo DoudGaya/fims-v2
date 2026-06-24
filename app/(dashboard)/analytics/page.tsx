@@ -160,7 +160,7 @@ export default function AnalyticsPage() {
                 <CardDescription>Farmer enrollments over time (Monthly)</CardDescription>
               </CardHeader>
               <CardContent className="h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
                   <AreaChart data={data.charts.registrations}>
                     <defs>
                       <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
@@ -188,7 +188,7 @@ export default function AnalyticsPage() {
                 <CardDescription>Farmer demographics by gender</CardDescription>
               </CardHeader>
               <CardContent className="h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={data.charts.gender}
@@ -219,7 +219,7 @@ export default function AnalyticsPage() {
                 <CardDescription>Locations with highest activity</CardDescription>
               </CardHeader>
               <CardContent className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
                   <BarChart data={data.charts.states.slice(0, 5)} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
                     <XAxis type="number" hide />
@@ -238,7 +238,7 @@ export default function AnalyticsPage() {
                 <CardDescription>Most cultivated crops across all farms</CardDescription>
               </CardHeader>
               <CardContent className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
                   <BarChart data={data.charts.crops.slice(0, 5)}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="name" tick={{ fontSize: 12 }} />
@@ -260,7 +260,7 @@ export default function AnalyticsPage() {
                 <CardTitle>Age Distribution</CardTitle>
               </CardHeader>
               <CardContent className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
                   <BarChart data={data.charts.age}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="name" />
@@ -276,7 +276,7 @@ export default function AnalyticsPage() {
                 <CardTitle>Gender Split</CardTitle>
               </CardHeader>
               <CardContent className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={data.charts.gender}
@@ -308,7 +308,7 @@ export default function AnalyticsPage() {
                 <CardDescription>Categorized by Hectares (Ha)</CardDescription>
               </CardHeader>
               <CardContent className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
                   <BarChart data={data.charts.farmSizes}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="name" />
@@ -325,7 +325,7 @@ export default function AnalyticsPage() {
                 <CardDescription>Breakdown of all primary crops</CardDescription>
               </CardHeader>
               <CardContent className="h-[400px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
                   <BarChart data={data.charts.crops} layout="vertical" margin={{ left: 40 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
                     <XAxis type="number" />
@@ -373,7 +373,7 @@ export default function AnalyticsPage() {
                 <CardDescription>Click a bar or use the selector to view LGA breakdown</CardDescription>
               </CardHeader>
               <CardContent className="h-[500px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
                   <BarChart
                     data={data.charts.states}
                     margin={{ bottom: 100 }}
@@ -402,7 +402,7 @@ export default function AnalyticsPage() {
                   ) : lgaData.length === 0 ? (
                     <p className="text-muted-foreground">No LGA data available for {selectedState}</p>
                   ) : (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
                       <BarChart data={lgaData} margin={{ bottom: 100 }} layout="vertical">
                         <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
                         <XAxis type="number" />

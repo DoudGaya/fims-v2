@@ -125,11 +125,12 @@ export function SendMessageDialog({
             <MessageSquareIcon className="h-5 w-5 text-ccsa-blue dark:text-blue-400" />
             Send Message
           </DialogTitle>
-          <DialogDescription>
-            Sending to <span className="font-medium text-foreground">{recipientName}</span>
-            {' '}
+          <div className="flex items-center gap-2">
+            <DialogDescription>
+              Sending to <span className="font-medium text-foreground">{recipientName}</span>
+            </DialogDescription>
             <Badge variant="secondary" className="text-xs capitalize">{recipientType}</Badge>
-          </DialogDescription>
+          </div>
         </DialogHeader>
 
         {/* ── Success state ── */}

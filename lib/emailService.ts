@@ -1,36 +1,28 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
-// Create email transporter (lazy initialization)
-function createTransporter() {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.warn('SMTP credentials not configured');
+// Create email client (lazy initialization)
+function getResendClient() {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('RESEND_API_KEY not configured');
     return null;
   }
   
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: false, // true for 465, false for other ports
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
+  return new Resend(process.env.RESEND_API_KEY);
 }
 
+const getFromAddress = () => process.env.EMAIL_FROM || 'onboarding@resend.dev';
+
 export async function sendPasswordResetEmail(email: string, resetToken: string, displayName: string) {
-  const transporter = createTransporter();
-  if (!transporter) {
+  const resend = getResendClient();
+  if (!resend) {
     throw new Error('Email service not configured');
   }
   
   const resetUrl = `${process.env.NEXTAUTH_URL}/auth/reset-password?token=${resetToken}`;
   
-  const mailOptions = {
-    from: `"CCSA Admin" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
-    to: email,
-    subject: 'Reset Your CCSA Admin Password',
-    html: `
+  const fromAddress = getFromAddress();
+  const subject = 'Reset Your CCSA Admin Password';
+  const html = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -75,8 +67,9 @@ export async function sendPasswordResetEmail(email: string, resetToken: string, 
           </div>
         </body>
       </html>
-    `,
-    text: `
+    `;
+
+  const text = `
       Password Reset Request
       
       Hello ${displayName || 'User'},
@@ -92,13 +85,24 @@ export async function sendPasswordResetEmail(email: string, resetToken: string, 
       
       Centre for Climate Smart Agriculture
       Cosmopolitan University Abuja
-    `,
-  };
+    `;
 
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Password reset email sent:', info.messageId);
-    return info;
+    const { data, error } = await resend.emails.send({
+      from: fromAddress,
+      to: [email],
+      subject,
+      html,
+      text,
+    });
+
+    if (error) {
+      console.error('Error sending email:', error);
+      throw new Error(error.message);
+    }
+    
+    console.log('Password reset email sent:', data?.id);
+    return data;
   } catch (error) {
     console.error('Error sending email:', error);
     throw error;
@@ -246,8 +250,8 @@ function getStatusContent(name: string, status: string): StatusContent {
 }
 
 export async function sendAgentStatusEmail(email: string, name: string, status: string) {
-  const transporter = createTransporter();
-  if (!transporter) {
+  const resend = getResendClient();
+  if (!resend) {
     console.warn('Email service not configured - skipping agent status email');
     return null;
   }
@@ -324,15 +328,21 @@ export async function sendAgentStatusEmail(email: string, name: string, status: 
   const text = `${c.statusLabel}\n\n${c.intro}\n\n${c.bodyHtml.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim()}\n\n---\nCentre for Climate Smart Agriculture, Cosmopolitan University Abuja`;
 
   try {
-    const info = await transporter.sendMail({
-      from: `"CCSA Field Agent Programme" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
-      to: email,
+    const { data, error } = await resend.emails.send({
+      from: getFromAddress(),
+      to: [email],
       subject: c.subject,
       html,
       text,
     });
-    console.log(`Agent status email sent [${status}]:`, info.messageId);
-    return info;
+
+    if (error) {
+      console.error('Error sending agent status email:', error);
+      return null;
+    }
+
+    console.log(`Agent status email sent [${status}]:`, data?.id);
+    return data;
   } catch (error) {
     console.error('Error sending agent status email:', error);
     return null; // never block the main status-update flow
@@ -349,8 +359,8 @@ export async function sendApiAccessRequestNotification(params: {
   expectedVolume?: string | null;
   requestId: string;
 }) {
-  const transporter = createTransporter();
-  if (!transporter) {
+  const resend = getResendClient();
+  if (!resend) {
     console.warn('Email service not configured - skipping API access request notification');
     return null;
   }
@@ -358,11 +368,9 @@ export async function sendApiAccessRequestNotification(params: {
   const adminEmail = 'abdulrahman.dauda@cosmopolitan.edu.ng';
   const reviewUrl = `${process.env.NEXTAUTH_URL}/api-keys/access-requests`;
 
-  const mailOptions = {
-    from: `"CCSA FIMS" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
-    to: adminEmail,
-    subject: `New API Access Request — ${params.organizationName}`,
-    html: `
+  const fromAddress = getFromAddress();
+  const subject = `New API Access Request — ${params.organizationName}`;
+  const html = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -426,8 +434,9 @@ export async function sendApiAccessRequestNotification(params: {
           </div>
         </body>
       </html>
-    `,
-    text: `
+    `;
+
+  const text = `
 New API Access Request — ${params.organizationName}
 
 Organisation: ${params.organizationName}
@@ -441,13 +450,24 @@ Review: ${reviewUrl}
 
 Centre for Climate Smart Agriculture
 Cosmopolitan University Abuja
-    `,
-  };
+    `;
 
   try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log('API access request notification sent:', info.messageId);
-    return info;
+    const { data, error } = await resend.emails.send({
+      from: fromAddress,
+      to: [adminEmail],
+      subject,
+      html,
+      text,
+    });
+
+    if (error) {
+      console.error('Error sending API access request notification:', error);
+      return null;
+    }
+
+    console.log('API access request notification sent:', data?.id);
+    return data;
   } catch (error) {
     console.error('Error sending API access request notification:', error);
     return null;
@@ -464,8 +484,8 @@ export async function sendCustomEmail(
   subject: string,
   body: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const transporter = createTransporter();
-  if (!transporter) {
+  const resend = getResendClient();
+  if (!resend) {
     return { success: false, error: 'Email service not configured' };
   }
 
@@ -521,14 +541,20 @@ export async function sendCustomEmail(
 </html>`;
 
   try {
-    const info = await transporter.sendMail({
-      from: `"CCSA Admin" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
-      to,
+    const { data, error } = await resend.emails.send({
+      from: getFromAddress(),
+      to: [to],
       subject,
       html,
       text: `Dear ${name || 'Valued Member'},\n\n${body}\n\n---\nCentre for Climate Smart Agriculture, Cosmopolitan University Abuja`,
     });
-    return { success: true, messageId: info.messageId };
+
+    if (error) {
+      console.error('Error sending custom email:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, messageId: data?.id };
   } catch (error: any) {
     console.error('Error sending custom email:', error);
     return { success: false, error: error.message };

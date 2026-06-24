@@ -478,7 +478,7 @@ export default function ClusterDetailsPage({ params }: { params: Promise<{ id: s
                 <CardDescription>Distribution of farmers by status</CardDescription>
               </CardHeader>
               <CardContent className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={statusChartData}
@@ -507,7 +507,7 @@ export default function ClusterDetailsPage({ params }: { params: Promise<{ id: s
                 <CardDescription>Farmers by gender</CardDescription>
               </CardHeader>
               <CardContent className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={genderChartData}
@@ -536,7 +536,7 @@ export default function ClusterDetailsPage({ params }: { params: Promise<{ id: s
                 <CardDescription>New farmers added per month</CardDescription>
               </CardHeader>
               <CardContent className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
                   <BarChart data={growthChartData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" />
@@ -558,7 +558,7 @@ export default function ClusterDetailsPage({ params }: { params: Promise<{ id: s
                 <CardDescription>Top LGAs in this cluster</CardDescription>
               </CardHeader>
               <CardContent className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
                   <BarChart data={locationChartData} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" allowDecimals={false} />

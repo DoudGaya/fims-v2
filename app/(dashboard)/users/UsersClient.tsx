@@ -524,7 +524,7 @@ export default function UsersClient() {
               </CardHeader>
               <CardContent>
                 <div className="h-[250px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={chartData}

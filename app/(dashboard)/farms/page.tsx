@@ -230,7 +230,7 @@ function FarmsContent() {
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
                 <BarChart
                   data={analytics?.farmsByState.map(item => ({ name: item.farmState, value: item._count.id }))}
                   layout="vertical"
@@ -254,7 +254,7 @@ function FarmsContent() {
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={analytics?.farmsByCrop.map(item => ({ name: item.primaryCrop, value: item._count.id }))}
