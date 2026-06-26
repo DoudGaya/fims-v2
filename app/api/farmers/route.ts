@@ -44,8 +44,15 @@ export async function GET(req: NextRequest) {
 
     const skip = (page - 1) * limit;
 
+    const userRole = (session.user as any).role;
+    const isAgent = userRole === 'agent';
+
     // Build where clause
     const where: Prisma.FarmerWhereInput = {};
+
+    if (isAgent) {
+      where.agentId = (session.user as any).id;
+    }
 
     if (search) {
       where.OR = [
@@ -100,7 +107,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Execute query — cache keyed by all filter/pagination params
-    const key = cacheKey('farmers', { page, limit, search, state, cluster, status, startDate, endDate, lga, ward, pollingUnit, nin, bvn });
+    const key = cacheKey('farmers', { page, limit, search, state, cluster, status, startDate, endDate, lga, ward, pollingUnit, nin, bvn, agentId: isAgent ? (session.user as any).id : null });
     const result = await getCached(key, 300, async () => {
     const [farmers, total, stats] = await Promise.all([
       prisma.farmer.findMany({
@@ -126,11 +133,11 @@ export async function GET(req: NextRequest) {
       // Get stats for dashboard cards
       prisma.farmer.aggregate({
         _count: { id: true },
-        where: {}
+        where: isAgent ? { agentId: (session.user as any).id } : {}
       }).then(async (result) => {
         const [verifiedCount, totalFarms, totalClusters] = await Promise.all([
-          prisma.farmer.count({ where: { status: 'Verified' } }),
-          prisma.farm.count(),
+          prisma.farmer.count({ where: isAgent ? { agentId: (session.user as any).id, status: 'Verified' } : { status: 'Verified' } }),
+          prisma.farm.count(isAgent ? { where: { farmer: { agentId: (session.user as any).id } } } : undefined),
           prisma.cluster.count()
         ]);
         return {

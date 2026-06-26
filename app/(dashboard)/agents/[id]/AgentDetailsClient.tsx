@@ -199,14 +199,21 @@ export default function AgentDetailsClient({ id }: { id: string }) {
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
         <div className="px-6 py-6 flex flex-col sm:flex-row gap-6 items-start">
           {/* Passport Photo — single instance */}
-          <div className="shrink-0">
+          <div className="shrink-0 flex flex-col items-center gap-3">
             {photoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={photoUrl}
-                alt={agent.displayName}
-                className="h-28 w-28 rounded-xl object-cover ring-2 ring-gray-200 dark:ring-gray-700 shadow"
-              />
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photoUrl}
+                  alt={agent.displayName}
+                  className="h-28 w-28 rounded-xl object-cover ring-2 ring-gray-200 dark:ring-gray-700 shadow"
+                />
+                <Button variant="outline" size="sm" className="w-full text-xs h-7" asChild>
+                  <a href={photoUrl} download={`agent-${agent.id}-photo`}>
+                    Download Image
+                  </a>
+                </Button>
+              </>
             ) : (
               <div className="h-28 w-28 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 flex flex-col items-center justify-center text-indigo-600 dark:text-indigo-300 shadow ring-2 ring-gray-200 dark:ring-gray-700 select-none">
                 <span className="text-4xl font-bold">{initials}</span>
@@ -266,13 +273,27 @@ export default function AgentDetailsClient({ id }: { id: string }) {
             </div>
           )}
           {hasPermission(PERMISSIONS.COMMUNICATIONS_SEND) && (
-            <div className="shrink-0 self-start">
+            <div className="shrink-0 self-start flex gap-2">
               <SendMessageDialog
                 recipientType="agent"
                 recipientId={agent.id}
                 recipientName={agent.displayName}
                 recipientEmail={agent.email}
                 recipientPhone={agent.agent?.phone || agent.phoneNumber}
+              />
+              <SendMessageDialog
+                recipientType="agent"
+                recipientId={agent.id}
+                recipientName={agent.displayName}
+                recipientEmail={agent.email}
+                recipientPhone={agent.agent?.phone || agent.phoneNumber}
+                defaultSubject="Please Update Your CCSA Profile"
+                defaultBody={`Hello ${agent.firstName},\n\nPlease use the secure link below to update your agent profile records (including NIN, bank details, and operational address).\n\nUpdate link:\n${window.location.origin}/update/agent/${agent.id}\n\nThank you,\nCCSA Admin`}
+                trigger={
+                  <Button size="sm" variant="outline" className="gap-2 border-ccsa-blue text-ccsa-blue hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                    Request Update
+                  </Button>
+                }
               />
             </div>
           )}

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/authOptions';
 import { hasPermission } from '@/lib/permissions';
 import { PERMISSIONS } from '@/lib/permissionConstants';
 import prisma from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import { sendCustomEmail } from '@/lib/emailService';
 import TermiiService from '@/lib/termiiService';
 
@@ -104,31 +105,22 @@ export async function POST(
     const failedCount = errors.length > 0 ? 1 : 0;
     const overallStatus = errors.length === 0 ? 'sent' : 'failed';
 
-    // Create a new log entry for this retry attempt
-    const newLog = await prisma.communicationLog.create({
+    // Update the existing log entry with the new status and failure details (if any)
+    const updatedLog = await prisma.communicationLog.update({
+      where: { id: log.id },
       data: {
-        subject: log.subject,
-        body: log.body,
-        channel: log.channel,
-        recipientType: log.recipientType,
-        recipientId: log.recipientId,
-        recipientName,
-        recipientContact:
-          log.channel !== 'sms' ? recipientEmail : recipientPhone,
-        recipientCount: 1,
         status: overallStatus,
         failureDetails:
           errors.length > 0
             ? [{ id: log.recipientId, name: recipientName, error: errors.join('; ') }]
-            : undefined,
-        sentById: session.user.id,
+            : Prisma.DbNull,
       },
     });
 
     return NextResponse.json({
       success: true,
       status: overallStatus,
-      logId: newLog.id,
+      logId: updatedLog.id,
       sentCount,
       failedCount,
     });

@@ -32,8 +32,11 @@ export async function sendPasswordResetEmail(email: string, resetToken: string, 
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background-color: #013358; color: white; padding: 20px; text-align: center; }
-            .content { padding: 20px; background-color: #f9f9f9; }
+            .header { background-color: #013358; color: white; padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .header img { border-radius: 50%; margin-bottom: 10px; background-color: white; padding: 4px; }
+            .content { padding: 30px; background-color: #ffffff; border: 1px solid #eaeaea; border-top: none; border-radius: 0 0 8px 8px; }
+            body { background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; color: #333; }
+            
             .button { display: inline-block; padding: 12px 24px; background-color: #013358; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
             .footer { padding: 20px; text-align: center; font-size: 12px; color: #666; }
           </style>
@@ -41,8 +44,9 @@ export async function sendPasswordResetEmail(email: string, resetToken: string, 
         <body>
           <div class="container">
             <div class="header">
-              <h1>CCSA Admin</h1>
-              <p>Farmers Information Management System</p>
+              <img src="${process.env.NEXTAUTH_URL}/favicon.ico" alt="CCSA Logo" width="56" height="56" />
+              <h1 style="margin: 0; font-size: 24px;">CCSA Admin</h1>
+              <p style="margin: 5px 0 0; opacity: 0.9;">Farmers Information Management System</p>
             </div>
             <div class="content">
               <h2>Password Reset Request</h2>
@@ -380,8 +384,11 @@ export async function sendApiAccessRequestNotification(params: {
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background-color: #013358; color: white; padding: 20px; text-align: center; }
-            .content { padding: 20px; background-color: #f9f9f9; }
+            .header { background-color: #013358; color: white; padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0; }
+            .header img { border-radius: 50%; margin-bottom: 10px; background-color: white; padding: 4px; }
+            .content { padding: 30px; background-color: #ffffff; border: 1px solid #eaeaea; border-top: none; border-radius: 0 0 8px 8px; }
+            body { background-color: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; color: #333; }
+            
             .field { margin-bottom: 12px; }
             .label { font-weight: bold; color: #013358; }
             .value { background-color: #fff; padding: 8px 12px; border-left: 3px solid #013358; margin-top: 4px; }

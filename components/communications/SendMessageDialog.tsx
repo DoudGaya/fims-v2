@@ -25,6 +25,8 @@ interface SendMessageDialogProps {
   recipientPhone?: string | null;
   /** Optional: wrap a custom trigger element instead of the default button */
   trigger?: React.ReactNode;
+  defaultSubject?: string;
+  defaultBody?: string;
 }
 
 type Channel = 'email' | 'sms' | 'both';
@@ -44,13 +46,15 @@ export function SendMessageDialog({
   recipientEmail,
   recipientPhone,
   trigger,
+  defaultSubject = '',
+  defaultBody = '',
 }: SendMessageDialogProps) {
   const [open, setOpen] = useState(false);
   const [channel, setChannel] = useState<Channel>(
     recipientEmail ? 'email' : 'sms'
   );
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
+  const [subject, setSubject] = useState(defaultSubject);
+  const [body, setBody] = useState(defaultBody);
   const [sendState, setSendState] = useState<SendState>({ status: 'idle' });
 
   const hasEmail = !!recipientEmail;
@@ -61,8 +65,8 @@ export function SendMessageDialog({
     (channel !== 'email' && channel !== 'both' || subject.trim().length > 0);
 
   const reset = () => {
-    setSubject('');
-    setBody('');
+    setSubject(defaultSubject);
+    setBody(defaultBody);
     setChannel(recipientEmail ? 'email' : 'sms');
     setSendState({ status: 'idle' });
   };

@@ -769,6 +769,9 @@ export default function CommunicationsPage() {
   const { status } = useSession();
   const router = useRouter();
 
+  const canSend = hasPermission(PERMISSIONS.COMMUNICATIONS_SEND);
+  const [statsRefresh, setStatsRefresh] = useState(0);
+
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/auth/signin');
     if (!permissionsLoading && status === 'authenticated' && !hasPermission(PERMISSIONS.COMMUNICATIONS_READ)) {
@@ -783,9 +786,6 @@ export default function CommunicationsPage() {
       </div>
     );
   }
-
-  const canSend = hasPermission(PERMISSIONS.COMMUNICATIONS_SEND);
-  const [statsRefresh, setStatsRefresh] = useState(0);
 
   return (
     <div className="space-y-6 p-6">

@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 const farmSchema = z.object({
   farmerId: z.string().min(1, "Farmer ID is required"),
-  farmSize: z.number().optional().nullable(),
+  farmSize: z.coerce.number().optional().nullable(),
   primaryCrop: z.string().min(1, "Primary crop is required"),
   secondaryCrop: z.union([z.string(), z.array(z.string())]).optional().nullable().transform(val => {
     if (typeof val === 'string') return val.split(',').map(s => s.trim()).filter(s => s.length > 0);
@@ -19,9 +19,9 @@ const farmSchema = z.object({
   farmingSeason: z.string().min(1, "Farming season is required"),
   farmWard: z.string().min(1, "Farm ward is required"),
   farmPollingUnit: z.string().min(1, "Farm polling unit is required"),
-  farmingExperience: z.number().int().optional().nullable(),
-  farmLatitude: z.number().optional().nullable(),
-  farmLongitude: z.number().optional().nullable(),
+  farmingExperience: z.coerce.number().int().optional().nullable(),
+  farmLatitude: z.coerce.number().optional().nullable(),
+  farmLongitude: z.coerce.number().optional().nullable(),
   farmPolygon: z.array(z.object({
     latitude: z.number(),
     longitude: z.number(),
@@ -29,16 +29,16 @@ const farmSchema = z.object({
     accuracy: z.number().optional().nullable()
   })).min(3, "Farm boundary must have at least 3 points").optional().nullable(),
   soilType: z.string().optional().nullable(),
-  soilPH: z.number().optional().nullable(),
+  soilPH: z.coerce.number().optional().nullable(),
   soilFertility: z.string().optional().nullable(),
   farmCoordinates: z.any().optional().nullable(),
   coordinateSystem: z.string().default('WGS84'),
-  farmArea: z.number().optional().nullable(),
-  farmElevation: z.number().optional().nullable(),
-  year: z.number().optional().nullable(),
+  farmArea: z.coerce.number().optional().nullable(),
+  farmElevation: z.coerce.number().optional().nullable(),
+  year: z.coerce.number().optional().nullable(),
   yieldSeason: z.string().optional().nullable(),
   crop: z.string().optional().nullable(),
-  quantity: z.number().optional().nullable(),
+  quantity: z.coerce.number().optional().nullable(),
 });
 
 export async function GET(request: Request) {
