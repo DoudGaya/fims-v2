@@ -148,6 +148,7 @@ const navigationConfig = [
     requiredPermission: PERMISSIONS.REQUESTS_READ,
     items: [
       { title: 'Delete Requests', url: '/requests/delete-requests' },
+      { title: 'Account Deletions', url: '/account-deletions' },
     ],
   },
 ];

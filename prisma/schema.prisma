@@ -45,6 +45,7 @@ model User {
   reviewedCorrections               DataCorrection[]     @relation("ReviewedCorrections")
   surveyAssignments                 SurveyAssignment[]   @relation("SurveyAssignments")
   sentCommunications                CommunicationLog[]   @relation("SentCommunications")
+  accountDeleteRequestsReviewed     AccountDeleteRequest[] @relation("AccountDeleteReviewedBy")
 
   @@map("users")
 }
@@ -144,6 +145,25 @@ model FarmDeleteRequest {
   @@index([status, createdAt(sort: Desc)])
   @@index([farmId])
   @@map("farm_delete_requests")
+}
+
+/// Request to delete an account, submitted from the public deletion page.
+model AccountDeleteRequest {
+  id                String              @id @default(cuid())
+  name              String
+  phone             String
+  nin               String
+  reason            String?
+  status            AccessRequestStatus @default(PENDING)
+  reviewedByUserId  String?
+  reviewedAt        DateTime?
+  adminNotes        String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  reviewedBy        User?               @relation("AccountDeleteReviewedBy", fields: [reviewedByUserId], references: [id])
+
+  @@index([status, createdAt(sort: Desc)])
+  @@map("account_delete_requests")
 }
 
 model Agent {

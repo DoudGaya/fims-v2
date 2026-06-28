@@ -246,6 +246,18 @@ function SignInContent() {
               </Link>
             </div>
           </form>
+
+          {/* Footer Links */}
+          <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-6">
+            <div className="flex justify-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
+              <Link href="/privacy" className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline">
+                Privacy Policy
+              </Link>
+              <Link href="/delete-account" className="hover:text-gray-900 dark:hover:text-gray-200 hover:underline">
+                Delete Account
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>
