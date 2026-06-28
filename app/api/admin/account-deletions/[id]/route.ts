@@ -11,9 +11,10 @@ const updateSchema = z.object({
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const session = await getServerSession(authOptions);
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -23,7 +24,7 @@ export async function PATCH(
     const { status, adminNotes } = updateSchema.parse(body);
 
     const updatedRequest = await prisma.accountDeleteRequest.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         status,
         adminNotes,
