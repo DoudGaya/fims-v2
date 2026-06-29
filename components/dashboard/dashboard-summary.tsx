@@ -35,21 +35,21 @@ interface StatsCardProps {
 
 export function StatsCard({ title, value, icon: Icon, description, trend, trendUp, className }: StatsCardProps) {
     return (
-        <Card className={cn("overflow-hidden", className)}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+        <Card className={cn("overflow-hidden border-[#DCEAF3] bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md", className)}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+                <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">
                     {title}
                 </CardTitle>
-                <div className="h-4 w-4 text-muted-foreground">
-                    <Icon className="h-6 w-6" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[#F3F8FC] text-[#013358]">
+                    <Icon className="h-5 w-5" />
                 </div>
             </CardHeader>
-            <CardContent>
-                <div className="text-4xl font-bold">{value}</div>
+            <CardContent className="pt-0">
+                <div className="text-3xl font-bold tracking-normal text-[#1E293B]">{value}</div>
                 {(description || trend) && (
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                    <p className="mt-2 flex items-center gap-1 text-sm text-[#64748B]">
                         {trend && (
-                            <span className={cn(trendUp === true ? "text-green-500" : trendUp === false ? "text-red-500" : "")}>
+                            <span className={cn("font-semibold", trendUp === true ? "text-[#10B981]" : trendUp === false ? "text-[#EF4444]" : "")}>
                                 {trend}
                             </span>
                         )}
@@ -81,7 +81,7 @@ export function GoalProgress({ current, target, title, subtext }: GoalProgressPr
     const chartConfig = {
         progress: {
             label: "Progress",
-            color: "hsl(var(--chart-2))",
+            color: "#10B981",
         },
     } satisfies ChartConfig
 
@@ -90,10 +90,10 @@ export function GoalProgress({ current, target, title, subtext }: GoalProgressPr
     // Actually, user asked for "modern" - a simple radial ring is nice.
 
     return (
-        <Card className="flex border-0 shadow-none flex-col">
-            <CardHeader className="items-center pb-0">
-                <CardTitle>{title}</CardTitle>
-                <CardDescription>{subtext}</CardDescription>
+        <Card className="flex h-full flex-col border-[#DCEAF3] bg-white shadow-sm">
+            <CardHeader className="items-center pb-0 text-center">
+                <CardTitle className="text-lg text-[#1E293B]">{title}</CardTitle>
+                <CardDescription className="text-[#64748B]">{subtext}</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 pb-0">
                 <ChartContainer
@@ -129,14 +129,14 @@ export function GoalProgress({ current, target, title, subtext }: GoalProgressPr
                                                 <tspan
                                                     x={viewBox.cx}
                                                     y={viewBox.cy}
-                                                    className="fill-foreground text-4xl font-bold"
+                                                    className="fill-[#1E293B] text-4xl font-bold"
                                                 >
                                                     {percentage.toFixed(0)}%
                                                 </tspan>
                                                 <tspan
                                                     x={viewBox.cx}
                                                     y={(viewBox.cy || 0) + 24}
-                                                    className="fill-muted-foreground"
+                                                    className="fill-[#64748B]"
                                                 >
                                                     Complete
                                                 </tspan>
@@ -149,11 +149,11 @@ export function GoalProgress({ current, target, title, subtext }: GoalProgressPr
                     </RadialBarChart>
                 </ChartContainer>
             </CardContent>
-            <CardFooter className="flex-row justify-between gap-2 text-sm text-center">
-                <div className="flex items-center gap-2 font-medium leading-none">
+            <CardFooter className="flex-row justify-between gap-2 border-t border-[#E5E7EB] text-center text-sm">
+                <div className="flex items-center gap-2 font-semibold leading-none text-[#013358]">
                     Target: {target.toLocaleString()} <TrendingUp className="h-4 w-4" />
                 </div>
-                <div className="leading-none text-muted-foreground">
+                <div className="leading-none text-[#64748B]">
                     {current.toLocaleString()} achieved so far
                 </div>
             </CardFooter>

@@ -4,6 +4,7 @@ import { ThemeToggle } from '@/components/ui/theme-toggle';
 
 const navLinks = [
   { label: 'Home', href: '/fims' },
+  { label: 'Agri-Business', href: '/agribusiness' },
   { label: 'API Docs', href: '/docs' },
   { label: 'Request Access', href: '/access' },
 ];

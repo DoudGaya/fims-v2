@@ -1,9 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { Users, Leaf, TrendingUp, UserCheck, Calendar, MapPin, Building } from "lucide-react"
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Pie, PieChart, Label, Sector, Cell } from "recharts"
-import { type PieSectorDataItem } from "recharts/types/polar/Pie"
+import { Users } from "lucide-react"
+import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Label } from "recharts"
 
 import {
     Card,
@@ -18,8 +17,6 @@ import {
     ChartTooltip,
     ChartTooltipContent,
     type ChartConfig,
-    ChartLegend,
-    ChartLegendContent,
     ChartStyle
 } from "@/components/ui/chart"
 
@@ -34,7 +31,25 @@ import {
 
 // --- Registration Trends Chart ---
 
-export function RegistrationEstimatorChart({ trends }: { trends: any[] }) {
+type MonthlyTrend = { month: string; count: number }
+type GenderDatum = { gender: string; count: number }
+type CropDatum = { crop: string; count: number }
+type StateDatum = { state: string; count: number }
+type ClusterDatum = { clusterTitle: string; farmersCount: number }
+
+const emptyChartMessage = (title: string, description: string) => (
+    <Card className="border-[#DCEAF3] bg-white shadow-sm">
+        <CardHeader>
+            <CardTitle>{title}</CardTitle>
+            <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex h-[260px] items-center justify-center text-sm text-[#64748B]">
+            No data available yet.
+        </CardContent>
+    </Card>
+)
+
+export function RegistrationEstimatorChart({ trends }: { trends?: MonthlyTrend[] }) {
     const chartConfig = {
         count: {
             label: "Registrations",
@@ -43,19 +58,19 @@ export function RegistrationEstimatorChart({ trends }: { trends: any[] }) {
         },
     } satisfies ChartConfig
 
-    const data = trends || []
+    const data = React.useMemo(() => trends ?? [], [trends])
     const totalRegistrations = React.useMemo(() => data.reduce((acc, curr) => acc + curr.count, 0), [data])
 
     return (
-        <Card>
+        <Card className="border-[#DCEAF3] bg-white shadow-sm">
             <CardHeader>
-                <CardTitle>Registration Trends</CardTitle>
-                <CardDescription>Monthly farmer registrations (Last 2 Years)</CardDescription>
+                <CardTitle className="text-[#1E293B]">Registration Trends</CardTitle>
+                <CardDescription>Monthly farmer registrations over the last 24 months</CardDescription>
             </CardHeader>
             <CardContent>
                 <ChartContainer config={chartConfig} className="h-[300px] w-full">
                     <BarChart accessibilityLayer data={data}>
-                        <CartesianGrid vertical={false} />
+                        <CartesianGrid vertical={false} strokeDasharray="3 3" />
                         <XAxis
                             dataKey="month"
                             tickLine={false}
@@ -64,17 +79,15 @@ export function RegistrationEstimatorChart({ trends }: { trends: any[] }) {
                             tickFormatter={(value) => value.slice(0, 3)}
                         />
                         <ChartTooltip
-                            cursor={false}
+                            cursor={{ fill: "rgba(220, 234, 243, 0.45)" }}
                             content={<ChartTooltipContent hideLabel />}
                         />
-                        <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="count" fill="var(--color-count)" radius={[6, 6, 0, 0]} />
                     </BarChart>
                 </ChartContainer>
             </CardContent>
-            <CardFooter className="flex-col items-start gap-2 text-sm">
-                <div className="flex gap-2 leading-none font-medium">
-                    {/* Total {totalRegistrations.toLocaleString()} registrations <TrendingUp className="h-4 w-4" /> */}
-                </div>
+            <CardFooter className="border-t border-[#E5E7EB] text-sm text-[#475569]">
+                Total registrations in view: <span className="font-bold text-[#013358]">{totalRegistrations.toLocaleString()}</span>
             </CardFooter>
         </Card>
     )
@@ -83,7 +96,7 @@ export function RegistrationEstimatorChart({ trends }: { trends: any[] }) {
 
 // --- Gender Distribution Pie Chart ---
 
-export function GenderDistributionChart({ data }: { data: { gender: string, count: number }[] }) {
+export function GenderDistributionChart({ data }: { data?: GenderDatum[] }) {
 
     const chartData = React.useMemo(() => {
         if (!data || !Array.isArray(data)) return [];
@@ -104,7 +117,7 @@ export function GenderDistributionChart({ data }: { data: { gender: string, coun
                 color: `var(--chart-${(index % 5) + 1})`
             }
             return acc
-        }, {} as Record<string, any>)
+        }, {} as ChartConfig)
     } satisfies ChartConfig
 
     const [activeGender, setActiveGender] = React.useState(chartData[0]?.gender)
@@ -122,14 +135,14 @@ export function GenderDistributionChart({ data }: { data: { gender: string, coun
 
     const genders = React.useMemo(() => chartData.map((item) => item.gender), [chartData])
 
-    if (chartData.length === 0) return null;
+    if (chartData.length === 0) return emptyChartMessage("Gender Distribution", "No demographic breakdown available")
 
     return (
-        <Card data-chart="gender-interactive" className="flex flex-col">
+        <Card data-chart="gender-interactive" className="flex flex-col border-[#DCEAF3] bg-white shadow-sm">
             <ChartStyle id="gender-interactive" config={chartConfig} />
             <CardHeader className="flex-row items-center justify-between pb-0 md:flex-row flex-col space-y-2 md:space-y-0">
                 <div className="grid gap-1">
-                    <CardTitle>Gender Distribution</CardTitle>
+                    <CardTitle className="text-[#1E293B]">Gender Distribution</CardTitle>
                     <CardDescription>Demographic breakdown</CardDescription>
                 </div>
                 <Select value={activeGender} onValueChange={setActiveGender}>
@@ -186,21 +199,6 @@ export function GenderDistributionChart({ data }: { data: { gender: string, coun
                             nameKey="gender"
                             innerRadius={60}
                             strokeWidth={5}
-                            // @ts-ignore
-                            activeIndex={activeIndex}
-                            activeShape={({
-                                outerRadius = 0,
-                                ...props
-                            }: PieSectorDataItem) => (
-                                <g>
-                                    <Sector {...props} outerRadius={outerRadius + 10} />
-                                    <Sector
-                                        {...props}
-                                        outerRadius={outerRadius + 25}
-                                        innerRadius={outerRadius + 12}
-                                    />
-                                </g>
-                            )}
                         >
                             <Label
                                 content={({ viewBox }) => {
@@ -216,14 +214,14 @@ export function GenderDistributionChart({ data }: { data: { gender: string, coun
                                                 <tspan
                                                     x={viewBox.cx}
                                                     y={viewBox.cy}
-                                                    className="fill-foreground text-3xl font-bold"
+                                                    className="fill-[#1E293B] text-3xl font-bold"
                                                 >
                                                     {currentItem ? currentItem.count.toLocaleString() : 0}
                                                 </tspan>
                                                 <tspan
                                                     x={viewBox.cx}
                                                     y={(viewBox.cy || 0) + 24}
-                                                    className="fill-muted-foreground"
+                                                    className="fill-[#64748B]"
                                                 >
                                                     Farmers
                                                 </tspan>
@@ -246,8 +244,8 @@ export function CropsStatesInteractiveChart({
     cropsData,
     statesData
 }: {
-    cropsData: { crop: string, count: number }[],
-    statesData: { state: string, count: number }[]
+    cropsData?: CropDatum[],
+    statesData?: StateDatum[]
 }) {
     const [activeView, setActiveView] = React.useState<"crops" | "states">("crops")
 
@@ -283,10 +281,10 @@ export function CropsStatesInteractiveChart({
     } satisfies ChartConfig
 
     return (
-        <Card className="py-0">
-            <CardHeader className="flex flex-col items-stretch border-b !p-0 sm:flex-row">
+        <Card className="border-[#DCEAF3] bg-white py-0 shadow-sm">
+            <CardHeader className="flex flex-col items-stretch border-b border-[#E5E7EB] !p-0 sm:flex-row">
                 <div className="flex flex-1 flex-col justify-center gap-1 px-6 pt-4 pb-3 sm:!py-0">
-                    <CardTitle>Performance Metrics</CardTitle>
+                    <CardTitle className="text-[#1E293B]">Performance Metrics</CardTitle>
                     <CardDescription>
                         Top performers across crops and states
                     </CardDescription>
@@ -298,7 +296,7 @@ export function CropsStatesInteractiveChart({
                             <button
                                 key={key}
                                 data-active={activeView === key}
-                                className="data-[active=true]:bg-muted/50 relative z-30 flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left even:border-l sm:border-t-0 sm:border-l sm:px-8 sm:py-6 outline-none"
+                                className="relative z-30 flex flex-1 flex-col justify-center gap-1 border-t border-[#E5E7EB] px-6 py-4 text-left outline-none transition data-[active=true]:bg-[#F3F8FC] data-[active=true]:text-[#013358] even:border-l sm:border-t-0 sm:border-l sm:px-8 sm:py-6"
                                 onClick={() => setActiveView(viewKey)}
                             >
                                 <span className="text-muted-foreground text-xs">
@@ -322,7 +320,7 @@ export function CropsStatesInteractiveChart({
                             right: 12,
                         }}
                     >
-                        <CartesianGrid vertical={false} />
+                        <CartesianGrid vertical={false} strokeDasharray="3 3" />
                         <XAxis
                             dataKey="label"
                             tickLine={false}
@@ -340,7 +338,7 @@ export function CropsStatesInteractiveChart({
                                 />
                             }
                         />
-                        <Bar dataKey="count" fill={chartConfig.count.color} radius={4} />
+                        <Bar dataKey="count" fill={chartConfig.count.color} radius={[6, 6, 0, 0]} />
                     </BarChart>
                 </ChartContainer>
             </CardContent>
@@ -350,7 +348,7 @@ export function CropsStatesInteractiveChart({
 
 // --- Cluster Performance Chart ---
 
-export function ClusterPerformanceChart({ data }: { data: { clusterTitle: string, farmersCount: number }[] }) {
+export function ClusterPerformanceChart({ data }: { data?: ClusterDatum[] }) {
     // Sort and take top 5 or 10
     const sortedData = React.useMemo(() => {
         if (!data || !Array.isArray(data)) return [];
@@ -370,7 +368,7 @@ export function ClusterPerformanceChart({ data }: { data: { clusterTitle: string
                 color: `var(--chart-${(index % 5) + 1})`
             }
             return acc
-        }, {} as Record<string, any>)
+        }, {} as ChartConfig)
     } satisfies ChartConfig
 
     const [activeCluster, setActiveCluster] = React.useState(sortedData[0]?.clusterTitle)
@@ -392,24 +390,16 @@ export function ClusterPerformanceChart({ data }: { data: { clusterTitle: string
 
     if (sortedData.length === 0) {
         return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Top Clusters</CardTitle>
-                    <CardDescription>No cluster data available</CardDescription>
-                </CardHeader>
-                <CardContent className="h-[250px] flex items-center justify-center text-muted-foreground">
-                    No clusters found
-                </CardContent>
-            </Card>
+            emptyChartMessage("Top Clusters", "No cluster membership data available")
         )
     }
 
     return (
-        <Card data-chart="cluster-interactive" className="flex flex-col">
+        <Card data-chart="cluster-interactive" className="flex flex-col border-[#DCEAF3] bg-white shadow-sm">
             <ChartStyle id="cluster-interactive" config={chartConfig} />
             <CardHeader className="flex-row items-center justify-between pb-0 md:flex-row flex-col space-y-2 md:space-y-0">
                 <div className="grid gap-1">
-                    <CardTitle>Top Clusters</CardTitle>
+                    <CardTitle className="text-[#1E293B]">Top Clusters</CardTitle>
                     <CardDescription>Cluster membership breakdown</CardDescription>
                 </div>
                 <Select value={activeCluster} onValueChange={setActiveCluster}>
@@ -466,21 +456,6 @@ export function ClusterPerformanceChart({ data }: { data: { clusterTitle: string
                             nameKey="clusterTitle"
                             innerRadius={60}
                             strokeWidth={5}
-                            // @ts-ignore
-                            activeIndex={activeIndex}
-                            activeShape={({
-                                outerRadius = 0,
-                                ...props
-                            }: PieSectorDataItem) => (
-                                <g>
-                                    <Sector {...props} outerRadius={outerRadius + 10} />
-                                    <Sector
-                                        {...props}
-                                        outerRadius={outerRadius + 25}
-                                        innerRadius={outerRadius + 12}
-                                    />
-                                </g>
-                            )}
                         >
                             <Label
                                 content={({ viewBox }) => {
@@ -496,14 +471,14 @@ export function ClusterPerformanceChart({ data }: { data: { clusterTitle: string
                                                 <tspan
                                                     x={viewBox.cx}
                                                     y={viewBox.cy}
-                                                    className="fill-foreground text-3xl font-bold"
+                                                    className="fill-[#1E293B] text-3xl font-bold"
                                                 >
                                                     {currentItem ? currentItem.farmersCount.toLocaleString() : 0}
                                                 </tspan>
                                                 <tspan
                                                     x={viewBox.cx}
                                                     y={(viewBox.cy || 0) + 24}
-                                                    className="fill-muted-foreground"
+                                                    className="fill-[#64748B]"
                                                 >
                                                     Members
                                                 </tspan>

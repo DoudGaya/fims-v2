@@ -4,8 +4,6 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { usePermissions } from '@/components/PermissionProvider';
-import { PERMISSIONS } from '@/lib/permissions';
 import {
   MagnifyingGlassIcon,
   EyeIcon,
@@ -14,8 +12,7 @@ import {
   ArrowPathIcon,
   MapPinIcon,
   ChevronLeftIcon,
-  ChevronRightIcon,
-  EllipsisHorizontalIcon
+  ChevronRightIcon
 } from '@heroicons/react/24/outline';
 
 import {
@@ -50,7 +47,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
 
 interface Farm {
   id: string;
@@ -83,14 +79,12 @@ interface Pagination {
 }
 
 function FarmsContent() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
-  const { hasPermission } = usePermissions();
 
   const [farms, setFarms] = useState<Farm[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [analyticsLoading, setAnalyticsLoading] = useState(true);
 
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -105,7 +99,6 @@ function FarmsContent() {
 
   const fetchAnalytics = useCallback(async () => {
     if (status !== 'authenticated') return;
-    setAnalyticsLoading(true);
     try {
       const res = await fetch('/api/farms/analytics');
       if (res.ok) {
@@ -114,8 +107,6 @@ function FarmsContent() {
       }
     } catch (err) {
       console.error("Failed to fetch farm analytics", err);
-    } finally {
-      setAnalyticsLoading(false);
     }
   }, [status]);
 
@@ -171,15 +162,16 @@ function FarmsContent() {
   return (
     <div className="space-y-6 px-1">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 rounded-lg border border-[#DCEAF3] bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Farm Management</h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-xs font-bold uppercase tracking-wide text-[#013358]">FIMS Operations</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-normal text-[#1E293B]">Farm Management</h1>
+          <p className="mt-1 text-[#64748B]">
             Track and manage farm lands, crops, and geographical data.
           </p>
         </div>
 
-        <Button asChild className="bg-green-600 hover:bg-green-700">
+        <Button asChild>
           <Link href="/farms/create">
             <PlusIcon className="mr-2 h-4 w-4" />
             Add New Farm
@@ -190,47 +182,47 @@ function FarmsContent() {
 
       {/* Analytics Cards */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border-green-200">
+        <Card className="border-[#DCEAF3] bg-white shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-xs font-medium text-green-800">Total Farms</CardTitle>
-            <MapPinIcon className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Total Farms</CardTitle>
+            <MapPinIcon className="h-4 w-4 text-[#013358]" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold text-green-900">{analytics?.totalFarms?.toLocaleString() || 0}</div>
+            <div className="text-2xl font-bold text-[#1E293B]">{analytics?.totalFarms?.toLocaleString() || 0}</div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-[#DCEAF3] bg-white shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Total Area (Hectares)</CardTitle>
-            <div className="h-2 w-2 rounded-full bg-blue-500" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Total Area (Hectares)</CardTitle>
+            <div className="h-2 w-2 rounded-full bg-[#3B82F6]" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold">{analytics?.totalArea?.toLocaleString(undefined, { maximumFractionDigits: 1 }) || 0} Ha</div>
+            <div className="text-2xl font-bold text-[#1E293B]">{analytics?.totalArea?.toLocaleString(undefined, { maximumFractionDigits: 1 }) || 0} Ha</div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-[#DCEAF3] bg-white shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Average Farm Size</CardTitle>
-            <div className="h-2 w-2 rounded-full bg-purple-500" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Average Farm Size</CardTitle>
+            <div className="h-2 w-2 rounded-full bg-[#10B981]" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold">{analytics?.avgSize?.toLocaleString(undefined, { maximumFractionDigits: 2 }) || 0} Ha</div>
+            <div className="text-2xl font-bold text-[#1E293B]">{analytics?.avgSize?.toLocaleString(undefined, { maximumFractionDigits: 2 }) || 0} Ha</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
+        <Card className="border-[#DCEAF3] bg-white shadow-sm">
           <CardHeader>
-            <CardTitle>Farms by State</CardTitle>
-            <div className="text-sm text-gray-500">Distribution of farms across states</div>
+            <CardTitle className="text-[#1E293B]">Farms by State</CardTitle>
+            <div className="text-sm text-[#64748B]">Distribution of farms across states</div>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
-              <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
+              <ResponsiveContainer minHeight={1} minWidth={1} width="100%" height="100%">
                 <BarChart
                   data={analytics?.farmsByState.map(item => ({ name: item.farmState, value: item._count.id }))}
                   layout="vertical"
@@ -240,21 +232,21 @@ function FarmsContent() {
                   <XAxis type="number" hide />
                   <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 12 }} />
                   <Tooltip cursor={{ fill: 'transparent' }} />
-                  <Bar dataKey="value" fill="#16a34a" radius={[0, 4, 4, 0]} barSize={20} />
+                  <Bar dataKey="value" fill="#013358" radius={[0, 6, 6, 0]} barSize={20} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-[#DCEAF3] bg-white shadow-sm">
           <CardHeader>
-            <CardTitle>Primary Crops</CardTitle>
-            <div className="text-sm text-gray-500">Most common crops being cultivated</div>
+            <CardTitle className="text-[#1E293B]">Primary Crops</CardTitle>
+            <div className="text-sm text-[#64748B]">Most common crops being cultivated</div>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
-              <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
+              <ResponsiveContainer minHeight={1} minWidth={1} width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={analytics?.farmsByCrop.map(item => ({ name: item.primaryCrop, value: item._count.id }))}
@@ -266,11 +258,11 @@ function FarmsContent() {
                     dataKey="value"
                   >
                     {[
-                      '#22c55e', // green-500
-                      '#eab308', // yellow-500
-                      '#f97316', // orange-500
-                      '#3b82f6', // blue-500
-                      '#a855f7', // purple-500
+                      '#013358',
+                      '#02426F',
+                      '#10B981',
+                      '#F59E0B',
+                      '#3B82F6',
                     ].map((color, index) => (
                       <Cell key={`cell-${index}`} fill={color} />
                     ))}
@@ -285,7 +277,7 @@ function FarmsContent() {
       </div>
 
       {/* Filters & Actions */}
-      <Card>
+      <Card className="border-[#DCEAF3] bg-white shadow-sm">
         <CardContent className="p-4">
           <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
@@ -312,7 +304,7 @@ function FarmsContent() {
                 </SelectContent>
               </Select>
             </div>
-            <Button type="submit" className="bg-green-600 hover:bg-green-700">
+            <Button type="submit">
               Filter
             </Button>
             <Button variant="outline" type="button" onClick={handleReset}>
@@ -323,10 +315,10 @@ function FarmsContent() {
       </Card>
 
       {/* Table */}
-      <div className="rounded-md border bg-white overflow-hidden">
+      <div className="overflow-hidden rounded-lg border border-[#DCEAF3] bg-white shadow-sm">
         <Table>
           <TableHeader>
-            <TableRow className="bg-gray-50/50">
+            <TableRow>
               <TableHead className="w-[300px]">Farm Details</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Farmer</TableHead>
@@ -352,22 +344,22 @@ function FarmsContent() {
               </TableRow>
             ) : (
               farms.map((farm) => (
-                <TableRow key={farm.id} className="cursor-pointer hover:bg-gray-50/50">
+                <TableRow key={farm.id} className="cursor-pointer">
                   <TableCell>
-                    <div className="font-medium text-gray-900">{farm.primaryCrop}</div>
-                    <div className="text-sm text-gray-500">{farm.farmSize ? `${farm.farmSize} Hectares` : 'Size Unknown'}</div>
+                    <div className="font-semibold text-[#1E293B]">{farm.primaryCrop}</div>
+                    <div className="text-sm text-[#64748B]">{farm.farmSize ? `${farm.farmSize} Hectares` : 'Size Unknown'}</div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <MapPinIcon className="mr-1 h-4 w-4 text-gray-400" />
+                    <div className="flex items-center text-sm text-[#64748B]">
+                      <MapPinIcon className="mr-1 h-4 w-4 text-[#94A3B8]" />
                       {farm.farmState}, {farm.farmLocalGovernment}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm font-medium">{farm.farmer.firstName} {farm.farmer.lastName}</div>
-                    <div className="text-xs text-gray-500">{farm.farmer.nin}</div>
+                    <div className="text-sm font-semibold text-[#1E293B]">{farm.farmer.firstName} {farm.farmer.lastName}</div>
+                    <div className="text-xs text-[#64748B]">{farm.farmer.nin}</div>
                   </TableCell>
-                  <TableCell className="text-gray-500">
+                  <TableCell className="text-[#64748B]">
                     {new Date(farm.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
@@ -393,7 +385,7 @@ function FarmsContent() {
 
       {/* Pagination */}
       <div className="flex items-center justify-between px-2">
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-[#64748B]">
           Showing {(pagination.page - 1) * pagination.limit + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} entries
         </div>
         <div className="flex items-center space-x-2">

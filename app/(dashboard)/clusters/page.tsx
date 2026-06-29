@@ -332,7 +332,7 @@ export default function ClustersPage() {
             </CardHeader>
             <CardContent>
               <div className="h-[300px] w-full">
-                <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
+                <ResponsiveContainer minHeight={1} minWidth={1} width="100%" height="100%">
                   <BarChart data={chartData} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#6b7280" strokeOpacity={0.3} />
                     <XAxis type="number" hide />

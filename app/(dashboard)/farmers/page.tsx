@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { usePermissions } from '@/components/PermissionProvider';
 import { PERMISSIONS } from '@/lib/permissions';
@@ -81,7 +81,7 @@ interface AnalyticsData {
   totalFarmers: number;
   farmersByStatus: Record<string, number>;
   farmersByState: { state: string; _count: { id: number } }[];
-  recentRegistrations: any[];
+  recentRegistrations: unknown[];
 }
 
 interface Pagination {
@@ -92,7 +92,7 @@ interface Pagination {
 }
 
 function FarmersContent() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const { hasPermission } = usePermissions();
 
@@ -100,8 +100,6 @@ function FarmersContent() {
   const [farmers, setFarmers] = useState<Farmer[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [analyticsLoading, setAnalyticsLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Batch Selection States
   const [selectedFarmers, setSelectedFarmers] = useState<Set<string>>(new Set());
@@ -121,7 +119,6 @@ function FarmersContent() {
   // Fetch Analytics
   const fetchAnalytics = useCallback(async () => {
     if (status !== 'authenticated') return;
-    setAnalyticsLoading(true);
     try {
       const res = await fetch('/api/farmers/analytics');
       if (res.ok) {
@@ -130,8 +127,6 @@ function FarmersContent() {
       }
     } catch (err) {
       console.error("Failed to fetch analytics", err);
-    } finally {
-      setAnalyticsLoading(false);
     }
   }, [status]);
 
@@ -203,7 +198,6 @@ function FarmersContent() {
   };
 
   const updateFarmerStatus = async (id: string, newStatus: string) => {
-    setActionLoading(id);
     try {
       const res = await fetch(`/api/farmers/${id}`, {
         method: 'PATCH',
@@ -223,8 +217,6 @@ function FarmersContent() {
     } catch (err) {
       console.error('Error updating status', err);
       alert('Error updating farmer status. Please try again.');
-    } finally {
-      setActionLoading(null);
     }
   };
 
@@ -275,15 +267,16 @@ function FarmersContent() {
   return (
     <div className="space-y-6 px-1">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 rounded-lg border border-[#DCEAF3] bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Farmers Management</h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-xs font-bold uppercase tracking-wide text-[#013358]">FIMS Operations</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-normal text-[#1E293B] dark:text-white">Farmers Management</h1>
+          <p className="mt-1 text-[#64748B]">
             Overview and management of registered farmers across all regions.
           </p>
         </div>
         {hasPermission(PERMISSIONS.FARMERS_CREATE) && (
-          <Button asChild className="bg-ccsa-blue hover:bg-blue-800">
+          <Button asChild>
             <Link href="/farmers/create">
               <PlusIcon className="mr-2 h-4 w-4" />
               Register Farmer
@@ -294,67 +287,67 @@ function FarmersContent() {
 
       {/* Analytics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <Card className="col-span-1 lg:col-span-1 border-blue-200 dark:border-blue-800">
+        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-xs font-medium text-blue-800 dark:text-blue-300">Total Farmers</CardTitle>
-            <UsersIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Total Farmers</CardTitle>
+            <UsersIcon className="h-4 w-4 text-[#013358]" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold text-blue-900 dark:text-blue-200">{analytics?.totalFarmers?.toLocaleString() || 0}</div>
+            <div className="text-2xl font-bold text-[#1E293B]">{analytics?.totalFarmers?.toLocaleString() || 0}</div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 lg:col-span-1">
+        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Enrolled</CardTitle>
-            <div className="h-2 w-2 rounded-full bg-blue-500" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Enrolled</CardTitle>
+            <div className="h-2 w-2 rounded-full bg-[#02426F]" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold">{analytics?.farmersByStatus?.['Enrolled']?.toLocaleString() || 0}</div>
+            <div className="text-2xl font-bold text-[#1E293B]">{analytics?.farmersByStatus?.['Enrolled']?.toLocaleString() || 0}</div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 lg:col-span-1">
+        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Farm Captured</CardTitle>
-            <div className="h-2 w-2 rounded-full bg-purple-500" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Farm Captured</CardTitle>
+            <div className="h-2 w-2 rounded-full bg-[#3B82F6]" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold">{analytics?.farmersByStatus?.['FarmCaptured']?.toLocaleString() || 0}</div>
+            <div className="text-2xl font-bold text-[#1E293B]">{analytics?.farmersByStatus?.['FarmCaptured']?.toLocaleString() || 0}</div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 lg:col-span-1">
+        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Validated</CardTitle>
-            <div className="h-2 w-2 rounded-full bg-indigo-500" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Validated</CardTitle>
+            <div className="h-2 w-2 rounded-full bg-[#F59E0B]" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold">{analytics?.farmersByStatus?.['Validated']?.toLocaleString() || 0}</div>
+            <div className="text-2xl font-bold text-[#1E293B]">{analytics?.farmersByStatus?.['Validated']?.toLocaleString() || 0}</div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 lg:col-span-1">
+        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground">Verified</CardTitle>
-            <div className="h-2 w-2 rounded-full bg-green-500" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Verified</CardTitle>
+            <div className="h-2 w-2 rounded-full bg-[#10B981]" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold">{analytics?.farmersByStatus?.['Verified']?.toLocaleString() || 0}</div>
+            <div className="text-2xl font-bold text-[#1E293B]">{analytics?.farmersByStatus?.['Verified']?.toLocaleString() || 0}</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
+        <Card className="border-[#DCEAF3] bg-white shadow-sm">
           <CardHeader>
-            <CardTitle>Registration Status</CardTitle>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Distribution of farmer onboarding stages</div>
+            <CardTitle className="text-[#1E293B]">Registration Status</CardTitle>
+            <div className="text-sm text-[#64748B]">Distribution of farmer onboarding stages</div>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
-              <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
+              <ResponsiveContainer minHeight={1} minWidth={1} width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={Object.entries(analytics?.farmersByStatus || {}).map(([name, value]) => ({ name, value }))}
@@ -368,14 +361,14 @@ function FarmersContent() {
                     {Object.keys(analytics?.farmersByStatus || {}).map((entry, index) => {
                       // Map status to specific colors
                       const colors: Record<string, string> = {
-                        'Enrolled': '#3b82f6', // blue-500
-                        'FarmCaptured': '#a855f7', // purple-500
-                        'Validated': '#6366f1', // indigo-500
-                        'Verified': '#22c55e', // green-500
-                        'Rejected': '#ef4444', // red-500
-                        'Pending': '#9ca3af', // gray-400
+                        'Enrolled': '#02426F',
+                        'FarmCaptured': '#3B82F6',
+                        'Validated': '#F59E0B',
+                        'Verified': '#10B981',
+                        'Rejected': '#EF4444',
+                        'Pending': '#94A3B8',
                       };
-                      return <Cell key={`cell-${index}`} fill={colors[entry] || '#9ca3af'} />;
+                      return <Cell key={`cell-${index}`} fill={colors[entry] || '#94A3B8'} />;
                     })}
                   </Pie>
                   <Tooltip />
@@ -386,14 +379,14 @@ function FarmersContent() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-[#DCEAF3] bg-white shadow-sm">
           <CardHeader>
-            <CardTitle>Top Locations</CardTitle>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Farmers by State</div>
+            <CardTitle className="text-[#1E293B]">Top Locations</CardTitle>
+            <div className="text-sm text-[#64748B]">Farmers by State</div>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
-              <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
+              <ResponsiveContainer minHeight={1} minWidth={1} width="100%" height="100%">
                 <BarChart
                   data={analytics?.farmersByState.map(item => ({ name: item.state, value: item._count.id }))}
                   layout="vertical"
@@ -403,7 +396,7 @@ function FarmersContent() {
                   <XAxis type="number" hide />
                   <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 12 }} />
                   <Tooltip cursor={{ fill: 'transparent' }} />
-                  <Bar dataKey="value" fill="#16a34a" radius={[0, 4, 4, 0]} barSize={20} />
+                  <Bar dataKey="value" fill="#013358" radius={[0, 6, 6, 0]} barSize={20} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -412,7 +405,7 @@ function FarmersContent() {
       </div>
 
       {/* Filters & Actions */}
-      <Card>
+      <Card className="border-[#DCEAF3] bg-white shadow-sm">
         <CardContent className="p-4">
           <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
@@ -454,7 +447,7 @@ function FarmersContent() {
                 </SelectContent>
               </Select>
             </div>
-            <Button type="submit" className="bg-ccsa-blue hover:bg-blue-800">
+            <Button type="submit">
               Filter
             </Button>
             <Button variant="outline" type="button" onClick={handleReset}>
@@ -466,11 +459,11 @@ function FarmersContent() {
 
       {/* Batch Actions */}
       {selectedFarmers.size > 0 && (
-        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+        <Card className="border-[#DCEAF3] bg-[#F3F8FC] shadow-sm">
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-2">
-                <Badge variant="default" className="bg-blue-600">
+                <Badge variant="default">
                   {selectedFarmers.size} farmer{selectedFarmers.size !== 1 ? 's' : ''} selected
                 </Badge>
                 <Button
@@ -488,9 +481,9 @@ function FarmersContent() {
                   variant="outline"
                   onClick={() => batchUpdateStatus('Validated')}
                   disabled={batchLoading}
-                  className="bg-white hover:bg-indigo-50 border-indigo-300"
+                  className="border-[#DCEAF3] bg-white hover:bg-[#F3F8FC]"
                 >
-                  <CheckBadgeIcon className="mr-1 h-4 w-4 text-indigo-600" />
+                  <CheckBadgeIcon className="mr-1 h-4 w-4 text-[#F59E0B]" />
                   Validate
                 </Button>
                 <Button
@@ -498,9 +491,9 @@ function FarmersContent() {
                   variant="outline"
                   onClick={() => batchUpdateStatus('Verified')}
                   disabled={batchLoading}
-                  className="bg-white hover:bg-green-50 border-green-300"
+                  className="border-[#DCEAF3] bg-white hover:bg-[#F3F8FC]"
                 >
-                  <CheckBadgeIcon className="mr-1 h-4 w-4 text-green-600" />
+                  <CheckBadgeIcon className="mr-1 h-4 w-4 text-[#10B981]" />
                   Verify
                 </Button>
                 <Button
@@ -508,9 +501,9 @@ function FarmersContent() {
                   variant="outline"
                   onClick={() => batchUpdateStatus('Enrolled')}
                   disabled={batchLoading}
-                  className="bg-white hover:bg-blue-50 border-blue-300"
+                  className="border-[#DCEAF3] bg-white hover:bg-[#F3F8FC]"
                 >
-                  <ClockIcon className="mr-1 h-4 w-4 text-blue-600" />
+                  <ClockIcon className="mr-1 h-4 w-4 text-[#02426F]" />
                   Reset
                 </Button>
                 <Button
@@ -518,9 +511,9 @@ function FarmersContent() {
                   variant="outline"
                   onClick={() => batchUpdateStatus('Rejected')}
                   disabled={batchLoading}
-                  className="bg-white hover:bg-red-50 border-red-300"
+                  className="border-[#FECACA] bg-white hover:bg-red-50"
                 >
-                  <XCircleIcon className="mr-1 h-4 w-4 text-red-600" />
+                  <XCircleIcon className="mr-1 h-4 w-4 text-[#EF4444]" />
                   Reject
                 </Button>
               </div>
@@ -530,10 +523,10 @@ function FarmersContent() {
       )}
 
       {/* Table */}
-      <div className="rounded-md border dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
+      <div className="overflow-hidden rounded-lg border border-[#DCEAF3] bg-white shadow-sm dark:bg-gray-900">
         <Table>
           <TableHeader>
-            <TableRow className="bg-gray-50/50 dark:bg-gray-800/50">
+            <TableRow>
               <TableHead className="w-[50px]">
                 <input
                   type="checkbox"
@@ -570,7 +563,7 @@ function FarmersContent() {
               farmers.map((farmer) => (
                 <TableRow
                   key={farmer.id}
-                  className={`cursor-pointer hover:bg-blue-50/50 dark:hover:bg-gray-800/50 ${selectedFarmers.has(farmer.id) ? 'bg-blue-50 dark:bg-blue-900/30' : ''}`}
+                  className={`cursor-pointer ${selectedFarmers.has(farmer.id) ? 'bg-[#F3F8FC]' : ''}`}
                 >
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <input
@@ -582,38 +575,38 @@ function FarmersContent() {
                   </TableCell>
                   <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)}>
                     <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-sm font-semibold text-gray-600 dark:text-gray-300">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F3F8FC] text-sm font-bold text-[#013358]">
                         {farmer.firstName[0]}{farmer.lastName[0]}
                       </div>
                       <div>
-                        <div className="font-medium text-gray-900 dark:text-gray-100">{farmer.firstName} {farmer.lastName}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">{farmer.phone}</div>
+                        <div className="font-semibold text-[#1E293B] dark:text-gray-100">{farmer.firstName} {farmer.lastName}</div>
+                        <div className="text-xs text-[#64748B]">{farmer.phone}</div>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)}>
                     <div className="text-sm">{farmer.nin || 'N/A'}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">ID: {farmer.id.substring(0, 8)}...</div>
+                    <div className="text-xs font-mono text-[#64748B]">ID: {farmer.id.substring(0, 8)}...</div>
                   </TableCell>
                   <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)}>
                     <div className="text-sm font-medium">{farmer.state}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{farmer.cluster?.title || 'No Cluster'}</div>
+                    <div className="text-xs text-[#64748B]">{farmer.cluster?.title || 'No Cluster'}</div>
                   </TableCell>
                   <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)}>
                     <Badge variant="outline"
                       className={`
-                      ${farmer.status === 'Verified' ? 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800' : ''}
-                      ${farmer.status === 'Validated' ? 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-800' : ''}
-                      ${farmer.status === 'Enrolled' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800' : ''}
-                      ${farmer.status === 'FarmCaptured' ? 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800' : ''}
-                      ${farmer.status === 'Rejected' ? 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800' : ''}
-                      ${farmer.status === 'Pending' ? 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600' : ''}
+                      ${farmer.status === 'Verified' ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : ''}
+                      ${farmer.status === 'Validated' ? 'border-amber-200 bg-amber-50 text-amber-800' : ''}
+                      ${farmer.status === 'Enrolled' ? 'border-[#DCEAF3] bg-[#F3F8FC] text-[#013358]' : ''}
+                      ${farmer.status === 'FarmCaptured' ? 'border-blue-200 bg-blue-50 text-blue-700' : ''}
+                      ${farmer.status === 'Rejected' ? 'border-red-200 bg-red-50 text-red-700' : ''}
+                      ${farmer.status === 'Pending' ? 'border-slate-200 bg-slate-50 text-slate-700' : ''}
                     `}
                     >
                       {farmer.status}
                     </Badge>
                   </TableCell>
-                  <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)} className="text-gray-500 dark:text-gray-400">
+                  <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)} className="text-[#64748B]">
                     {new Date(farmer.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>

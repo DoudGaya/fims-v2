@@ -72,6 +72,14 @@ export const PERMISSIONS = {
   COMMUNICATIONS_SEND: 'communications.send',
   COMMUNICATIONS_READ: 'communications.read',
 
+  // Agri-Business / Partnerships
+  AGRIBUSINESS_CREATE: 'agribusiness.create',
+  AGRIBUSINESS_READ: 'agribusiness.read',
+  AGRIBUSINESS_UPDATE: 'agribusiness.update',
+  AGRIBUSINESS_REVIEW_KYB: 'agribusiness.review_kyb',
+  AGRIBUSINESS_MANAGE_AGREEMENTS: 'agribusiness.manage_agreements',
+  AGRIBUSINESS_MANAGE_OUTREACH: 'agribusiness.manage_outreach',
+
   // System Administration
   SYSTEM_MANAGE_PERMISSIONS: 'system.manage_permissions',
   SYSTEM_MANAGE_ROLES: 'system.manage_roles',

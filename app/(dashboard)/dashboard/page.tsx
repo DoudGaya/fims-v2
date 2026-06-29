@@ -10,9 +10,9 @@ import { PageLoader } from '@/components/ui/loading-spinner';
 import {
   UsersIcon,
   UserGroupIcon,
-  MapIcon,
   BuildingOfficeIcon,
   GlobeAltIcon,
+  ArrowRightIcon,
 } from '@heroicons/react/24/outline';
 
 import {
@@ -22,12 +22,37 @@ import {
   CropsStatesInteractiveChart
 } from "@/components/dashboard/dashboard-charts"
 import { StatsCard, GoalProgress } from "@/components/dashboard/dashboard-summary"
+import { Button } from "@/components/ui/button"
+
+type DashboardAnalytics = {
+  overview: {
+    totalFarmers: number;
+    totalAgents: number;
+    totalClusters: number;
+    totalHectares: number;
+  };
+  geography?: {
+    byState?: { state: string; count: number }[];
+  };
+  demographics?: {
+    byGender?: { gender: string; count: number }[];
+  };
+  clusters?: {
+    byClusters?: { clusterTitle: string; farmersCount: number }[];
+  };
+  trends?: {
+    monthly?: { month: string; count: number }[];
+  };
+  crops?: {
+    topCrops?: { crop: string; count: number }[];
+  };
+};
 
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { hasPermission } = usePermissions();
-  const [analytics, setAnalytics] = useState<any>(null);
+  const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -101,24 +126,32 @@ export default function Dashboard() {
     );
   }
 
-  const { overview, geography, demographics, clusters, trends, crops } =
-    analytics;
+  const { overview, geography, demographics, clusters, trends, crops } = analytics;
+  const firstName = session.user?.name?.split(' ')[0] || 'User';
 
   return (
     <div className="space-y-6 py-6">
-      {/* Top Section: Welcome & Goal */}
-      <div className="grid bg-stone-200 dark:bg-stone-800 rounded-lg p-3 grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-4">
-          {/* <div>
-            <h3 className="text-2xl font-bold tracking-tight">
-              Welcome back, {session.user?.name?.split(' ')[0] || "User"}
-            </h3>
-            <p className="text-muted-foreground">
-              Here's what's happening with your farmer registration today.
-            </p>
-          </div> */}
+      <section className="overflow-hidden rounded-lg border border-[#DCEAF3] bg-white shadow-sm">
+        <div className="brand-gradient-dark p-6 text-white lg:p-8">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-[#DCEAF3]">CCSA FIMS Command Centre</p>
+              <h1 className="mt-3 text-3xl font-bold tracking-normal lg:text-4xl">
+                Welcome back, {firstName}
+              </h1>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-[#DCEAF3]">
+                Monitor farmer records, field agents, clusters, farms, and stakeholder growth from one operational view.
+              </p>
+            </div>
+            <div className="rounded-md border border-white/15 bg-white/10 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-[#DCEAF3]">2026 Mandate</p>
+              <p className="mt-1 text-2xl font-bold">2,000,000 farmers</p>
+            </div>
+          </div>
+        </div>
 
-          <div className="grid grid-cols-1 h-full sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-5 p-5 lg:grid-cols-3 lg:p-6">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:col-span-2">
             <StatsCard
               title="Farmers"
               value={formatNumber(overview.totalFarmers)}
@@ -146,9 +179,7 @@ export default function Dashboard() {
               description="Land coverage"
             />
           </div>
-        </div>
 
-        <div className="md:col-span-1">
           <GoalProgress
             current={overview.totalFarmers}
             target={2000000}
@@ -156,11 +187,9 @@ export default function Dashboard() {
             subtext="2 Million Farmers"
           />
         </div>
-      </div>
+      </section>
 
-      {/* Analytics Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Row 1: Registration Trends (Full Width) */}
         <div className="col-span-1 lg:col-span-2">
           <RegistrationEstimatorChart trends={trends?.monthly} />
         </div>
@@ -178,46 +207,43 @@ export default function Dashboard() {
         <div className="col-span-1 lg:col-span-2">
           <ClusterPerformanceChart data={clusters?.byClusters} />
         </div>
-
-        {/* Row 3: Interactive Crops & States (Full Width) */}
-
       </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white dark:bg-gray-900 shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Quick Actions</h3>
+      <div className="rounded-lg border border-[#DCEAF3] bg-white shadow-sm dark:bg-card">
+        <div className="border-b border-[#E5E7EB] px-6 py-4">
+          <h3 className="text-lg font-bold text-[#1E293B] dark:text-gray-100">Quick Actions</h3>
+          <p className="mt-1 text-sm text-[#64748B]">Jump into the workflows used most often by FIMS teams.</p>
         </div>
         <div className="p-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <button
-              onClick={() => router.push('/agents/new')}
-              className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 transition-colors"
-            >
+            <Button onClick={() => router.push('/agents/new')} className="justify-between">
+              <span className="inline-flex items-center">
               <UserGroupIcon className="h-4 w-4 mr-2" />
               Create New Agent
-            </button>
-            <button
-              onClick={() => router.push('/farmers')}
-              className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
+              </span>
+              <ArrowRightIcon className="h-4 w-4" />
+            </Button>
+            <Button onClick={() => router.push('/farmers')} variant="outline" className="justify-between">
+              <span className="inline-flex items-center">
               <UsersIcon className="h-4 w-4 mr-2" />
               View All Farmers
-            </button>
-            <button
-              onClick={() => router.push('/clusters')}
-              className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
+              </span>
+              <ArrowRightIcon className="h-4 w-4" />
+            </Button>
+            <Button onClick={() => router.push('/clusters')} variant="outline" className="justify-between">
+              <span className="inline-flex items-center">
               <BuildingOfficeIcon className="h-4 w-4 mr-2" />
               Manage Clusters
-            </button>
-            <button
-              onClick={() => router.push('/farms')}
-              className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
+              </span>
+              <ArrowRightIcon className="h-4 w-4" />
+            </Button>
+            <Button onClick={() => router.push('/farms')} variant="outline" className="justify-between">
+              <span className="inline-flex items-center">
               <GlobeAltIcon className="h-4 w-4 mr-2" />
               View Farms
-            </button>
+              </span>
+              <ArrowRightIcon className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </div>

@@ -125,7 +125,7 @@ interface StatusContent {
   showLoginButton: boolean;
 }
 
-function getStatusContent(name: string, status: string): StatusContent {
+function getStatusContent(name: string, status: string, tempPassword?: string): StatusContent {
   const loginUrl = `${process.env.NEXTAUTH_URL || 'https://fims.ccsa.edu.ng'}/login`;
   const n = name || 'Applicant';
 
@@ -189,6 +189,11 @@ function getStatusContent(name: string, status: string): StatusContent {
 
     case 'Enrolled':
     case 'active':
+      let passwordInfo = '';
+      if (tempPassword) {
+        passwordInfo = `<p style="background-color:#E6F4EA; border-left: 4px solid #00875A; padding: 12px; border-radius: 4px;"><strong>Your initial login password is:</strong> <code style="font-size: 16px; background: transparent; padding: 0;">${tempPassword}</code><br><em>Please change this password after your first login for security purposes.</em></p>`;
+      }
+
       return {
         subject: 'Your CCSA Field Agent Account is Now Active',
         accentColor: '#00875A',
@@ -197,6 +202,7 @@ function getStatusContent(name: string, status: string): StatusContent {
         intro: `Dear ${n},`,
         bodyHtml: `
           <p>Your CCSA Field Agent account has been <strong>activated</strong>. You can now log in to the CCSA Mobile application and begin enrolling farmers in your assigned area.</p>
+          ${passwordInfo}
           <p><strong>Getting started:</strong></p>
           <ol style="padding-left:18px;color:#444;">
             <li style="margin-bottom:6px;">Download the CCSA Mobile app (if not already installed)</li>
@@ -253,14 +259,14 @@ function getStatusContent(name: string, status: string): StatusContent {
   }
 }
 
-export async function sendAgentStatusEmail(email: string, name: string, status: string) {
+export async function sendAgentStatusEmail(email: string, name: string, status: string, tempPassword?: string) {
   const resend = getResendClient();
   if (!resend) {
     console.warn('Email service not configured - skipping agent status email');
     return null;
   }
 
-  const c = getStatusContent(name, status);
+  const c = getStatusContent(name, status, tempPassword);
   const loginUrl = `${process.env.NEXTAUTH_URL || 'https://fims.ccsa.edu.ng'}/login`;
   const year = new Date().getFullYear();
 

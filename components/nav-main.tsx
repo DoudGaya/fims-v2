@@ -43,7 +43,9 @@ export function NavMain({
         {items.map((item) => {
           // Check if the item is active or if any of its sub-items are active
           // For single links, simple exact match or startsWith if needed (usually exact for dashboard tabs)
-          const isLinkActive = pathname === item.url;
+          const isLinkActive =
+            pathname === item.url || (item.url !== '/dashboard' && pathname.startsWith(`${item.url}/`));
+          const hasActiveChild = item.items?.some((subItem) => pathname === subItem.url || pathname.startsWith(`${subItem.url}/`));
 
           if (!item.items || item.items.length === 0) {
             return (
@@ -52,7 +54,7 @@ export function NavMain({
                   asChild
                   tooltip={item.title}
                   isActive={isLinkActive}
-                  className={isLinkActive ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : ""}
+                  className={isLinkActive ? "bg-[#013358] text-white shadow-sm hover:bg-[#02426F] hover:text-white" : ""}
                 >
                   <Link href={item.url}>
                     {item.icon && <item.icon />}
@@ -72,7 +74,11 @@ export function NavMain({
             >
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
-                  <SidebarMenuButton tooltip={item.title}>
+                  <SidebarMenuButton
+                    tooltip={item.title}
+                    isActive={hasActiveChild}
+                    className={hasActiveChild ? "bg-[#013358] text-white shadow-sm hover:bg-[#02426F] hover:text-white" : ""}
+                  >
                     {item.icon && <item.icon />}
                     <span>{item.title}</span>
                     <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
@@ -82,10 +88,13 @@ export function NavMain({
                   <SidebarMenuSub>
                     {item.items?.map((subItem) => (
                       <SidebarMenuSubItem key={subItem.title}>
-                        <SidebarMenuSubButton asChild>
-                          <a href={subItem.url}>
+                        <SidebarMenuSubButton
+                          asChild
+                          isActive={pathname === subItem.url || pathname.startsWith(`${subItem.url}/`)}
+                        >
+                          <Link href={subItem.url}>
                             <span>{subItem.title}</span>
-                          </a>
+                          </Link>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     ))}

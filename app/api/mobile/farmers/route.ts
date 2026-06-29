@@ -36,6 +36,10 @@ export async function GET(req: NextRequest) {
 
   const where: Prisma.FarmerWhereInput = {};
 
+  if (user.role === 'agent') {
+    where.agentId = user.id;
+  }
+
   if (search) {
     where.OR = [
       { firstName:  { contains: search, mode: 'insensitive' } },

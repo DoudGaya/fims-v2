@@ -32,6 +32,10 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
     return NextResponse.json({ error: 'Farmer not found' }, { status: 404 });
   }
 
+  if (user.role === 'agent' && farmer.agentId !== user.id) {
+    return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+  }
+
   return NextResponse.json(farmer);
 }
 
@@ -65,9 +69,13 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
     );
   }
 
-  const existing = await prisma.farmer.findUnique({ where: { id }, select: { id: true } });
+  const existing = await prisma.farmer.findUnique({ where: { id }, select: { id: true, agentId: true } });
   if (!existing) {
     return NextResponse.json({ error: 'Farmer not found' }, { status: 404 });
+  }
+
+  if (user.role === 'agent' && existing.agentId !== user.id) {
+    return NextResponse.json({ error: 'Access denied' }, { status: 403 });
   }
 
   const {

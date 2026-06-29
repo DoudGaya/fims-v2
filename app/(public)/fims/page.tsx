@@ -8,7 +8,7 @@ export const metadata = {
 };
 
 const stats = [
-  { label: 'Registered Farmers', value: '50,000+' },
+  { label: 'Registered Farmers', value: '60,000+' },
   { label: 'Farm Plots Captured', value: '70,000+' },
   { label: 'States Covered', value: '36' },
   { label: 'Data Accuracy Rate', value: '99.2%' },
@@ -160,6 +160,12 @@ export default function FimsLandingPage() {
               >
                 View API Docs
               </Link>
+              <Link
+                href="/agribusiness"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-white/10 text-white font-semibold rounded-lg border border-white/20 hover:bg-white/20 transition-colors backdrop-blur-sm"
+              >
+                Agri-Business Hub
+              </Link>
             </div>
           </div>
         </div>
@@ -298,8 +304,14 @@ export default function FimsLandingPage() {
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             <Link
+              href="/agribusiness/apply"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[#013358] text-white font-semibold rounded-lg hover:bg-[#02426F] transition-colors shadow-sm"
+            >
+              Apply as Agri-Business Partner
+            </Link>
+            <Link
               href="/access"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[#013358] text-white font-semibold rounded-lg hover:bg-[#01264a] transition-colors shadow-sm"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-semibold rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
             >
               Request API Access
             </Link>

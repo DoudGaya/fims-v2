@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import { z } from 'zod';
+import { getMobileUser } from '@/lib/mobileAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,9 +36,16 @@ const clusterSchema = z.object({
 
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    let session = await getServerSession(authOptions);
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      console.log('🔒 Clusters API: No NextAuth session found. Checking mobile auth headers:', request.headers.get('authorization'));
+      const nextReq = new NextRequest(request.url, { headers: request.headers });
+      const authResult = await getMobileUser(nextReq);
+      if ('error' in authResult) {
+        console.warn('❌ Clusters API: Mobile auth failed:', authResult.error);
+        return authResult.error;
+      }
+      console.log('✅ Clusters API: Mobile auth succeeded for user:', authResult.user.email);
     }
 
     const { searchParams } = new URL(request.url);
@@ -113,9 +121,13 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    let session = await getServerSession(authOptions);
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      const nextReq = new NextRequest(request.url, { headers: request.headers });
+      const authResult = await getMobileUser(nextReq);
+      if ('error' in authResult) {
+        return authResult.error;
+      }
     }
 
     const body = await request.json();

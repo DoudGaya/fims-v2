@@ -18,7 +18,6 @@ import {
   UserIcon,
   CheckCircleIcon,
   XCircleIcon,
-  MapPinIcon,
   InboxArrowDownIcon,
   PhoneIcon,
   ArrowDownTrayIcon
@@ -123,6 +122,14 @@ interface Pagination {
   pages: number;
 }
 
+type LocationOption = string | { name?: string | null };
+
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
+const getLocationName = (location: LocationOption) =>
+  typeof location === 'string' ? location : location.name || '';
+
 export default function AgentsClient() {
   const { status } = useSession();
   const { hasPermission } = usePermissions();
@@ -171,9 +178,9 @@ export default function AgentsClient() {
             let statesList: string[] = [];
             
             if (Array.isArray(data)) {
-                statesList = data.map((s: any) => typeof s === 'string' ? s : s.name);
+                statesList = data.map((state: LocationOption) => getLocationName(state)).filter(Boolean);
             } else if (data.states && Array.isArray(data.states)) {
-                statesList = data.states.map((s: any) => typeof s === 'string' ? s : s.name);
+                statesList = data.states.map((state: LocationOption) => getLocationName(state)).filter(Boolean);
             }
 
             setLocations(prev => ({ ...prev, states: statesList }));
@@ -229,9 +236,9 @@ export default function AgentsClient() {
       setAgents(data.agents);
       setPagination(prev => ({ ...prev, ...data.pagination }));
       setError(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error loading agents', err);
-      setError(err.message || 'An error occurred while fetching agents');
+      setError(getErrorMessage(err, 'An error occurred while fetching agents'));
     } finally {
       setLoading(false);
     }
@@ -278,8 +285,8 @@ export default function AgentsClient() {
 
       fetchAgents();
       fetchAnalytics(); // Refresh stats
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Failed to delete agent'));
     } finally {
       setDeleting(null);
     }
@@ -315,8 +322,8 @@ export default function AgentsClient() {
       setSelectedIds(new Set());
       fetchAgents();
       fetchAnalytics();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Batch action failed'));
     } finally {
       setBatchLoading(false);
     }
@@ -359,34 +366,6 @@ export default function AgentsClient() {
     }
   };
 
-  const handleStatusChange = async (id: string, newStatus: string) => {
-    if (!confirm(`Are you sure you want to change status to "${newStatus}"? This will send an email to the agent.`)) return;
-
-    try {
-      const res = await fetch(`/api/agents/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          status: newStatus, 
-          isActive: newStatus === 'Enrolled' || newStatus === 'active' 
-        })
-      });
-
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || 'Failed to update status');
-      }
-
-      // Refresh data
-      await fetchAgents();
-      await fetchAnalytics();
-      alert(`Status updated to ${newStatus}`);
-    } catch (error: any) {
-      console.error('Status update error:', error);
-      alert(error.message || 'Failed to update status');
-    }
-  };
-
   if (status === 'loading') {
     return <div className="p-8 text-center">Loading...</div>;
   }
@@ -394,11 +373,11 @@ export default function AgentsClient() {
   const getRoleTypeBadge = (role: string) => {
     switch (role) {
       case 'agent':
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800">Enrollment</Badge>;
+        return <Badge className="border-[#DCEAF3] bg-[#F3F8FC] text-[#013358] hover:bg-[#DCEAF3]">Enrollment</Badge>;
       case 'data_correction_agent':
-        return <Badge className="bg-amber-100 text-amber-800 border-amber-200 hover:bg-amber-200 dark:bg-amber-900/20 dark:text-amber-300 dark:border-amber-800">Correction</Badge>;
+        return <Badge className="border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100">Correction</Badge>;
       case 'survey_agent':
-        return <Badge className="bg-purple-100 text-purple-800 border-purple-200 hover:bg-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800">Survey</Badge>;
+        return <Badge className="border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100">Survey</Badge>;
       default:
         return <Badge variant="outline">{role}</Badge>;
     }
@@ -410,16 +389,16 @@ export default function AgentsClient() {
     switch (status.toLowerCase()) {
       case 'active':
       case 'enrolled':
-        return <Badge className="bg-green-100 text-green-800 border-green-200 hover:bg-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800">Active</Badge>;
+        return <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100">Active</Badge>;
       case 'applied':
-        return <Badge className="bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800">New Application</Badge>;
+        return <Badge className="border-[#DCEAF3] bg-[#F3F8FC] text-[#013358] hover:bg-[#DCEAF3]">New Application</Badge>;
       case 'callforinterview':
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 hover:bg-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-800">Interviewing</Badge>;
+        return <Badge className="border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100">Interviewing</Badge>;
       case 'accepted':
-        return <Badge className="bg-indigo-100 text-indigo-800 border-indigo-200 hover:bg-indigo-200 dark:bg-indigo-900/20 dark:text-indigo-300 dark:border-indigo-800">Onboarding</Badge>;
+        return <Badge className="border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100">Onboarding</Badge>;
       case 'rejected':
       case 'inactive':
-        return <Badge className="bg-red-100 text-red-800 border-red-200 hover:bg-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800">Inactive</Badge>;
+        return <Badge className="border-red-200 bg-red-50 text-red-700 hover:bg-red-100">Inactive</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -428,10 +407,11 @@ export default function AgentsClient() {
   return (
     <div className="space-y-6 px-1">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 rounded-lg border border-[#DCEAF3] bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">Agents Management</h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-xs font-bold uppercase tracking-wide text-[#013358]">FIMS Workforce</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-normal text-[#1E293B] dark:text-white">Agents Management</h1>
+          <p className="mt-1 text-[#64748B]">
             Recruit, onboard, and manage field agents.
           </p>
         </div>
@@ -445,7 +425,7 @@ export default function AgentsClient() {
               <ArrowDownTrayIcon className={`mr-2 h-4 w-4 ${downloading ? 'animate-bounce' : ''}`} />
               {downloading ? 'Generating...' : 'Generate Report'}
             </Button>
-            <Button asChild className="bg-ccsa-blue hover:bg-blue-800">
+            <Button asChild>
               <Link href="/agents/new">
                 <PlusIcon className="mr-2 h-4 w-4" />
                 Add Agent
@@ -457,96 +437,96 @@ export default function AgentsClient() {
 
       {/* Analytics Cards */}
       <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-8">
-        <Card className="col-span-1 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-medium text-blue-800 dark:text-blue-300">Applications</CardTitle>
-            <InboxArrowDownIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Applications</CardTitle>
+            <InboxArrowDownIcon className="h-4 w-4 text-[#02426F]" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-blue-900 dark:text-blue-200">
+            <div className="text-2xl font-bold text-[#1E293B]">
               {analyticsLoading ? '...' : analytics?.newApplications || 0}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20">
+        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-medium text-yellow-800 dark:text-yellow-300">Interviewing</CardTitle>
-            <PhoneIcon className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Interviewing</CardTitle>
+            <PhoneIcon className="h-4 w-4 text-[#F59E0B]" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-yellow-900 dark:text-yellow-200">
+            <div className="text-2xl font-bold text-[#1E293B]">
               {analyticsLoading ? '...' : analytics?.interviewing || 0}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20">
+        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-medium text-green-800 dark:text-green-300">Active</CardTitle>
-            <CheckCircleIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Active</CardTitle>
+            <CheckCircleIcon className="h-4 w-4 text-[#10B981]" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-green-900 dark:text-green-200">
+            <div className="text-2xl font-bold text-[#1E293B]">
               {analyticsLoading ? '...' : analytics?.activeAgents || 0}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-medium text-gray-800 dark:text-gray-300">Total</CardTitle>
-            <UserIcon className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Total</CardTitle>
+            <UserIcon className="h-4 w-4 text-[#013358]" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <div className="text-2xl font-bold text-[#1E293B]">
               {analyticsLoading ? '...' : analytics?.totalAgents || 0}
             </div>
           </CardContent>
         </Card>
-        <Card className="col-span-1 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20">
+        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-medium text-red-800 dark:text-red-300">Inactive</CardTitle>
-            <XCircleIcon className="h-4 w-4 text-red-600 dark:text-red-400" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Inactive</CardTitle>
+            <XCircleIcon className="h-4 w-4 text-[#EF4444]" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-red-900 dark:text-red-200">
+            <div className="text-2xl font-bold text-[#1E293B]">
               {analyticsLoading ? '...' : analytics?.inactiveAgents || 0}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-900/10">
+        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-medium text-blue-700 dark:text-blue-400">Enrollment</CardTitle>
-            <UserIcon className="h-4 w-4 text-blue-500" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Enrollment</CardTitle>
+            <UserIcon className="h-4 w-4 text-[#02426F]" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-blue-800 dark:text-blue-300">
+            <div className="text-2xl font-bold text-[#1E293B]">
               {analyticsLoading ? '...' : analytics?.enrollmentCount || 0}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/10">
+        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-medium text-amber-700 dark:text-amber-400">Correction</CardTitle>
-            <PencilIcon className="h-4 w-4 text-amber-500" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Correction</CardTitle>
+            <PencilIcon className="h-4 w-4 text-[#F59E0B]" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-amber-800 dark:text-amber-300">
+            <div className="text-2xl font-bold text-[#1E293B]">
               {analyticsLoading ? '...' : analytics?.correctionCount || 0}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 border-purple-200 dark:border-purple-800 bg-purple-50/60 dark:bg-purple-900/10">
+        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-medium text-purple-700 dark:text-purple-400">Survey</CardTitle>
-            <CheckCircleIcon className="h-4 w-4 text-purple-500" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Survey</CardTitle>
+            <CheckCircleIcon className="h-4 w-4 text-[#3B82F6]" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-purple-800 dark:text-purple-300">
+            <div className="text-2xl font-bold text-[#1E293B]">
               {analyticsLoading ? '...' : analytics?.surveyCount || 0}
             </div>
           </CardContent>
@@ -555,14 +535,14 @@ export default function AgentsClient() {
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
+        <Card className="border-[#DCEAF3] bg-white shadow-sm">
           <CardHeader>
-            <CardTitle>Application Status</CardTitle>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Distribution of agent recruitment pipeline</div>
+            <CardTitle className="text-[#1E293B]">Application Status</CardTitle>
+            <div className="text-sm text-[#64748B]">Distribution of agent recruitment pipeline</div>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
-              <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
+              <ResponsiveContainer minHeight={1} minWidth={1} width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={Object.entries(analytics?.agentsByStatus || {}).map(([name, value]) => ({ name, value }))}
@@ -575,16 +555,16 @@ export default function AgentsClient() {
                   >
                     {Object.keys(analytics?.agentsByStatus || {}).map((entry, index) => {
                       const colors: Record<string, string> = {
-                        'active': '#22c55e', // green
-                        'Enrolled': '#22c55e',
-                        'Applied': '#3b82f6', // blue
-                        'CallForInterview': '#eab308', // yellow
-                        'Accepted': '#6366f1', // indigo
-                        'rejected': '#ef4444',
-                        'inactive': '#9ca3af',
-                        'pending': '#94a3b8' // slate-400
+                        'active': '#10B981',
+                        'Enrolled': '#10B981',
+                        'Applied': '#02426F',
+                        'CallForInterview': '#F59E0B',
+                        'Accepted': '#3B82F6',
+                        'rejected': '#EF4444',
+                        'inactive': '#94A3B8',
+                        'pending': '#8EBAD4'
                       };
-                      return <Cell key={`cell-${index}`} fill={colors[entry] || '#94a3b8'} />;
+                      return <Cell key={`cell-${index}`} fill={colors[entry] || '#94A3B8'} />;
                     })}
                   </Pie>
                   <Tooltip />
@@ -595,14 +575,14 @@ export default function AgentsClient() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-[#DCEAF3] bg-white shadow-sm">
           <CardHeader>
-            <CardTitle>Top Assignments</CardTitle>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Agents by Assigned State</div>
+            <CardTitle className="text-[#1E293B]">Top Assignments</CardTitle>
+            <div className="text-sm text-[#64748B]">Agents by Assigned State</div>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
-              <ResponsiveContainer minHeight={0} minWidth={0} width="100%" height="100%">
+              <ResponsiveContainer minHeight={1} minWidth={1} width="100%" height="100%">
                 <BarChart
                   data={analytics?.agentsByState?.map(item => ({ name: item.state, value: item.count })) || []}
                   layout="vertical"
@@ -612,7 +592,7 @@ export default function AgentsClient() {
                   <XAxis type="number" hide />
                   <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 12 }} />
                   <Tooltip cursor={{ fill: 'transparent' }} />
-                  <Bar dataKey="value" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={20} />
+                  <Bar dataKey="value" fill="#013358" radius={[0, 6, 6, 0]} barSize={20} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -621,7 +601,7 @@ export default function AgentsClient() {
       </div>
 
       {/* Filters & Actions */}
-      <Card>
+      <Card className="border-[#DCEAF3] bg-white shadow-sm">
         <CardContent className="p-4">
           {error && (
             <div className="mb-4 p-4 text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-700 flex justify-between items-center">
@@ -757,7 +737,7 @@ export default function AgentsClient() {
               </Select>
             </div>
 
-            <Button type="submit" className="bg-ccsa-blue hover:bg-blue-800">
+            <Button type="submit">
               Filter
             </Button>
             <Button variant="outline" type="button" onClick={handleReset}>
@@ -768,11 +748,11 @@ export default function AgentsClient() {
       </Card>
 
       {/* Table */}
-      <div className="rounded-md border dark:border-gray-700 bg-white dark:bg-gray-900 overflow-hidden">
+      <div className="overflow-hidden rounded-lg border border-[#DCEAF3] bg-white shadow-sm dark:bg-gray-900">
         {/* Batch action bar */}
         {selectedIds.size > 0 && (
-          <div className="flex items-center gap-3 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b dark:border-gray-700">
-            <span className="text-sm font-medium text-blue-800 dark:text-blue-300">{selectedIds.size} selected</span>
+          <div className="flex items-center gap-3 border-b border-[#DCEAF3] bg-[#F3F8FC] px-4 py-2">
+            <span className="text-sm font-semibold text-[#013358]">{selectedIds.size} selected</span>
             <Button size="sm" variant="outline" disabled={batchLoading} onClick={() => handleBatchAction('activate')}>Activate</Button>
             <Button size="sm" variant="outline" disabled={batchLoading} onClick={() => handleBatchAction('deactivate')}>Deactivate</Button>
             {hasPermission(PERMISSIONS.AGENTS_DELETE) && (
@@ -783,7 +763,7 @@ export default function AgentsClient() {
         )}
         <Table>
           <TableHeader>
-            <TableRow className="bg-gray-50/50 dark:bg-gray-800/50">
+            <TableRow>
               <TableHead className="w-10">
                 <Checkbox
                   checked={agents.length > 0 && agents.every(a => selectedIds.has(a.id))}
@@ -820,7 +800,7 @@ export default function AgentsClient() {
               </TableRow>
             ) : (
               agents.map((agent) => (
-                <TableRow key={agent.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50">
+                <TableRow key={agent.id}>
                   <TableCell>
                     <Checkbox
                       checked={selectedIds.has(agent.id)}
@@ -830,26 +810,26 @@ export default function AgentsClient() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-300 font-bold text-xs">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F3F8FC] text-xs font-bold text-[#013358]">
                         {agent.displayName?.substring(0, 2).toUpperCase() || <UserIcon className="h-5 w-5" />}
                       </div>
                       <div>
-                        <Link href={`/agents/${agent.id}`} className="font-medium text-gray-900 dark:text-gray-100 hover:underline">
+                        <Link href={`/agents/${agent.id}`} className="font-semibold text-[#1E293B] hover:text-[#02426F] hover:underline dark:text-gray-100">
                           {agent.displayName}
                         </Link>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">{agent.email}</div>
-                        <div className="text-xs text-gray-400 font-mono mt-0.5">
+                        <div className="text-xs text-[#64748B]">{agent.email}</div>
+                        <div className="mt-0.5 font-mono text-xs text-[#94A3B8]">
                           {agent.phoneNumber && !agent.phoneNumber.startsWith('temp_') ? agent.phoneNumber : <span className="italic opacity-50">No Phone</span>}
                         </div>
                         {agent.agent?.employmentStatus && (
-                          <span className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 text-[10px] text-gray-600 dark:text-gray-300 mt-0.5">
+                          <span className="mt-0.5 inline-flex items-center rounded-full border border-[#DCEAF3] bg-[#F3F8FC] px-1.5 py-0.5 text-[10px] text-[#013358]">
                             {agent.agent.employmentStatus}
                           </span>
                         )}
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-xs font-mono text-gray-600 dark:text-gray-400">
+                  <TableCell className="font-mono text-xs text-[#64748B]">
                     {agent.agent?.nin ? agent.agent.nin : <span className="text-gray-300">-</span>}
                   </TableCell>
                    <TableCell className="text-sm">
@@ -858,13 +838,13 @@ export default function AgentsClient() {
                   <TableCell>
                     {agent.agent?.assignedState ? (
                       <div>
-                        <div className="text-sm font-medium">{agent.agent.assignedState}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">{agent.agent.assignedLGA || '-'}</div>
+                        <div className="text-sm font-semibold text-[#1E293B]">{agent.agent.assignedState}</div>
+                        <div className="text-xs text-[#64748B]">{agent.agent.assignedLGA || '-'}</div>
                       </div>
                     ) : (
                       <div className="opacity-60">
                          <div className="text-sm">{agent.agent?.state || 'Unassigned'}</div>
-                         <div className="text-xs text-gray-400">{agent.agent?.localGovernment}</div>
+                         <div className="text-xs text-[#94A3B8]">{agent.agent?.localGovernment}</div>
                       </div>
                     )}
                   </TableCell>
@@ -878,7 +858,7 @@ export default function AgentsClient() {
                     {agent.role === 'agent' && (
                       <div className="flex flex-col gap-0.5">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">{agent._count.farmers}</span>
+                          <span className="text-sm font-semibold text-[#013358]">{agent._count.farmers}</span>
                           <span className="text-xs text-muted-foreground">enrolled</span>
                         </div>
                         {agent.agent?.performanceRating != null && (
@@ -900,7 +880,7 @@ export default function AgentsClient() {
                     {agent.role === 'survey_agent' && (
                       <div className="flex flex-col gap-0.5">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-sm font-semibold text-purple-700 dark:text-purple-400">{agent.surveyCount}</span>
+                          <span className="text-sm font-semibold text-[#3B82F6]">{agent.surveyCount}</span>
                           <span className="text-xs text-muted-foreground">surveys</span>
                         </div>
                         {agent.agent?.performanceRating != null && (
@@ -909,7 +889,7 @@ export default function AgentsClient() {
                       </div>
                     )}
                   </TableCell>
-                  <TableCell className="text-gray-500 dark:text-gray-400 text-sm">
+                  <TableCell className="text-sm text-[#64748B]">
                     {new Date(agent.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
@@ -932,8 +912,9 @@ export default function AgentsClient() {
                             <DropdownMenuItem
                               className="text-red-600 focus:text-red-600 cursor-pointer"
                               onClick={() => handleDelete(agent.id)}
+                              disabled={deleting === agent.id}
                             >
-                              <TrashIcon className="mr-2 h-4 w-4" /> Delete Agent
+                              <TrashIcon className="mr-2 h-4 w-4" /> {deleting === agent.id ? 'Deleting...' : 'Delete Agent'}
                             </DropdownMenuItem>
                           </>
                         )}

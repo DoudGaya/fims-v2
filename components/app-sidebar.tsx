@@ -27,6 +27,7 @@ import {
   ClipboardList,
   ClipboardCheck,
   MessageSquare,
+  Handshake,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -94,6 +95,12 @@ const navigationConfig = [
     url: '/communications',
     icon: MessageSquare,
     requiredPermission: PERMISSIONS.COMMUNICATIONS_READ
+  },
+  {
+    title: 'Agri-Business',
+    url: '/agribusiness/pipeline',
+    icon: Handshake,
+    requiredPermission: PERMISSIONS.AGRIBUSINESS_READ
   },
   {
     title: 'Users',

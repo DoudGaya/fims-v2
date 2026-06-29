@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import { PERMISSIONS } from '@/lib/permissions';
 import { invalidateByPrefix } from '@/lib/cache';
+import { auth as firebaseAuth } from '@/lib/firebase-admin';
+import bcrypt from 'bcryptjs';
 
 export const dynamic = 'force-dynamic';
 
@@ -229,12 +231,41 @@ export async function PUT(
 
     // Send Email Notification if status changed
     if (statusChanged) {
+      let tempPassword = undefined;
+      if (newStatus === 'active') {
+        try {
+          // Check if user already exists in Firebase
+          await firebaseAuth.getUserByEmail(existingAgent.email);
+        } catch (error: any) {
+          if (error.code === 'auth/user-not-found') {
+            tempPassword = 'CCSA' + Math.random().toString(36).substring(2, 6) + '!';
+            try {
+              const firebaseUser = await firebaseAuth.createUser({
+                email: existingAgent.email,
+                password: tempPassword,
+                displayName: existingAgent.firstName || 'Agent',
+                emailVerified: true
+              });
+              
+              const hashedPassword = await bcrypt.hash(tempPassword, 10);
+              await prisma.user.update({
+                where: { id },
+                data: { password: hashedPassword, firebaseUid: firebaseUser.uid }
+              });
+            } catch (createError) {
+              console.error('Error provisioning Firebase user in PUT:', createError);
+            }
+          }
+        }
+      }
+
       // Dynamic import to avoid circular dep issues if any, though standard import is fine
       const { sendAgentStatusEmail } = await import('@/lib/emailService');
       await sendAgentStatusEmail(
         existingAgent.email,
         existingAgent.firstName || 'Agent',
-        newStatus
+        newStatus,
+        tempPassword
       );
     }
 
@@ -356,11 +387,40 @@ export async function PATCH(
 
     // Send email if status changed
     if (body.status && body.status !== existingAgent.agent?.status) {
+      let tempPassword = undefined;
+      if (body.status === 'active') {
+        try {
+          // Check if user already exists in Firebase
+          await firebaseAuth.getUserByEmail(existingAgent.email);
+        } catch (error: any) {
+          if (error.code === 'auth/user-not-found') {
+            tempPassword = 'CCSA' + Math.random().toString(36).substring(2, 6) + '!';
+            try {
+              const firebaseUser = await firebaseAuth.createUser({
+                email: existingAgent.email,
+                password: tempPassword,
+                displayName: existingAgent.firstName || 'Agent',
+                emailVerified: true
+              });
+              
+              const hashedPassword = await bcrypt.hash(tempPassword, 10);
+              await prisma.user.update({
+                where: { id },
+                data: { password: hashedPassword, firebaseUid: firebaseUser.uid }
+              });
+            } catch (createError) {
+              console.error('Error provisioning Firebase user in PATCH:', createError);
+            }
+          }
+        }
+      }
+
       const { sendAgentStatusEmail } = await import('@/lib/emailService');
       await sendAgentStatusEmail(
         existingAgent.email,
         existingAgent.firstName || 'Agent',
-        body.status
+        body.status,
+        tempPassword
       );
     }
 

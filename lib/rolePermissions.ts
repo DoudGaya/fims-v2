@@ -64,6 +64,13 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     // Communications - Send and read
     PERMISSIONS.COMMUNICATIONS_SEND,
     PERMISSIONS.COMMUNICATIONS_READ,
+    // Agri-Business - Full operational access
+    PERMISSIONS.AGRIBUSINESS_CREATE,
+    PERMISSIONS.AGRIBUSINESS_READ,
+    PERMISSIONS.AGRIBUSINESS_UPDATE,
+    PERMISSIONS.AGRIBUSINESS_REVIEW_KYB,
+    PERMISSIONS.AGRIBUSINESS_MANAGE_AGREEMENTS,
+    PERMISSIONS.AGRIBUSINESS_MANAGE_OUTREACH,
     // System - No system permissions for admin (only super_admin)
   ],
   manager: [
@@ -84,6 +91,11 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     PERMISSIONS.REQUESTS_READ,
     // Communications - Read only
     PERMISSIONS.COMMUNICATIONS_READ,
+    // Agri-Business - Manage partner pipeline but not system settings
+    PERMISSIONS.AGRIBUSINESS_CREATE,
+    PERMISSIONS.AGRIBUSINESS_READ,
+    PERMISSIONS.AGRIBUSINESS_UPDATE,
+    PERMISSIONS.AGRIBUSINESS_MANAGE_OUTREACH,
   ],
   agent: [
     // Farmers - Create, Read, Update
@@ -106,5 +118,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     PERMISSIONS.CLUSTERS_READ,
     // Analytics - Read only
     PERMISSIONS.ANALYTICS_READ,
+    // Agri-Business - Read only
+    PERMISSIONS.AGRIBUSINESS_READ,
   ],
 };

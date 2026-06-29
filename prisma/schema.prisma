@@ -105,6 +105,51 @@ enum AccessRequestStatus {
   REJECTED
 }
 
+enum BusinessStakeholderStatus {
+  NEW
+  KYB_PENDING
+  UNDER_REVIEW
+  APPROVED
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum KYBStatus {
+  NOT_SUBMITTED
+  SUBMITTED
+  VERIFIED
+  NEEDS_MORE_INFO
+  REJECTED
+}
+
+enum BusinessApplicationStatus {
+  SUBMITTED
+  REVIEWING
+  SHORTLISTED
+  APPROVED
+  REJECTED
+  CONVERTED_TO_PARTNERSHIP
+}
+
+enum PartnershipAgreementStatus {
+  DRAFT
+  IN_REVIEW
+  SIGNED
+  ACTIVE
+  EXPIRED
+  TERMINATED
+}
+
+enum OutreachPlanStatus {
+  DRAFT
+  APPROVED
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
 /// Submitted by external organisations requesting programmatic API access.
 model ApiAccessRequest {
   id               String              @id @default(cuid())
@@ -752,4 +797,136 @@ model CommunicationLog {
   @@index([sentAt(sort: Desc)])
   @@index([recipientType])
   @@map("communication_logs")
+}
+
+// Agri-Business / Agri-Entrepreneurship Stakeholders
+
+model BusinessStakeholder {
+  id                  String                    @id @default(cuid())
+  businessName        String
+  businessType        String
+  registrationNumber  String?
+  tin                 String?
+  contactName         String
+  contactRole         String?
+  email               String
+  phone               String?
+  website             String?
+  address             String?
+  state               String?
+  lga                 String?
+  interests           String[]
+  valueChainRoles     String[]
+  targetCrops         String[]
+  targetStates        String[]
+  targetLGAs          String[]
+  servicesOffered     String?
+  capacitySummary     String?
+  expectedEngagement  String?
+  status              BusinessStakeholderStatus @default(NEW)
+  kybStatus           KYBStatus                 @default(NOT_SUBMITTED)
+  notes               String?
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  kyb                 BusinessKYB?
+  applications        BusinessApplication[]
+  agreements          PartnershipAgreement[]
+  outreachPlans       OutreachPlan[]
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([businessType])
+  @@index([state, lga])
+  @@map("business_stakeholders")
+}
+
+model BusinessKYB {
+  id                  String              @id @default(cuid())
+  stakeholderId       String              @unique
+  cacNumber           String?
+  tin                 String?
+  registrationType    String?
+  incorporationDate   DateTime?
+  directors           Json?
+  licenses            Json?
+  bankName            String?
+  accountName         String?
+  accountNumber       String?
+  documentUrls        String[]
+  verificationNotes   String?
+  verifiedByUserId    String?
+  verifiedAt          DateTime?
+  status              KYBStatus           @default(SUBMITTED)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  stakeholder         BusinessStakeholder @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt(sort: Desc)])
+  @@map("business_kyb")
+}
+
+model BusinessApplication {
+  id                  String                    @id @default(cuid())
+  stakeholderId       String
+  applicationType     String
+  title               String
+  description         String?
+  requestedSupport    String?
+  targetCrops         String[]
+  targetLocations     String[]
+  expectedFarmerReach Int?
+  status              BusinessApplicationStatus @default(SUBMITTED)
+  reviewNotes         String?
+  reviewedByUserId    String?
+  reviewedAt          DateTime?
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  stakeholder         BusinessStakeholder       @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([applicationType])
+  @@map("business_applications")
+}
+
+model PartnershipAgreement {
+  id                  String                     @id @default(cuid())
+  stakeholderId       String
+  title               String
+  agreementType       String
+  termsSummary        String?
+  documentUrl         String?
+  startDate           DateTime?
+  endDate             DateTime?
+  status              PartnershipAgreementStatus @default(DRAFT)
+  ownerUserId         String?
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+  stakeholder         BusinessStakeholder        @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([agreementType])
+  @@map("partnership_agreements")
+}
+
+model OutreachPlan {
+  id                  String              @id @default(cuid())
+  stakeholderId       String?
+  title               String
+  description         String?
+  targetCrops         String[]
+  targetStates        String[]
+  targetLGAs          String[]
+  targetFarmerCount   Int?
+  channels            String[]
+  scheduledAt         DateTime?
+  completedAt         DateTime?
+  status              OutreachPlanStatus  @default(DRAFT)
+  results             Json?
+  createdByUserId     String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  stakeholder         BusinessStakeholder? @relation(fields: [stakeholderId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([stakeholderId])
+  @@map("outreach_plans")
 }
