@@ -236,6 +236,7 @@ export async function POST(req: NextRequest) {
       farmLatitude, 
       farmLongitude, 
       farmPolygon,
+      referees,
       ...farmerData 
     } = data;
 
@@ -246,17 +247,11 @@ export async function POST(req: NextRequest) {
         // farmerId, // Removed as it's not in schema
         status: 'Pending', // Default status
         agentId: session.user.id, // Changed from registeredBy to agentId
-        farms: {
-          create: {
-            farmSize,
-            primaryCrop,
-            secondaryCrop: secondaryCrop ? [secondaryCrop] : [],
-            farmingExperience,
-            farmLatitude,
-            farmLongitude,
-            farmPolygon
+        ...(referees && referees.length > 0 ? {
+          referees: {
+            create: referees
           }
-        }
+        } : {})
       }
     });
 

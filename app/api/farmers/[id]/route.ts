@@ -82,7 +82,17 @@ export async function PUT(
       }, { status: 400 });
     }
 
-    const data = validationResult.data;
+    const {
+      referees,
+      farmSize,
+      primaryCrop,
+      secondaryCrop,
+      farmingExperience,
+      farmLatitude,
+      farmLongitude,
+      farmPolygon,
+      ...farmerData
+    } = validationResult.data;
 
     // Check if farmer exists
     const existingFarmer = await prisma.farmer.findUnique({
@@ -94,22 +104,22 @@ export async function PUT(
     }
 
     // Check for duplicate NIN or Phone if they are being updated
-    if (data.nin || data.phone) {
+    if (farmerData.nin || farmerData.phone) {
       const duplicateCheck = await prisma.farmer.findFirst({
         where: {
           OR: [
-            data.nin ? { nin: data.nin } : {},
-            data.phone ? { phone: data.phone } : {}
+            farmerData.nin ? { nin: farmerData.nin } : {},
+            farmerData.phone ? { phone: farmerData.phone } : {}
           ],
           NOT: { id }
         }
       });
 
       if (duplicateCheck) {
-        if (data.nin && duplicateCheck.nin === data.nin) {
+        if (farmerData.nin && duplicateCheck.nin === farmerData.nin) {
           return NextResponse.json({ error: 'Another farmer with this NIN already exists' }, { status: 409 });
         }
-        if (data.phone && duplicateCheck.phone === data.phone) {
+        if (farmerData.phone && duplicateCheck.phone === farmerData.phone) {
           return NextResponse.json({ error: 'Another farmer with this phone number already exists' }, { status: 409 });
         }
       }
@@ -118,7 +128,7 @@ export async function PUT(
     const updatedFarmer = await prisma.farmer.update({
       where: { id },
       data: {
-        ...data,
+        ...farmerData,
         // Don't allow updating critical fields like farmerId or registeredBy unless necessary
       }
     });
