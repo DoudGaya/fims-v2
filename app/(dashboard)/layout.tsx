@@ -19,7 +19,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <ThemeToggle />
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-4 bg-[#F8FAFC] px-4 pb-6 pt-0 dark:bg-background sm:px-6 lg:px-8">
+        <div className="flex flex-1 flex-col gap-4 bg-[#F8FAFC] px-4 pb-6 pt-6 dark:bg-background sm:px-6 lg:px-8">
           {children}
         </div>
       </SidebarInset>

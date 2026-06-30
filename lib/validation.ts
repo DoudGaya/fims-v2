@@ -66,6 +66,8 @@ export const farmerSchema = z.object({
   ward: z.string().optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
+  photoUrl: z.string().optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
+  pollingUnit: z.string().optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
   bankName: z.string().optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
   accountName: z.string().optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
   accountNumber: z.string().optional().or(z.literal('')).transform(val => {
@@ -90,6 +92,7 @@ export const farmerSchema = z.object({
   farmLongitude: z.number().optional(),
   farmPolygon: z.any().optional(),
   clusterId: z.string().min(1, 'Cluster assignment is required'),
+  referees: z.array(z.lazy(() => refereeSchema)).optional(),
 });
 
 // Referee validation schema

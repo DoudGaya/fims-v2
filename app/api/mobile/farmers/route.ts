@@ -131,14 +131,18 @@ export async function POST(req: NextRequest) {
   const data = parsed.data;
 
   // Duplicate check
+  const orConditions: Prisma.FarmerWhereInput[] = [
+    ...(data.nin ? [{ nin: data.nin }] : []),
+    { phone: data.phone },
+    ...(data.bvn ? [{ bvn: data.bvn }] : []),
+    ...(data.email ? [{ email: data.email }] : []),
+  ];
+
   const existing = await prisma.farmer.findFirst({
     where: {
-      OR: [
-        ...(data.nin ? [{ nin: data.nin }] : []),
-        { phone: data.phone },
-      ],
+      OR: orConditions,
     },
-    select: { id: true, nin: true, phone: true },
+    select: { id: true, nin: true, phone: true, bvn: true, email: true },
   });
 
   if (existing) {
@@ -147,6 +151,12 @@ export async function POST(req: NextRequest) {
     }
     if (existing.phone === data.phone) {
       return NextResponse.json({ error: 'A farmer with this phone number already exists' }, { status: 409 });
+    }
+    if (data.bvn && existing.bvn === data.bvn) {
+      return NextResponse.json({ error: 'A farmer with this BVN already exists' }, { status: 409 });
+    }
+    if (data.email && existing.email === data.email) {
+      return NextResponse.json({ error: 'A farmer with this email already exists' }, { status: 409 });
     }
   }
 
@@ -160,6 +170,7 @@ export async function POST(req: NextRequest) {
     farmLatitude,
     farmLongitude,
     farmPolygon,
+    referees,
     ...farmerData
   } = data;
 
@@ -170,17 +181,11 @@ export async function POST(req: NextRequest) {
       status: 'Pending',
       registrationDate: new Date(),
       agentId: user.id,
-      farms: {
-        create: {
-          farmSize,
-          primaryCrop,
-          secondaryCrop: secondaryCrop ? [secondaryCrop] : [],
-          farmingExperience,
-          farmLatitude,
-          farmLongitude,
-          farmPolygon,
-        },
-      },
+      ...(referees && referees.length > 0 ? {
+        referees: {
+          create: referees
+        }
+      } : {}),
     },
   });
 

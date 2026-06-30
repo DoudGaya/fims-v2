@@ -3,10 +3,22 @@ import prisma from '@/lib/prisma';
 import { getMobileUser, requireRole } from '@/lib/mobileAuth';
 import { z } from 'zod';
 
+const parseFloatOrUndefined = (val: any) => {
+  if (val === '' || val === null || val === undefined) return undefined;
+  const parsed = parseFloat(val);
+  return isNaN(parsed) ? undefined : parsed;
+};
+
+const parseIntOrUndefined = (val: any) => {
+  if (val === '' || val === null || val === undefined) return undefined;
+  const parsed = parseInt(val, 10);
+  return isNaN(parsed) ? undefined : parsed;
+};
+
 const farmCreateSchema = z.object({
   farmerId: z.string().min(1, 'farmerId is required'),
-  farmSize: z.number().optional().nullable(),
-  primaryCrop: z.string().optional(),
+  farmSize: z.any().transform(parseFloatOrUndefined),
+  primaryCrop: z.string().optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
   secondaryCrop: z.union([z.string(), z.array(z.string())])
     .optional()
     .nullable()
@@ -14,23 +26,29 @@ const farmCreateSchema = z.object({
       if (typeof val === 'string') return val.split(',').map((s) => s.trim()).filter(Boolean);
       return val ?? [];
     }),
-  produceCategory: z.string().optional(),
-  farmOwnership: z.string().optional(),
-  farmState: z.string().optional(),
-  farmLocalGovernment: z.string().optional(),
-  farmingSeason: z.string().optional(),
-  farmWard: z.string().optional(),
-  farmPollingUnit: z.string().optional(),
-  farmingExperience: z.number().int().optional().nullable(),
-  farmLatitude: z.number().optional().nullable(),
-  farmLongitude: z.number().optional().nullable(),
+  produceCategory: z.string().optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+  farmOwnership: z.string().optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+  farmState: z.string().optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+  farmLocalGovernment: z.string().optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+  farmingSeason: z.string().optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+  farmWard: z.string().optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+  farmPollingUnit: z.string().optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+  farmingExperience: z.any().transform(parseIntOrUndefined),
+  farmLatitude: z.any().transform(parseFloatOrUndefined),
+  farmLongitude: z.any().transform(parseFloatOrUndefined),
   farmPolygon: z.any().optional().nullable(),
   farmCoordinates: z.any().optional().nullable(),
-  soilType: z.string().optional(),
-  soilPH: z.number().optional().nullable(),
-  soilFertility: z.string().optional(),
-  farmArea: z.number().optional().nullable(),
-  farmElevation: z.number().optional().nullable(),
+  soilType: z.string().optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+  soilPH: z.any().transform(parseFloatOrUndefined),
+  soilFertility: z.string().optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+  farmArea: z.any().transform(parseFloatOrUndefined),
+  farmElevation: z.any().transform(parseFloatOrUndefined),
+  year: z.any().transform(parseFloatOrUndefined),
+  yieldSeason: z.string().optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+  crop: z.string().optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+  quantity: z.any().transform(parseFloatOrUndefined),
+  coordinateSystem: z.string().optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
+  landforms: z.string().optional().or(z.literal('')).transform(v => v === '' ? undefined : v),
 });
 
 /**

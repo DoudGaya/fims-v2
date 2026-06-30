@@ -104,6 +104,8 @@ function FarmsContent() {
       if (res.ok) {
         const data = await res.json();
         setAnalytics(data);
+
+
       }
     } catch (err) {
       console.error("Failed to fetch farm analytics", err);
@@ -160,7 +162,7 @@ function FarmsContent() {
   }
 
   return (
-    <div className="space-y-6 px-1">
+    <div className="space-y-6 pb-6">
       {/* Header */}
       <div className="flex flex-col gap-4 rounded-lg border border-[#DCEAF3] bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>

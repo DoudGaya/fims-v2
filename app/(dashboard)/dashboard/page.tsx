@@ -130,7 +130,7 @@ export default function Dashboard() {
   const firstName = session.user?.name?.split(' ')[0] || 'User';
 
   return (
-    <div className="space-y-6 py-6">
+    <div className="space-y-6 pb-6">
       <section className="overflow-hidden rounded-lg border border-[#DCEAF3] bg-white shadow-sm">
         <div className="brand-gradient-dark p-6 text-white lg:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">

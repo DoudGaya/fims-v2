@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Users } from "lucide-react"
-import { Bar, BarChart, CartesianGrid, XAxis, Pie, PieChart, Label } from "recharts"
+import { Bar, BarChart, CartesianGrid, Cell, XAxis, Pie, PieChart, Label, Sector, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts"
 
 import {
     Card,
@@ -37,6 +37,71 @@ type CropDatum = { crop: string; count: number }
 type StateDatum = { state: string; count: number }
 type ClusterDatum = { clusterTitle: string; farmersCount: number }
 
+const DASHBOARD_CHART_PALETTE = [
+    "#013358",
+    "#10B981",
+    "#F59E0B",
+    "#3B82F6",
+    "#EF4444",
+    "#0F766E",
+    "#7C3AED",
+    "#14B8A6",
+    "#F97316",
+    "#64748B",
+]
+
+const getPaletteColor = (index: number) => DASHBOARD_CHART_PALETTE[index % DASHBOARD_CHART_PALETTE.length]
+
+const getGenderColor = (gender: string, index: number) => {
+    const label = gender.toLowerCase()
+
+    if (label.includes("female")) return "#F97316"
+    if (label.includes("male")) return "#013358"
+    return getPaletteColor(index + 2)
+}
+
+const renderActiveShape = (props: any) => {
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
+    
+    // Shift center outward slightly along the midAngle to emphasize the active sector
+    const RADIAN = Math.PI / 180;
+    const midAngle = (startAngle + endAngle) / 2;
+    const cos = Math.cos(-RADIAN * midAngle);
+    const sin = Math.sin(-RADIAN * midAngle);
+    
+    // Shift by 6px
+    const mx = cx + 6 * cos;
+    const my = cy + 6 * sin;
+    
+    return (
+        <g>
+            {/* Soft background shadow sector */}
+            <Sector
+                cx={mx}
+                cy={my}
+                innerRadius={innerRadius}
+                outerRadius={outerRadius + 8}
+                startAngle={startAngle}
+                endAngle={endAngle}
+                fill={fill}
+                opacity={0.15}
+            />
+            {/* The main shifted segment */}
+            <Sector
+                cx={mx}
+                cy={my}
+                innerRadius={innerRadius}
+                outerRadius={outerRadius + 6}
+                startAngle={startAngle}
+                endAngle={endAngle}
+                fill={fill}
+                stroke="#FFFFFF"
+                strokeWidth={3}
+            />
+        </g>
+    );
+};
+
 const emptyChartMessage = (title: string, description: string) => (
     <Card className="border-[#DCEAF3] bg-white shadow-sm">
         <CardHeader>
@@ -59,7 +124,16 @@ export function RegistrationEstimatorChart({ trends }: { trends?: MonthlyTrend[]
     } satisfies ChartConfig
 
     const data = React.useMemo(() => trends ?? [], [trends])
+    const chartData = React.useMemo(
+        () => data.map((item, index) => ({ ...item, fill: getPaletteColor(index) })),
+        [data]
+    )
     const totalRegistrations = React.useMemo(() => data.reduce((acc, curr) => acc + curr.count, 0), [data])
+    const [activeMonth, setActiveMonth] = React.useState<string>()
+    const activeMonthIndex = React.useMemo(
+        () => chartData.findIndex((item) => item.month === activeMonth),
+        [activeMonth, chartData]
+    )
 
     return (
         <Card className="border-[#DCEAF3] bg-white shadow-sm">
@@ -69,7 +143,7 @@ export function RegistrationEstimatorChart({ trends }: { trends?: MonthlyTrend[]
             </CardHeader>
             <CardContent>
                 <ChartContainer config={chartConfig} className="h-[300px] w-full">
-                    <BarChart accessibilityLayer data={data}>
+                    <BarChart accessibilityLayer data={chartData}>
                         <CartesianGrid vertical={false} strokeDasharray="3 3" />
                         <XAxis
                             dataKey="month"
@@ -82,7 +156,20 @@ export function RegistrationEstimatorChart({ trends }: { trends?: MonthlyTrend[]
                             cursor={{ fill: "rgba(220, 234, 243, 0.45)" }}
                             content={<ChartTooltipContent hideLabel />}
                         />
-                        <Bar dataKey="count" fill="var(--color-count)" radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                            {chartData.map((entry, index) => (
+                                <Cell
+                                    key={`registration-${entry.month}-${index}`}
+                                    fill={entry.fill}
+                                    opacity={!activeMonth || activeMonthIndex === index ? 1 : 0.55}
+                                    stroke={activeMonthIndex === index ? "#013358" : "transparent"}
+                                    strokeWidth={activeMonthIndex === index ? 1.5 : 0}
+                                    className="cursor-pointer transition-opacity duration-200"
+                                    onMouseEnter={() => setActiveMonth(entry.month)}
+                                    onMouseLeave={() => setActiveMonth(undefined)}
+                                />
+                            ))}
+                        </Bar>
                     </BarChart>
                 </ChartContainer>
             </CardContent>
@@ -103,7 +190,7 @@ export function GenderDistributionChart({ data }: { data?: GenderDatum[] }) {
         return data.map((item, index) => ({
             gender: item.gender,
             count: item.count,
-            fill: `var(--chart-${(index % 5) + 1})`
+            fill: getGenderColor(item.gender, index)
         }))
     }, [data])
 
@@ -114,7 +201,7 @@ export function GenderDistributionChart({ data }: { data?: GenderDatum[] }) {
         ...(data || []).reduce((acc, item, index) => {
             acc[item.gender] = {
                 label: item.gender,
-                color: `var(--chart-${(index % 5) + 1})`
+                color: getGenderColor(item.gender, index)
             }
             return acc
         }, {} as ChartConfig)
@@ -123,7 +210,7 @@ export function GenderDistributionChart({ data }: { data?: GenderDatum[] }) {
     const [activeGender, setActiveGender] = React.useState(chartData[0]?.gender)
 
     React.useEffect(() => {
-        if (!activeGender && chartData.length > 0) {
+        if (chartData.length > 0 && !chartData.some((item) => item.gender === activeGender)) {
             setActiveGender(chartData[0].gender)
         }
     }, [chartData, activeGender])
@@ -189,6 +276,11 @@ export function GenderDistributionChart({ data }: { data?: GenderDatum[] }) {
                     className="mx-auto aspect-square w-full max-w-[300px]"
                 >
                     <PieChart>
+                        <defs>
+                            <filter id="badge-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                                <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.1" />
+                            </filter>
+                        </defs>
                         <ChartTooltip
                             cursor={false}
                             content={<ChartTooltipContent hideLabel />}
@@ -198,36 +290,105 @@ export function GenderDistributionChart({ data }: { data?: GenderDatum[] }) {
                             dataKey="count"
                             nameKey="gender"
                             innerRadius={60}
-                            strokeWidth={5}
+                            outerRadius={112}
+                            paddingAngle={1.5}
+                            strokeWidth={3}
+                            {...{
+                                activeIndex,
+                                activeShape: renderActiveShape
+                            } as any}
+                            onMouseEnter={(_, index) => {
+                                const item = chartData[index]
+                                if (item) setActiveGender(item.gender)
+                            }}
                         >
+                            {chartData.map((entry, index) => (
+                                <Cell
+                                    key={`gender-${entry.gender}-${index}`}
+                                    fill={entry.fill}
+                                    stroke="#FFFFFF"
+                                    strokeWidth={2}
+                                    className="cursor-pointer"
+                                />
+                            ))}
                             <Label
                                 content={({ viewBox }) => {
                                     if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                                        const cx = viewBox.cx ?? 0;
+                                        const cy = viewBox.cy ?? 0;
                                         const currentItem = chartData[activeIndex];
+                                        if (!currentItem) return null;
+                                        
+                                        const activeColor = currentItem.fill;
+                                        const activeLabel = currentItem.gender;
+                                        const activeCount = currentItem.count;
+                                        
                                         return (
-                                            <text
-                                                x={viewBox.cx}
-                                                y={viewBox.cy}
-                                                textAnchor="middle"
-                                                dominantBaseline="middle"
-                                            >
-                                                <tspan
-                                                    x={viewBox.cx}
-                                                    y={viewBox.cy}
-                                                    className="fill-[#1E293B] text-3xl font-bold"
+                                            <g>
+                                                {/* Speech bubble/pill container */}
+                                                <g filter="url(#badge-shadow)">
+                                                    <rect
+                                                        x={cx - 55}
+                                                        y={cy - 48}
+                                                        width={110}
+                                                        height={26}
+                                                        rx={13}
+                                                        fill="#FFFFFF"
+                                                        stroke="#E5E7EB"
+                                                        strokeWidth={1.5}
+                                                    />
+                                                    {/* Status indicator dot */}
+                                                    <circle
+                                                        cx={cx - 43}
+                                                        cy={cy - 35}
+                                                        r={4.5}
+                                                        fill={activeColor}
+                                                    />
+                                                    {/* Label name */}
+                                                    <text
+                                                        x={cx - 34}
+                                                        y={cy - 31}
+                                                        className="fill-[#475569] text-[11px] font-semibold"
+                                                        textAnchor="start"
+                                                        dominantBaseline="middle"
+                                                    >
+                                                        {activeLabel}
+                                                    </text>
+                                                    {/* Value */}
+                                                    <text
+                                                        x={cx + 43}
+                                                        y={cy - 31}
+                                                        className="fill-[#1E293B] text-[11px] font-bold"
+                                                        textAnchor="end"
+                                                        dominantBaseline="middle"
+                                                    >
+                                                        {activeCount >= 1000 ? (activeCount / 1000).toFixed(0) + "K" : activeCount}
+                                                    </text>
+                                                </g>
+                                                
+                                                {/* Large center count */}
+                                                <text
+                                                    x={cx}
+                                                    y={cy + 14}
+                                                    className="fill-[#1E293B] text-3xl font-extrabold tracking-tight"
+                                                    textAnchor="middle"
                                                 >
-                                                    {currentItem ? currentItem.count.toLocaleString() : 0}
-                                                </tspan>
-                                                <tspan
-                                                    x={viewBox.cx}
-                                                    y={(viewBox.cy || 0) + 24}
-                                                    className="fill-[#64748B]"
+                                                    {activeCount.toLocaleString()}
+                                                </text>
+                                                
+                                                {/* Sub-label */}
+                                                <text
+                                                    x={cx}
+                                                    y={cy + 34}
+                                                    className="fill-[#64748B] text-[11px] font-bold uppercase tracking-wider"
+                                                    textAnchor="middle"
                                                 >
                                                     Farmers
-                                                </tspan>
-                                            </text>
-                                        )
+                                                </text>
+                                            </g>
+                                        );
                                     }
+                                    return null;
                                 }}
                             />
                         </Pie>
@@ -252,18 +413,30 @@ export function CropsStatesInteractiveChart({
     const propsData = React.useMemo(() => {
         if (activeView === "crops") {
             if (!cropsData || !Array.isArray(cropsData)) return [];
-            return [...cropsData].sort((a, b) => b.count - a.count).slice(0, 10).map(c => ({
+            return [...cropsData].sort((a, b) => b.count - a.count).slice(0, 10).map((c, index) => ({
                 label: c.crop,
-                count: c.count
+                count: c.count,
+                fill: getPaletteColor(index + 1)
             }))
         } else {
             if (!statesData || !Array.isArray(statesData)) return [];
-            return [...statesData].sort((a, b) => b.count - a.count).slice(0, 10).map(s => ({
+            return [...statesData].sort((a, b) => b.count - a.count).slice(0, 10).map((s, index) => ({
                 label: s.state,
-                count: s.count
+                count: s.count,
+                fill: getPaletteColor(index + 3)
             }))
         }
     }, [activeView, cropsData, statesData])
+
+    const [activeMetric, setActiveMetric] = React.useState<string>()
+    const activeMetricIndex = React.useMemo(
+        () => propsData.findIndex((item) => item.label === activeMetric),
+        [activeMetric, propsData]
+    )
+
+    React.useEffect(() => {
+        setActiveMetric(undefined)
+    }, [activeView])
 
     const chartConfig = {
         count: {
@@ -338,7 +511,20 @@ export function CropsStatesInteractiveChart({
                                 />
                             }
                         />
-                        <Bar dataKey="count" fill={chartConfig.count.color} radius={[6, 6, 0, 0]} />
+                        <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                            {propsData.map((entry, index) => (
+                                <Cell
+                                    key={`metric-${activeView}-${entry.label}-${index}`}
+                                    fill={entry.fill}
+                                    opacity={!activeMetric || activeMetricIndex === index ? 1 : 0.55}
+                                    stroke={activeMetricIndex === index ? "#013358" : "transparent"}
+                                    strokeWidth={activeMetricIndex === index ? 1.5 : 0}
+                                    className="cursor-pointer transition-opacity duration-200"
+                                    onMouseEnter={() => setActiveMetric(entry.label)}
+                                    onMouseLeave={() => setActiveMetric(undefined)}
+                                />
+                            ))}
+                        </Bar>
                     </BarChart>
                 </ChartContainer>
             </CardContent>
@@ -349,149 +535,60 @@ export function CropsStatesInteractiveChart({
 // --- Cluster Performance Chart ---
 
 export function ClusterPerformanceChart({ data }: { data?: ClusterDatum[] }) {
-    // Sort and take top 5 or 10
+    // Sort and take top 6 clusters to show a nice hexagonal distribution
     const sortedData = React.useMemo(() => {
         if (!data || !Array.isArray(data)) return [];
-        return [...data].sort((a, b) => b.farmersCount - a.farmersCount).slice(0, 10).map((item, index) => ({
-            ...item,
-            fill: `var(--chart-${(index % 5) + 1})`
-        }));
+        return [...data].sort((a, b) => b.farmersCount - a.farmersCount).slice(0, 6);
     }, [data]);
 
     const chartConfig = {
         farmersCount: {
             label: "Members",
-        },
-        ...sortedData.reduce((acc, item, index) => {
-            acc[item.clusterTitle] = {
-                label: item.clusterTitle,
-                color: `var(--chart-${(index % 5) + 1})`
-            }
-            return acc
-        }, {} as ChartConfig)
+            color: "#013358"
+        }
     } satisfies ChartConfig
 
-    const [activeCluster, setActiveCluster] = React.useState(sortedData[0]?.clusterTitle)
-
-    // Sync state if data changes
-    React.useEffect(() => {
-        if (!activeCluster && sortedData.length > 0) {
-            setActiveCluster(sortedData[0].clusterTitle)
-        }
-    }, [sortedData, activeCluster])
-
-
-    const activeIndex = React.useMemo(
-        () => sortedData.findIndex((item) => item.clusterTitle === activeCluster),
-        [activeCluster, sortedData]
-    )
-
-    const clusters = React.useMemo(() => sortedData.map((item) => item.clusterTitle), [sortedData])
-
     if (sortedData.length === 0) {
-        return (
-            emptyChartMessage("Top Clusters", "No cluster membership data available")
-        )
+        return emptyChartMessage("Cluster Distribution", "No cluster distribution data available")
     }
 
     return (
-        <Card data-chart="cluster-interactive" className="flex flex-col border-[#DCEAF3] bg-white shadow-sm">
-            <ChartStyle id="cluster-interactive" config={chartConfig} />
-            <CardHeader className="flex-row items-center justify-between pb-0 md:flex-row flex-col space-y-2 md:space-y-0">
-                <div className="grid gap-1">
-                    <CardTitle className="text-[#1E293B]">Top Clusters</CardTitle>
-                    <CardDescription>Cluster membership breakdown</CardDescription>
-                </div>
-                <Select value={activeCluster} onValueChange={setActiveCluster}>
-                    <SelectTrigger
-                        className="ml-auto h-7 w-[160px] rounded-lg pl-2.5"
-                        aria-label="Select a cluster"
-                    >
-                        <SelectValue placeholder="Select cluster" />
-                    </SelectTrigger>
-                    <SelectContent align="end" className="rounded-xl max-h-[200px]">
-                        {clusters.map((key) => {
-                            const config = chartConfig[key as keyof typeof chartConfig]
-                            const item = sortedData.find(c => c.clusterTitle === key)
-
-                            if (!config || !item) {
-                                return null
-                            }
-
-                            return (
-                                <SelectItem
-                                    key={key}
-                                    value={key}
-                                    className="rounded-lg [&_span]:flex"
-                                >
-                                    <div className="flex items-center gap-2 text-xs">
-                                        <span
-                                            className="flex h-3 w-3 shrink-0 rounded-xs"
-                                            style={{
-                                                backgroundColor: item.fill,
-                                            }}
-                                        />
-                                        <span className="truncate max-w-[120px]">{config?.label}</span>
-                                    </div>
-                                </SelectItem>
-                            )
-                        })}
-                    </SelectContent>
-                </Select>
+        <Card className="border-[#DCEAF3] bg-white shadow-sm flex flex-col h-full">
+            <CardHeader>
+                <CardTitle className="text-[#1E293B]">Cluster Performance</CardTitle>
+                <CardDescription>Distribution of registered farmers across top clusters</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-1 justify-center pb-0">
+            <CardContent className="flex-1 pb-4 flex items-center justify-center min-h-[300px]">
                 <ChartContainer
-                    id="cluster-interactive"
                     config={chartConfig}
-                    className="mx-auto aspect-square w-full max-w-[300px]"
+                    className="mx-auto w-full max-h-[300px]"
                 >
-                    <PieChart>
+                    <RadarChart cx="50%" cy="50%" outerRadius="70%" data={sortedData}>
+                        <PolarGrid stroke="#E2E8F0" />
+                        <PolarAngleAxis 
+                            dataKey="clusterTitle" 
+                            tick={{ fill: "#64748B", fontSize: 10, fontWeight: 500 }}
+                        />
+                        <PolarRadiusAxis 
+                            angle={30} 
+                            domain={[0, 'auto']} 
+                            tick={{ fill: "#94A3B8", fontSize: 8 }}
+                        />
+                        <Radar
+                            name="Farmers"
+                            dataKey="farmersCount"
+                            stroke="#013358"
+                            fill="#013358"
+                            fillOpacity={0.2}
+                            activeDot={{ r: 6, fill: "#013358", stroke: "#FFFFFF", strokeWidth: 2 }}
+                        />
                         <ChartTooltip
                             cursor={false}
                             content={<ChartTooltipContent hideLabel />}
                         />
-                        <Pie
-                            data={sortedData}
-                            dataKey="farmersCount"
-                            nameKey="clusterTitle"
-                            innerRadius={60}
-                            strokeWidth={5}
-                        >
-                            <Label
-                                content={({ viewBox }) => {
-                                    if (viewBox && "cx" in viewBox && "cy" in viewBox) {
-                                        const currentItem = sortedData[activeIndex];
-                                        return (
-                                            <text
-                                                x={viewBox.cx}
-                                                y={viewBox.cy}
-                                                textAnchor="middle"
-                                                dominantBaseline="middle"
-                                            >
-                                                <tspan
-                                                    x={viewBox.cx}
-                                                    y={viewBox.cy}
-                                                    className="fill-[#1E293B] text-3xl font-bold"
-                                                >
-                                                    {currentItem ? currentItem.farmersCount.toLocaleString() : 0}
-                                                </tspan>
-                                                <tspan
-                                                    x={viewBox.cx}
-                                                    y={(viewBox.cy || 0) + 24}
-                                                    className="fill-[#64748B]"
-                                                >
-                                                    Members
-                                                </tspan>
-                                            </text>
-                                        )
-                                    }
-                                }}
-                            />
-                        </Pie>
-                    </PieChart>
+                    </RadarChart>
                 </ChartContainer>
             </CardContent>
         </Card>
     )
 }
-
