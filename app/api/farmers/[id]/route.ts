@@ -128,7 +128,7 @@ export async function PUT(
     const updatedFarmer = await prisma.farmer.update({
       where: { id },
       data: {
-        ...farmerData,
+        ...(farmerData as import('@prisma/client').Prisma.FarmerUncheckedUpdateInput),
         // Don't allow updating critical fields like farmerId or registeredBy unless necessary
       }
     });

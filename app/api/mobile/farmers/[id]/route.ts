@@ -86,12 +86,13 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
     farmLatitude,
     farmLongitude,
     farmPolygon,
+    referees,
     ...farmerData
   } = parsed.data;
 
   const updated = await prisma.farmer.update({
     where: { id },
-    data: farmerData,
+    data: farmerData as import('@prisma/client').Prisma.FarmerUncheckedUpdateInput,
   });
 
   return NextResponse.json(updated);
