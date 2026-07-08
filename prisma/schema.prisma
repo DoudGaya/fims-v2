@@ -8,44 +8,45 @@ datasource db {
 }
 
 model User {
-  id                     String       @id @default(cuid())
-  email                  String       @unique
-  displayName            String?
-  role                   String       @default("agent")
-  createdAt              DateTime     @default(now())
-  updatedAt              DateTime     @updatedAt
-  firstName              String?
-  isActive               Boolean      @default(true)
-  lastLogin              DateTime?
-  lastName               String?
-  password               String?
-  phoneNumber            String?
-  isVerified             Boolean      @default(false)
-  passwordChangeRequired Boolean      @default(false)
-  passwordResetToken     String?
-  passwordResetExpiry    DateTime?
+  id                            String                 @id @default(cuid())
+  email                         String                 @unique
+  displayName                   String?
+  role                          String                 @default("agent")
+  createdAt                     DateTime               @default(now())
+  updatedAt                     DateTime               @updatedAt
+  firstName                     String?
+  isActive                      Boolean                @default(true)
+  lastLogin                     DateTime?
+  lastName                      String?
+  password                      String?
+  phoneNumber                   String?
+  isVerified                    Boolean                @default(false)
+  passwordChangeRequired        Boolean                @default(false)
+  passwordResetToken            String?
+  passwordResetExpiry           DateTime?
   // SSO Fields
-  ssoProviderId          String?      // e.g., "google_123456789"
-  ssoProvider            String?      // "google" or "microsoft"
-  ssoEmail               String?      // email from SSO provider
-  lastSSOLogin           DateTime?    // track SSO login history
-  isSSOEnabled           Boolean      @default(false) // flag to allow SSO for user
-  firebaseUid            String?      @unique           // Mobile Firebase Auth UID
-  createdAgents                     Agent[]              @relation("CreatedByUser")
-  agent                             Agent?
-  farmers                           Farmer[]
-  userRoles                         user_roles[]
-  userPermissions                   UserPermission[]
-  ssoAuditLogs                      SSOAuditLog[]
-  apiKeys                           ApiKey[]
-  farmDeleteRequestsAsRequester     FarmDeleteRequest[]  @relation("DeleteRequestedBy")
-  farmDeleteRequestsAsReviewer      FarmDeleteRequest[]  @relation("DeleteReviewedBy")
-  surveys                           Survey[]             @relation("SurveysCreated")
-  submittedCorrections              DataCorrection[]     @relation("SubmittedCorrections")
-  reviewedCorrections               DataCorrection[]     @relation("ReviewedCorrections")
-  surveyAssignments                 SurveyAssignment[]   @relation("SurveyAssignments")
-  sentCommunications                CommunicationLog[]   @relation("SentCommunications")
-  accountDeleteRequestsReviewed     AccountDeleteRequest[] @relation("AccountDeleteReviewedBy")
+  ssoProviderId                 String? // e.g., "google_123456789"
+  ssoProvider                   String? // "google" or "microsoft"
+  ssoEmail                      String? // email from SSO provider
+  lastSSOLogin                  DateTime? // track SSO login history
+  isSSOEnabled                  Boolean                @default(false) // flag to allow SSO for user
+  firebaseUid                   String?                @unique // Mobile Firebase Auth UID
+  createdAgents                 Agent[]                @relation("CreatedByUser")
+  agent                         Agent?
+  farmers                       Farmer[]
+  userRoles                     user_roles[]
+  userPermissions               UserPermission[]
+  ssoAuditLogs                  SSOAuditLog[]
+  apiKeys                       ApiKey[]
+  farmDeleteRequestsAsRequester FarmDeleteRequest[]    @relation("DeleteRequestedBy")
+  farmDeleteRequestsAsReviewer  FarmDeleteRequest[]    @relation("DeleteReviewedBy")
+  surveys                       Survey[]               @relation("SurveysCreated")
+  submittedCorrections          DataCorrection[]       @relation("SubmittedCorrections")
+  reviewedCorrections           DataCorrection[]       @relation("ReviewedCorrections")
+  surveyAssignments             SurveyAssignment[]     @relation("SurveyAssignments")
+  sentCommunications            CommunicationLog[]     @relation("SentCommunications")
+  accountDeleteRequestsReviewed AccountDeleteRequest[] @relation("AccountDeleteReviewedBy")
+  createdAgriBusinesses         BusinessStakeholder[]  @relation("BusinessStakeholderCreatedBy")
 
   @@map("users")
 }
@@ -55,28 +56,28 @@ model User {
 /// External API token issued to third-party partners / internal systems.
 /// The raw token is shown ONCE at creation and never stored — only a SHA-256 hash is persisted.
 model ApiKey {
-  id                   String          @id @default(cuid())
+  id                   String           @id @default(cuid())
   /// Short prefix shown in admin UI (e.g. "fims_live_abc123ef") — safe to display
-  keyPrefix            String          @unique
+  keyPrefix            String           @unique
   /// SHA-256 hash of the full 64-hex token — NEVER store or log plaintext
-  keyHash              String          @unique
-  name                 String          // Human label, e.g. "Ministry of Agriculture"
+  keyHash              String           @unique
+  name                 String // Human label, e.g. "Ministry of Agriculture"
   description          String?
   /// Granular scopes: "farmers:read" | "farms:read" | "clusters:read" | "analytics:read"
   scopes               String[]
   /// When true, identity (nin) and financial (bvn/bank) fields are included in responses.
   /// ⚠️  WARNING: Enable ONLY for internal CCSA products — never for third-party integrations.
-  allowSensitiveFields Boolean         @default(false)
+  allowSensitiveFields Boolean          @default(false)
   /// Requests per minute. Recommended: 100 (standard) | 500 (high-volume partner)
-  rateLimit            Int             @default(100)
-  isActive             Boolean         @default(true)
+  rateLimit            Int              @default(100)
+  isActive             Boolean          @default(true)
   expiresAt            DateTime?
   lastUsedAt           DateTime?
-  requestCount         BigInt          @default(0)
+  requestCount         BigInt           @default(0)
   createdByUserId      String
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
-  createdBy            User            @relation(fields: [createdByUserId], references: [id])
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  createdBy            User             @relation(fields: [createdByUserId], references: [id])
   usageLogs            ApiKeyUsageLog[]
 
   @@map("api_keys")
@@ -171,10 +172,10 @@ model ApiAccessRequest {
 /// Request to delete a farm, pending admin approval.
 model FarmDeleteRequest {
   id                String              @id @default(cuid())
-  farmId            String?             // nullable — set null when farm is actually deleted
-  farmerId          String              // denormalized for reference after deletion
-  farmerName        String              // denormalized
-  farmSnapshot      Json                // crop, size, state, lga, polygon captured at request time
+  farmId            String? // nullable — set null when farm is actually deleted
+  farmerId          String // denormalized for reference after deletion
+  farmerName        String // denormalized
+  farmSnapshot      Json // crop, size, state, lga, polygon captured at request time
   requestedByUserId String
   reason            String
   status            AccessRequestStatus @default(PENDING)
@@ -194,18 +195,18 @@ model FarmDeleteRequest {
 
 /// Request to delete an account, submitted from the public deletion page.
 model AccountDeleteRequest {
-  id                String              @id @default(cuid())
-  name              String
-  phone             String
-  nin               String
-  reason            String?
-  status            AccessRequestStatus @default(PENDING)
-  reviewedByUserId  String?
-  reviewedAt        DateTime?
-  adminNotes        String?
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
-  reviewedBy        User?               @relation("AccountDeleteReviewedBy", fields: [reviewedByUserId], references: [id])
+  id               String              @id @default(cuid())
+  name             String
+  phone            String
+  nin              String
+  reason           String?
+  status           AccessRequestStatus @default(PENDING)
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+  adminNotes       String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  reviewedBy       User?               @relation("AccountDeleteReviewedBy", fields: [reviewedByUserId], references: [id])
 
   @@index([status, createdAt(sort: Desc)])
   @@map("account_delete_requests")
@@ -268,8 +269,8 @@ model Agent {
 }
 
 model Farmer {
-  id               String        @id @default(cuid())
-  nin              String        @unique
+  id               String           @id @default(cuid())
+  nin              String           @unique
   firstName        String
   middleName       String?
   lastName         String
@@ -279,8 +280,8 @@ model Farmer {
   lga              String?
   maritalStatus    String?
   employmentStatus String?
-  phone            String        @unique
-  email            String?       @unique
+  phone            String           @unique
+  email            String?          @unique
   whatsAppNumber   String?
   address          String?
   ward             String?
@@ -289,22 +290,23 @@ model Farmer {
   longitude        Float?
   bankName         String?
   accountNumber    String?
-  bvn              String?       @unique
-  registrationDate DateTime      @default(now())
-  status           String        @default("Enrolled")
+  bvn              String?          @unique
+  registrationDate DateTime         @default(now())
+  status           String           @default("Enrolled")
   agentId          String?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
   photoUrl         String?
   accountName      String?
   clusterId        String?
   certificates     Certificate[]
-  agent            User?         @relation(fields: [agentId], references: [id])
-  cluster          Cluster?      @relation(fields: [clusterId], references: [id])
+  agent            User?            @relation(fields: [agentId], references: [id])
+  cluster          Cluster?         @relation(fields: [clusterId], references: [id])
   farms            Farm[]
   referees         Referee[]
   surveyResponses  SurveyResponse[]
   dataCorrections  DataCorrection[]
+  businessStakeholders BusinessStakeholder[]
 
   @@index([agentId, createdAt(sort: Desc)]) // Optimize agent queries with date sorting
   @@index([status, createdAt(sort: Desc)]) // Optimize status filtering
@@ -315,7 +317,7 @@ model Farmer {
 }
 
 model Farm {
-  id                  String   @id @default(cuid())
+  id                  String               @id @default(cuid())
   farmSize            Float?
   primaryCrop         String?
   secondaryCrop       String[]
@@ -334,7 +336,7 @@ model Farm {
   soilPH              Float?
   soilFertility       String?
   farmCoordinates     Json?
-  coordinateSystem    String?  @default("WGS84")
+  coordinateSystem    String?              @default("WGS84")
   farmArea            Float?
   farmElevation       Float?
   year                Float?
@@ -344,9 +346,9 @@ model Farm {
   cropVariety         String?
   landforms           String?
   farmerId            String
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  farmer              Farmer   @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  farmer              Farmer               @relation(fields: [farmerId], references: [id], onDelete: Cascade)
   analysisResults     FarmAnalysisResult[]
   deleteRequests      FarmDeleteRequest[]
   dataCorrections     DataCorrection[]
@@ -357,12 +359,12 @@ model Farm {
 model FarmAnalysisResult {
   id        String   @id @default(cuid())
   farmId    String
-  variable  String   // "ph", "moisture", "ndvi", "weather", "temperature", "rainfall"
-  dateRange String?  // "2023-01-01_2023-12-31" or "latest"
-  result    Json     // Computed data
+  variable  String // "ph", "moisture", "ndvi", "weather", "temperature", "rainfall"
+  dateRange String? // "2023-01-01_2023-12-31" or "latest"
+  result    Json // Computed data
   createdAt DateTime @default(now())
-  
-  farm      Farm     @relation(fields: [farmId], references: [id], onDelete: Cascade)
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
 
   @@index([farmId, variable])
   @@map("farm_analysis_results")
@@ -474,52 +476,52 @@ model PollingUnit {
 }
 
 model Cluster {
-  id                            String    @id @default(cuid())
-  title                         String    @unique
-  subCluster                    String?
-  description                   String?
-  clusterLeadFirstName          String
-  clusterLeadLastName           String
-  clusterLeadEmail              String
-  clusterLeadPhone              String
-  clusterLeadNIN                String?
-  clusterLeadState              String?
-  clusterLeadLGA                String?
-  clusterLeadWard               String?
-  clusterLeadPollingUnit        String?
-  clusterLeadPosition           String?
-  clusterLeadAddress            String?
-  clusterLeadDateOfBirth        DateTime?
-  clusterLeadGender             String?
-  clusterLeadMaritalStatus      String?
-  clusterLeadEmploymentStatus   String?
-  clusterLeadBVN                String?
-  clusterLeadBankName           String?
-  clusterLeadAccountNumber      String?
-  clusterLeadAccountName        String?
-  clusterLeadAlternativePhone   String?
-  clusterLeadWhatsAppNumber     String?
-  totalFarmers                  Int       @default(0)
-  totalFarms                    Int       @default(0)
-  totalFarmSize                 Float     @default(0)
-  isActive                      Boolean   @default(true)
-  createdAt                     DateTime  @default(now())
-  updatedAt                     DateTime  @default(now()) @updatedAt
-  farmers                       Farmer[]
-  surveyAssignments             SurveyAssignment[]
+  id                          String             @id @default(cuid())
+  title                       String             @unique
+  subCluster                  String?
+  description                 String?
+  clusterLeadFirstName        String
+  clusterLeadLastName         String
+  clusterLeadEmail            String
+  clusterLeadPhone            String
+  clusterLeadNIN              String?
+  clusterLeadState            String?
+  clusterLeadLGA              String?
+  clusterLeadWard             String?
+  clusterLeadPollingUnit      String?
+  clusterLeadPosition         String?
+  clusterLeadAddress          String?
+  clusterLeadDateOfBirth      DateTime?
+  clusterLeadGender           String?
+  clusterLeadMaritalStatus    String?
+  clusterLeadEmploymentStatus String?
+  clusterLeadBVN              String?
+  clusterLeadBankName         String?
+  clusterLeadAccountNumber    String?
+  clusterLeadAccountName      String?
+  clusterLeadAlternativePhone String?
+  clusterLeadWhatsAppNumber   String?
+  totalFarmers                Int                @default(0)
+  totalFarms                  Int                @default(0)
+  totalFarmSize               Float              @default(0)
+  isActive                    Boolean            @default(true)
+  createdAt                   DateTime           @default(now())
+  updatedAt                   DateTime           @default(now()) @updatedAt
+  farmers                     Farmer[]
+  surveyAssignments           SurveyAssignment[]
 
   @@map("clusters")
 }
 
 model roles {
-  id              String          @id @default(cuid())
-  name            String          @unique
+  id              String           @id @default(cuid())
+  name            String           @unique
   description     String?
   permissions     Json?
-  isSystem        Boolean         @default(false)
-  isActive        Boolean         @default(true)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @default(now()) @updatedAt
+  isSystem        Boolean          @default(false)
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @default(now()) @updatedAt
   createdBy       String?
   userRoles       user_roles[]
   rolePermissions RolePermission[]
@@ -545,11 +547,11 @@ model user_roles {
 model Attendance {
   id        String   @id @default(cuid())
   agentId   String
-  type      String   // 'check_in' or 'check_out'
+  type      String // 'check_in' or 'check_out'
   timestamp DateTime
-  location  Json     // {latitude, longitude, accuracy, timestamp}
-  date      String   // Date string for grouping
-  duration  Int?     // Duration in minutes (for check_out records)
+  location  Json // {latitude, longitude, accuracy, timestamp}
+  date      String // Date string for grouping
+  duration  Int? // Duration in minutes (for check_out records)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   agent     Agent    @relation(fields: [agentId], references: [id], onDelete: Cascade)
@@ -560,13 +562,13 @@ model Attendance {
 // SSO Models
 model SSOAuditLog {
   id        String   @id @default(cuid())
-  userId    String?  // null if user not found
+  userId    String? // null if user not found
   user      User?    @relation(fields: [userId], references: [id])
   email     String
-  provider  String   // "google" or "microsoft"
-  status    String   // "success" | "user_not_found" | "sso_disabled" | "error"
-  reason    String?  // why it failed
-  metadata  Json?    // raw SSO response (sanitized)
+  provider  String // "google" or "microsoft"
+  status    String // "success" | "user_not_found" | "sso_disabled" | "error"
+  reason    String? // why it failed
+  metadata  Json? // raw SSO response (sanitized)
   ipAddress String?
   userAgent String?
   createdAt DateTime @default(now())
@@ -575,15 +577,15 @@ model SSOAuditLog {
 }
 
 model Permission {
-  id              String          @id @default(cuid())
-  name            String          @unique        // e.g. "farmers.read"
+  id              String           @id @default(cuid())
+  name            String           @unique // e.g. "farmers.read"
   description     String?
-  category        String?                        // e.g., "farmers", "farms", "agents"
-  action          String?                        // e.g., "read", "write", "delete", "create"
-  isSystem        Boolean         @default(false)
-  isActive        Boolean         @default(true)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  category        String? // e.g., "farmers", "farms", "agents"
+  action          String? // e.g., "read", "write", "delete", "create"
+  isSystem        Boolean          @default(false)
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   rolePermissions RolePermission[]
   userPermissions UserPermission[]
 
@@ -618,8 +620,8 @@ model UserPermission {
 model ScopeConfig {
   id         String   @id @default(cuid())
   roleId     String
-  scope      String   // e.g. "global" | "cluster" | "state" | "lga"
-  scopeValue String?  // e.g. clusterId or state code
+  scope      String // e.g. "global" | "cluster" | "state" | "lga"
+  scopeValue String? // e.g. clusterId or state code
   role       roles    @relation(fields: [roleId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -630,7 +632,7 @@ model ScopeConfig {
 
 model PermissionAuditLog {
   id           String   @id @default(cuid())
-  action       String   // grant | revoke
+  action       String // grant | revoke
   changedBy    String
   userId       String?
   roleId       String?
@@ -664,7 +666,7 @@ model SurveyQuestion {
   id           String         @id @default(cuid())
   surveyId     String
   questionText String
-  questionType String         // "TEXT" | "SINGLE_CHOICE" | "MULTI_CHOICE" | "NUMBER" | "YES_NO" | "DATE"
+  questionType String // "TEXT" | "SINGLE_CHOICE" | "MULTI_CHOICE" | "NUMBER" | "YES_NO" | "DATE"
   isRequired   Boolean        @default(true)
   order        Int
   createdAt    DateTime       @default(now())
@@ -749,9 +751,9 @@ enum CorrectionStatus {
 model DataCorrection {
   id             String           @id @default(cuid())
   farmerId       String
-  farmId         String?          // populated for FARM and REFEREE correction types
+  farmId         String? // populated for FARM and REFEREE correction types
   correctionType String           @default("FARMER") // "FARMER" | "FARM" | "REFEREE"
-  submittedBy    String           // User.id of the mobile data_correction_agent
+  submittedBy    String // User.id of the mobile data_correction_agent
   status         CorrectionStatus @default(PENDING)
   /// JSON map of changed fields: { "firstName": { "from": "Musa", "to": "Musa" }, ... }
   /// For REFEREE type: { "ops": [{ "type": "add"|"update"|"delete", "refereeId": "...", ...fields }] }
@@ -780,15 +782,15 @@ model CommunicationLog {
   id               String   @id @default(cuid())
   subject          String?
   body             String
-  channel          String   // 'email' | 'sms' | 'both'
-  recipientType    String   // 'farmer' | 'agent' | 'bulk_farmer' | 'bulk_agent'
-  recipientId      String?  // null for bulk sends
+  channel          String // 'email' | 'sms' | 'both'
+  recipientType    String // 'farmer' | 'agent' | 'bulk_farmer' | 'bulk_agent'
+  recipientId      String? // null for bulk sends
   recipientName    String?
-  recipientContact String?  // email or phone used
+  recipientContact String? // email or phone used
   recipientCount   Int      @default(1)
-  status           String   // 'sent' | 'failed' | 'partial'
-  failureDetails   Json?    // [{id, name, error}] for bulk
-  filters          Json?    // filter criteria used for bulk sends
+  status           String // 'sent' | 'failed' | 'partial'
+  failureDetails   Json? // [{id, name, error}] for bulk
+  filters          Json? // filter criteria used for bulk sends
   sentById         String
   sentBy           User     @relation("SentCommunications", fields: [sentById], references: [id])
   sentAt           DateTime @default(now())
@@ -802,36 +804,39 @@ model CommunicationLog {
 // Agri-Business / Agri-Entrepreneurship Stakeholders
 
 model BusinessStakeholder {
-  id                  String                    @id @default(cuid())
-  businessName        String
-  businessType        String
-  registrationNumber  String?
-  tin                 String?
-  contactName         String
-  contactRole         String?
-  email               String
-  phone               String?
-  website             String?
-  address             String?
-  state               String?
-  lga                 String?
-  interests           String[]
-  valueChainRoles     String[]
-  targetCrops         String[]
-  targetStates        String[]
-  targetLGAs          String[]
-  servicesOffered     String?
-  capacitySummary     String?
-  expectedEngagement  String?
-  status              BusinessStakeholderStatus @default(NEW)
-  kybStatus           KYBStatus                 @default(NOT_SUBMITTED)
-  notes               String?
-  createdAt           DateTime                  @default(now())
-  updatedAt           DateTime                  @updatedAt
-  kyb                 BusinessKYB?
-  applications        BusinessApplication[]
-  agreements          PartnershipAgreement[]
-  outreachPlans       OutreachPlan[]
+  id                 String                    @id @default(cuid())
+  businessName       String
+  businessType       String
+  registrationNumber String?
+  tin                String?
+  contactName        String
+  contactRole        String?
+  email              String
+  phone              String?
+  website            String?
+  address            String?
+  state              String?
+  lga                String?
+  interests          String[]
+  valueChainRoles    String[]
+  targetCrops        String[]
+  targetStates       String[]
+  targetLGAs         String[]
+  servicesOffered    String?
+  capacitySummary    String?
+  expectedEngagement String?
+  status             BusinessStakeholderStatus @default(NEW)
+  kybStatus          KYBStatus                 @default(NOT_SUBMITTED)
+  notes              String?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  createdByUserId    String?
+  createdBy          User?                     @relation("BusinessStakeholderCreatedBy", fields: [createdByUserId], references: [id])
+  kyb                BusinessKYB?
+  applications       BusinessApplication[]
+  agreements         PartnershipAgreement[]
+  outreachPlans      OutreachPlan[]
+  farmers            Farmer[]
 
   @@index([status, createdAt(sort: Desc)])
   @@index([businessType])
@@ -840,25 +845,25 @@ model BusinessStakeholder {
 }
 
 model BusinessKYB {
-  id                  String              @id @default(cuid())
-  stakeholderId       String              @unique
-  cacNumber           String?
-  tin                 String?
-  registrationType    String?
-  incorporationDate   DateTime?
-  directors           Json?
-  licenses            Json?
-  bankName            String?
-  accountName         String?
-  accountNumber       String?
-  documentUrls        String[]
-  verificationNotes   String?
-  verifiedByUserId    String?
-  verifiedAt          DateTime?
-  status              KYBStatus           @default(SUBMITTED)
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
-  stakeholder         BusinessStakeholder @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
+  id                String              @id @default(cuid())
+  stakeholderId     String              @unique
+  cacNumber         String?
+  tin               String?
+  registrationType  String?
+  incorporationDate DateTime?
+  directors         Json?
+  licenses          Json?
+  bankName          String?
+  accountName       String?
+  accountNumber     String?
+  documentUrls      String[]
+  verificationNotes String?
+  verifiedByUserId  String?
+  verifiedAt        DateTime?
+  status            KYBStatus           @default(SUBMITTED)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  stakeholder       BusinessStakeholder @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt(sort: Desc)])
   @@map("business_kyb")
@@ -888,19 +893,19 @@ model BusinessApplication {
 }
 
 model PartnershipAgreement {
-  id                  String                     @id @default(cuid())
-  stakeholderId       String
-  title               String
-  agreementType       String
-  termsSummary        String?
-  documentUrl         String?
-  startDate           DateTime?
-  endDate             DateTime?
-  status              PartnershipAgreementStatus @default(DRAFT)
-  ownerUserId         String?
-  createdAt           DateTime                   @default(now())
-  updatedAt           DateTime                   @updatedAt
-  stakeholder         BusinessStakeholder        @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
+  id            String                     @id @default(cuid())
+  stakeholderId String
+  title         String
+  agreementType String
+  termsSummary  String?
+  documentUrl   String?
+  startDate     DateTime?
+  endDate       DateTime?
+  status        PartnershipAgreementStatus @default(DRAFT)
+  ownerUserId   String?
+  createdAt     DateTime                   @default(now())
+  updatedAt     DateTime                   @updatedAt
+  stakeholder   BusinessStakeholder        @relation(fields: [stakeholderId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt(sort: Desc)])
   @@index([agreementType])
@@ -908,23 +913,23 @@ model PartnershipAgreement {
 }
 
 model OutreachPlan {
-  id                  String              @id @default(cuid())
-  stakeholderId       String?
-  title               String
-  description         String?
-  targetCrops         String[]
-  targetStates        String[]
-  targetLGAs          String[]
-  targetFarmerCount   Int?
-  channels            String[]
-  scheduledAt         DateTime?
-  completedAt         DateTime?
-  status              OutreachPlanStatus  @default(DRAFT)
-  results             Json?
-  createdByUserId     String?
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
-  stakeholder         BusinessStakeholder? @relation(fields: [stakeholderId], references: [id], onDelete: SetNull)
+  id                String               @id @default(cuid())
+  stakeholderId     String?
+  title             String
+  description       String?
+  targetCrops       String[]
+  targetStates      String[]
+  targetLGAs        String[]
+  targetFarmerCount Int?
+  channels          String[]
+  scheduledAt       DateTime?
+  completedAt       DateTime?
+  status            OutreachPlanStatus   @default(DRAFT)
+  results           Json?
+  createdByUserId   String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  stakeholder       BusinessStakeholder? @relation(fields: [stakeholderId], references: [id], onDelete: SetNull)
 
   @@index([status, createdAt(sort: Desc)])
   @@index([stakeholderId])

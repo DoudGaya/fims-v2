@@ -89,6 +89,9 @@ export default function AgriBusinessApplyPage() {
   const [interests, setInterests] = useState<string[]>([]);
   const [roles, setRoles] = useState<string[]>([]);
   const [crops, setCrops] = useState<string[]>([]);
+  const [documentUrl, setDocumentUrl] = useState<string>('');
+  const [docUploading, setDocUploading] = useState(false);
+  const [docError, setDocError] = useState('');
 
   const canSubmit = useMemo(
     () => form.businessName && form.businessType && form.contactName && form.email && interests.length > 0,
@@ -98,6 +101,33 @@ export default function AgriBusinessApplyPage() {
   const setField = (field: keyof typeof form, value: string) => setForm((prev) => ({ ...prev, [field]: value }));
   const toggle = (value: string, setter: React.Dispatch<React.SetStateAction<string[]>>) => {
     setter((prev) => (prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]));
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      setDocError('File must be less than 10MB');
+      return;
+    }
+
+    setDocUploading(true);
+    setDocError('');
+
+    const fd = new FormData();
+    fd.append('file', file);
+
+    try {
+      const res = await fetch('/api/upload/kyb-document', { method: 'POST', body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+      setDocumentUrl(data.url);
+    } catch (err) {
+      setDocError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      setDocUploading(false);
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -123,6 +153,7 @@ export default function AgriBusinessApplyPage() {
           targetLGAs: form.lga ? [form.lga] : [],
           applicationTitle: `${form.businessName} - ${form.applicationType}`,
           expectedFarmerReach: form.expectedFarmerReach ? Number(form.expectedFarmerReach) : undefined,
+          documentUrls: documentUrl ? [documentUrl] : [],
         }),
       });
 
@@ -206,6 +237,16 @@ export default function AgriBusinessApplyPage() {
             <div className="space-y-2">
               <Label>Operating state</Label>
               <Input value={form.state} onChange={(e) => setField('state', e.target.value)} placeholder="e.g. Kano" />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Corporate Documents (CAC, Licenses)</Label>
+              <div className="flex items-center gap-4">
+                <Input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={handleFileUpload} disabled={docUploading} />
+                {docUploading && <span className="text-sm text-blue-600 flex items-center gap-1"><Loader2 className="h-4 w-4 animate-spin" /> Uploading...</span>}
+                {documentUrl && <span className="text-sm text-green-600 flex items-center gap-1"><CheckCircle2 className="h-4 w-4" /> Uploaded</span>}
+              </div>
+              {docError && <p className="text-xs text-red-600 mt-1">{docError}</p>}
+              <p className="text-xs text-muted-foreground mt-1">Upload a PDF or image of your primary incorporation document (max 10MB).</p>
             </div>
           </div>
         </section>

@@ -32,6 +32,7 @@ const applicationSchema = z.object({
   applicationTitle: z.string().max(160).optional().nullable(),
   applicationDescription: z.string().max(2000).optional().nullable(),
   expectedFarmerReach: z.coerce.number().int().positive().optional().nullable(),
+  documentUrls: stringArray.optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -81,6 +82,7 @@ export async function POST(req: NextRequest) {
             cacNumber: data.registrationNumber || null,
             tin: data.tin || null,
             status: KYBStatus.SUBMITTED,
+            documentUrls: data.documentUrls || [],
           },
         }
       : undefined,

@@ -245,7 +245,9 @@ export default function AgriBusinessPipelinePage() {
                   <TableRow key={stakeholder.id}>
                     <TableCell className="px-4">
                       <div className="max-w-sm">
-                        <p className="font-bold text-[#1E293B] dark:text-white">{stakeholder.businessName}</p>
+                        <Link href={`/agribusiness/pipeline/${stakeholder.id}`} className="font-bold text-[#1E293B] hover:text-blue-600 hover:underline dark:text-white">
+                          {stakeholder.businessName}
+                        </Link>
                         <p className="text-xs text-muted-foreground">{stakeholder.businessType}</p>
                         <p className="mt-1 text-xs text-[#475569]">{stakeholder.contactName} - {stakeholder.email}</p>
                         {(stakeholder.state || stakeholder.lga) && (

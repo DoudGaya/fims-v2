@@ -360,7 +360,7 @@ export default function AgentDetailsClient({ id }: { id: string }) {
                 <Field label="City">{agent.agent?.city || '—'}</Field>
                 {plainAddress && (
                   <div className="sm:col-span-2">
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Address</dt>
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Motivation</dt>
                     <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100 whitespace-pre-line">{plainAddress}</dd>
                   </div>
                 )}

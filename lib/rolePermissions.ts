@@ -109,6 +109,14 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     // Clusters - Read only
     PERMISSIONS.CLUSTERS_READ,
   ],
+  agri_business_agent: [
+    // Farmers - Read only
+    PERMISSIONS.FARMERS_READ,
+    // Agri-Business - Lead capture and reading
+    PERMISSIONS.AGRIBUSINESS_CREATE,
+    PERMISSIONS.AGRIBUSINESS_READ,
+    PERMISSIONS.AGRIBUSINESS_UPDATE,
+  ],
   viewer: [
     // Farmers - Read only
     PERMISSIONS.FARMERS_READ,

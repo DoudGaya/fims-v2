@@ -251,6 +251,27 @@ export async function POST(req: NextRequest) {
           referees: {
             create: referees
           }
+        } : {}),
+        ...((farmSize !== undefined || primaryCrop || secondaryCrop || farmingExperience !== undefined || farmLatitude !== undefined || farmLongitude !== undefined || farmPolygon) ? {
+          farms: {
+            create: {
+              farmSize,
+              primaryCrop,
+              secondaryCrop: secondaryCrop
+                ? (Array.isArray(secondaryCrop)
+                    ? secondaryCrop
+                    : secondaryCrop.split(',').map((s: string) => s.trim()).filter(Boolean))
+                : [],
+              farmingExperience,
+              farmLatitude,
+              farmLongitude,
+              farmPolygon: farmPolygon || undefined,
+              farmState: farmerData.state,
+              farmLocalGovernment: farmerData.lga,
+              farmWard: farmerData.ward,
+              farmPollingUnit: farmerData.pollingUnit,
+            }
+          }
         } : {})
       }
     });
