@@ -149,7 +149,7 @@ export function GoalProgress({ current, target, title, subtext }: GoalProgressPr
                     </RadialBarChart>
                 </ChartContainer>
             </CardContent>
-            <CardFooter className="flex-row justify-between gap-2 border-t border-[#E5E7EB] text-center text-sm">
+            <CardFooter className="flex-row justify-between gap-2 py-4 border-t border-[#E5E7EB] text-center text-sm">
                 <div className="flex items-center gap-2 font-semibold leading-none text-[#013358]">
                     Target: {target.toLocaleString()} <TrendingUp className="h-4 w-4" />
                 </div>

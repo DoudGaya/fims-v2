@@ -54,7 +54,7 @@ export function NavMain({
                   asChild
                   tooltip={item.title}
                   isActive={isLinkActive}
-                  className={isLinkActive ? "bg-[#013358] text-white shadow-sm hover:bg-[#02426F] hover:text-white" : ""}
+                  className={isLinkActive ? "bg-[#013358] text-white py-1 hover:bg-[#02426F] hover:text-white" : ""}
                 >
                   <Link href={item.url}>
                     {item.icon && <item.icon />}

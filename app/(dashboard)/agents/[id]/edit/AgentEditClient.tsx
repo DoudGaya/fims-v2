@@ -65,7 +65,7 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
         pollingUnit: '',
         assignedState: '',
         assignedLGA: '',
-        agentType: 'enrollment' as 'enrollment' | 'correction' | 'survey',
+        agentType: 'enrollment' as 'enrollment' | 'correction' | 'survey' | 'agribusiness',
         status: 'active',
         isActive: true,
         photoUrl: ''
@@ -77,16 +77,18 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const ROLE_TO_AGENT_TYPE: Record<string, 'enrollment' | 'correction' | 'survey'> = {
+    const ROLE_TO_AGENT_TYPE: Record<string, 'enrollment' | 'correction' | 'survey' | 'agribusiness'> = {
         agent: 'enrollment',
         data_correction_agent: 'correction',
         survey_agent: 'survey',
+        agri_business_agent: 'agribusiness',
     };
 
     const AGENT_TYPE_TO_ROLE: Record<string, string> = {
         enrollment: 'agent',
         correction: 'data_correction_agent',
         survey: 'survey_agent',
+        agribusiness: 'agri_business_agent',
     };
 
     useEffect(() => {
@@ -131,7 +133,7 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                     pollingUnit: agentProfile.pollingUnit || '',
                     assignedState: agentProfile.assignedState || '',
                     assignedLGA: agentProfile.assignedLGA || '',
-                    agentType: (ROLE_TO_AGENT_TYPE[data.role] || 'enrollment') as 'enrollment' | 'correction' | 'survey',
+                    agentType: (ROLE_TO_AGENT_TYPE[data.role] || 'enrollment') as 'enrollment' | 'correction' | 'survey' | 'agribusiness',
                     status: agentProfile.status || (data.isActive ? 'active' : 'inactive'),
                     isActive: data.isActive,
                     photoUrl: agentProfile.photoUrl || ''
@@ -572,6 +574,7 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                                                 <SelectItem value="enrollment">Enrollment Agent</SelectItem>
                                                 <SelectItem value="correction">Correction Agent</SelectItem>
                                                 <SelectItem value="survey">Survey Agent</SelectItem>
+                                                <SelectItem value="agribusiness">Agri-Business Agent</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -738,9 +741,8 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                                             <Select disabled={!formData.ward} onValueChange={(val) => handleChange('pollingUnit', val)} value={formData.pollingUnit}>
                                                 <SelectTrigger><SelectValue placeholder="Select Polling Unit" /></SelectTrigger>
                                                 <SelectContent>
-                                                    {selectedWardData?.polling_units.map((pu: string) => {
-                                                        const name = formatLocation(pu);
-                                                        return <SelectItem key={name} value={name}>{name}</SelectItem>;
+                                                    {Array.from(new Set(selectedWardData?.polling_units?.map((pu: string) => formatLocation(pu)) || [])).map((name: any, idx: number) => {
+                                                        return <SelectItem key={`${name}-${idx}`} value={name}>{name}</SelectItem>;
                                                     })}
                                                 </SelectContent>
                                             </Select>

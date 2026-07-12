@@ -25,6 +25,14 @@ const SURVEY_AGENT_PERMISSIONS = [
   'surveys.responses.read',
 ];
 
+const AGRI_BUSINESS_AGENT_PERMISSIONS = [
+  'dashboard.access',
+  'farmers.read',
+  'agribusiness.create',
+  'agribusiness.read',
+  'agribusiness.update',
+];
+
 async function main() {
   console.log('Seeding mobile agent roles…');
 
@@ -81,6 +89,24 @@ async function main() {
   });
 
   console.log('✓ survey_agent role upserted');
+
+  await prisma.roles.upsert({
+    where: { name: 'agri_business_agent' },
+    update: {
+      description: 'Field agent authorised to capture and enroll agri-businesses via the mobile app',
+      permissions: AGRI_BUSINESS_AGENT_PERMISSIONS,
+      isActive: true,
+    },
+    create: {
+      name: 'agri_business_agent',
+      description: 'Field agent authorised to capture and enroll agri-businesses via the mobile app',
+      permissions: AGRI_BUSINESS_AGENT_PERMISSIONS,
+      isSystem: false,
+      isActive: true,
+    },
+  });
+
+  console.log('✓ agri_business_agent role upserted');
   console.log('Seeding complete.');
 }
 

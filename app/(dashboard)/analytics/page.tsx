@@ -225,7 +225,7 @@ export default function AnalyticsPage() {
                     <XAxis type="number" hide />
                     <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
                     <Tooltip cursor={{ fill: 'transparent' }} />
-                    <Bar dataKey="value" fill="#0ea5e9" radius={[0, 4, 4, 0]} barSize={20} />
+                    <Bar dataKey="value" fill="#013358" radius={[0, 4, 4, 0]} barSize={20} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -244,7 +244,7 @@ export default function AnalyticsPage() {
                     <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                     <YAxis />
                     <Tooltip cursor={{ fill: 'rgba(100,100,120,0.08)' }} />
-                    <Bar dataKey="value" fill="#eab308" radius={[4, 4, 0, 0]} barSize={40} />
+                    <Bar dataKey="value" fill="#013358" radius={[4, 4, 0, 0]} barSize={40} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -266,7 +266,7 @@ export default function AnalyticsPage() {
                     <XAxis dataKey="name" />
                     <YAxis />
                     <Tooltip />
-                    <Bar dataKey="value" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="value" fill="#013358" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -314,7 +314,7 @@ export default function AnalyticsPage() {
                     <XAxis dataKey="name" />
                     <YAxis />
                     <Tooltip />
-                    <Bar dataKey="value" fill="#16a34a" radius={[4, 4, 0, 0]} barSize={60} />
+                    <Bar dataKey="value" fill="#013358" radius={[4, 4, 0, 0]} barSize={60} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -331,7 +331,7 @@ export default function AnalyticsPage() {
                     <XAxis type="number" />
                     <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 12 }} />
                     <Tooltip cursor={{ fill: 'rgba(100,100,120,0.08)' }} />
-                    <Bar dataKey="value" fill="#16a34a" radius={[0, 4, 4, 0]} barSize={20} />
+                    <Bar dataKey="value" fill="#013358" radius={[0, 4, 4, 0]} barSize={20} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -384,7 +384,7 @@ export default function AnalyticsPage() {
                     <XAxis dataKey="name" angle={-45} textAnchor="end" interval={0} height={100} />
                     <YAxis />
                     <Tooltip />
-                    <Bar dataKey="value" fill="#f97316" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="value" fill="#013358" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -408,7 +408,7 @@ export default function AnalyticsPage() {
                         <XAxis type="number" />
                         <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11 }} />
                         <Tooltip />
-                        <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={20} />
+                        <Bar dataKey="value" fill="#013358" radius={[0, 4, 4, 0]} barSize={20} />
                       </BarChart>
                     </ResponsiveContainer>
                   )}
@@ -424,14 +424,14 @@ export default function AnalyticsPage() {
 
 function KPICard({ title, value, icon: Icon, color, bg }: any) {
   return (
-    <Card className="shadow-sm border-none ring-1 ring-gray-200 dark:ring-gray-700 hover:ring-2 hover:ring-primary/20 transition-all">
-      <CardContent className="p-6 flex items-center gap-4">
-        <div className={`h-12 w-12 rounded-full ${bg} flex items-center justify-center shrink-0`}>
+    <Card className="shadow-sm border ring-1 ring-gray-100 dark:ring-gray-800 hover:ring-primary/20 transition-all">
+      <CardContent className="p-4 flex items-center justify-start gap-4">
+        <div className={`h-12 w-12 rounded-lg ${bg} flex items-center justify-center shrink-0`}>
           <Icon className={`h-6 w-6 ${color}`} />
         </div>
         <div>
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{typeof value === 'number' ? value.toLocaleString() : value}</h3>
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">{typeof value === 'number' ? value.toLocaleString() : value}</h3>
         </div>
       </CardContent>
     </Card>

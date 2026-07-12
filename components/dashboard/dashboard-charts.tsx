@@ -125,7 +125,7 @@ export function RegistrationEstimatorChart({ trends }: { trends?: MonthlyTrend[]
 
     const data = React.useMemo(() => trends ?? [], [trends])
     const chartData = React.useMemo(
-        () => data.map((item, index) => ({ ...item, fill: getPaletteColor(index) })),
+        () => data.map((item) => ({ ...item, fill: "#013358" })),
         [data]
     )
     const totalRegistrations = React.useMemo(() => data.reduce((acc, curr) => acc + curr.count, 0), [data])
@@ -413,17 +413,17 @@ export function CropsStatesInteractiveChart({
     const propsData = React.useMemo(() => {
         if (activeView === "crops") {
             if (!cropsData || !Array.isArray(cropsData)) return [];
-            return [...cropsData].sort((a, b) => b.count - a.count).slice(0, 10).map((c, index) => ({
+            return [...cropsData].sort((a, b) => b.count - a.count).slice(0, 10).map((c) => ({
                 label: c.crop,
                 count: c.count,
-                fill: getPaletteColor(index + 1)
+                fill: "#013358"
             }))
         } else {
             if (!statesData || !Array.isArray(statesData)) return [];
-            return [...statesData].sort((a, b) => b.count - a.count).slice(0, 10).map((s, index) => ({
+            return [...statesData].sort((a, b) => b.count - a.count).slice(0, 10).map((s) => ({
                 label: s.state,
                 count: s.count,
-                fill: getPaletteColor(index + 3)
+                fill: "#013358"
             }))
         }
     }, [activeView, cropsData, statesData])
