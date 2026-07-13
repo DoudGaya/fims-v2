@@ -16,13 +16,14 @@ const checkPermission = (permissions: string[] | undefined, permission: string) 
 };
 
 // All mobile agent roles managed from this dashboard
-const MOBILE_AGENT_ROLES = ['agent', 'data_correction_agent', 'survey_agent'] as const;
+const MOBILE_AGENT_ROLES = ['agent', 'data_correction_agent', 'survey_agent', 'agri_business_agent'] as const;
 
 // Map agentType param → User.role value
 const AGENT_TYPE_ROLE_MAP: Record<string, string> = {
   enrollment: 'agent',
   correction: 'data_correction_agent',
   survey:     'survey_agent',
+  agribusiness: 'agri_business_agent',
 };
 
 export async function GET(req: NextRequest) {

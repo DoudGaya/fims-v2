@@ -817,6 +817,10 @@ model BusinessStakeholder {
   address            String?
   state              String?
   lga                String?
+  ward               String?
+  pollingUnit        String?
+  latitude           Float?
+  longitude          Float?
   interests          String[]
   valueChainRoles    String[]
   targetCrops        String[]

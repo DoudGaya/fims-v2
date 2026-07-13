@@ -15,8 +15,14 @@ const applicationSchema = z.object({
   contactRole: z.string().max(120).optional().nullable(),
   email: z.string().email(),
   phone: z.string().max(40).optional().nullable(),
-  state: z.string().max(120).optional().nullable(),
-  lga: z.string().max(120).optional().nullable(),
+  state: z.string().optional().nullable(),
+  lga: z.string().optional().nullable(),
+  ward: z.string().optional().nullable(),
+  pollingUnit: z.string().optional().nullable(),
+  latitude: z.number().optional().nullable(),
+  longitude: z.number().optional().nullable(),
+  documentUrls: z.array(z.string()).optional().default([]),
+  servicesOffered: z.string().optional().nullable(),
   interests: stringArray.refine((items) => items.length > 0, 'Select at least one interest area'),
 });
 
@@ -113,6 +119,11 @@ export async function POST(req: NextRequest) {
       phone: data.phone || null,
       state: data.state || null,
       lga: data.lga || null,
+      ward: data.ward || null,
+      pollingUnit: data.pollingUnit || null,
+      latitude: data.latitude || null,
+      longitude: data.longitude || null,
+      servicesOffered: data.servicesOffered || null,
       interests: data.interests,
       status: hasKybSeed ? BusinessStakeholderStatus.KYB_PENDING : BusinessStakeholderStatus.NEW,
       kybStatus: hasKybSeed ? KYBStatus.SUBMITTED : KYBStatus.NOT_SUBMITTED,
@@ -122,6 +133,7 @@ export async function POST(req: NextRequest) {
             create: {
               cacNumber: data.registrationNumber || null,
               tin: data.tin || null,
+              documentUrls: data.documentUrls && data.documentUrls.length > 0 ? data.documentUrls : [],
               status: KYBStatus.SUBMITTED,
             },
           }
