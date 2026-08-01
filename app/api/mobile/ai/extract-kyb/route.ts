@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     const base64Data = imageBase64.replace(/^data:image\/(png|jpeg|jpg);base64,/, '');
 
     const response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-3.5-flash',
         contents: [
             {
                 role: 'user',
@@ -55,7 +55,26 @@ export async function POST(req: NextRequest) {
         throw new Error('No response text generated');
     }
     
-    const extractedData = JSON.parse(response.text);
+    console.log('Gemini raw response:', JSON.stringify(response.text));
+
+    let cleanText = response.text.trim();
+    const startIdx = cleanText.indexOf('{');
+    if (startIdx !== -1) {
+      let braceCount = 0;
+      for (let i = startIdx; i < cleanText.length; i++) {
+        if (cleanText[i] === '{') {
+          braceCount++;
+        } else if (cleanText[i] === '}') {
+          braceCount--;
+          if (braceCount === 0) {
+            cleanText = cleanText.substring(startIdx, i + 1);
+            break;
+          }
+        }
+      }
+    }
+    
+    const extractedData = JSON.parse(cleanText);
 
     return NextResponse.json(extractedData);
 

@@ -503,8 +503,48 @@ export async function sendCustomEmail(
   }
 
   const year = new Date().getFullYear();
-  // Convert newlines to <br> for HTML rendering
-  const bodyHtml = body.replace(/\n/g, '<br>');
+
+  // Helper to convert markdown to HTML for rich emails
+  function convertMarkdownToHtml(text: string): string {
+    let html = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    // Headers
+    html = html.replace(/^### (.*?)$/gm, '<h3 style="margin: 16px 0 8px 0; font-size: 16px; font-weight: bold; color: #013358;">$1</h3>');
+    html = html.replace(/^## (.*?)$/gm, '<h2 style="margin: 20px 0 10px 0; font-size: 18px; font-weight: bold; color: #013358;">$1</h2>');
+    html = html.replace(/^# (.*?)$/gm, '<h1 style="margin: 24px 0 12px 0; font-size: 22px; font-weight: bold; color: #013358;">$1</h1>');
+
+    // Bold & Italics
+    html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+    // Markdown Links: [text](url) -> <a href="url">text</a>
+    html = html.replace(/\[(.*?)\]\((.*?)\)/g, (match, linkText, url) => {
+      const cleanUrl = url.replace(/&amp;/g, '&');
+      return `<a href="${cleanUrl}" style="color: #013358; text-decoration: underline; font-weight: 600;">${linkText}</a>`;
+    });
+
+    // Bullets
+    html = html.replace(/^(?:•|-|\*)\s+(.*?)$/gm, '<li style="margin-bottom: 6px;">$1</li>');
+
+    // Newlines to <br>
+    html = html.replace(/\n/g, '<br>');
+
+    // Wrap list items in <ul> tags
+    html = html.replace(/(<li.*?>.*?<\/li>)+/g, '<ul style="padding-left: 20px; margin: 12px 0;">$&</ul>');
+
+    // Cleanup extra newlines inside list wrappers
+    html = html.replace(/<ul style="padding-left: 20px; margin: 12px 0;"><br>/g, '<ul style="padding-left: 20px; margin: 12px 0;">');
+    html = html.replace(/<\/ul><br>/g, '</ul>');
+    html = html.replace(/<li(.*?)><br>/g, '<li$1>');
+    html = html.replace(/<\/li><br>/g, '</li>');
+
+    return html;
+  }
+
+  const bodyHtml = convertMarkdownToHtml(body);
 
   const html = `<!DOCTYPE html>
 <html lang="en">

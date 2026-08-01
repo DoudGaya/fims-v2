@@ -479,38 +479,191 @@ function ComposeTab({ onSent }: { onSent: () => void }) {
               </div>
             </div>
 
-            {/* Subject */}
-            {(channel === 'email' || channel === 'both') && (
-              <div className="space-y-1.5">
-                <Label htmlFor="compose-subject">Subject</Label>
-                <Input
-                  id="compose-subject"
-                  placeholder="Enter email subject"
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                />
-              </div>
-            )}
+             {/* Personalization badges helper */}
+             <div className="flex flex-wrap items-center gap-1.5 bg-gray-50 dark:bg-gray-800/40 p-2.5 rounded-lg border border-gray-200 dark:border-gray-700 text-xs">
+               <span className="text-gray-500 font-semibold mr-1 uppercase text-[10px] tracking-wider dark:text-gray-400">Placeholders:</span>
+               {[
+                 { token: '{firstName}', label: 'First Name' },
+                 { token: '{lastName}', label: 'Last Name' },
+                 { token: '{name}', label: 'Full Name' },
+                 { token: '{senderName}', label: 'Sender Name' },
+                 { token: '{email}', label: 'Email' },
+                 { token: '{phone}', label: 'Phone' },
+                 { token: '[Click here](https://...)', label: 'Insert Hyperlink' }
+               ].map(t => (
+                 <button
+                   key={t.label}
+                   type="button"
+                   onClick={() => {
+                     const input = document.getElementById('compose-body') as HTMLTextAreaElement;
+                     if (input) {
+                       const start = input.selectionStart;
+                       const end = input.selectionEnd;
+                       const newBody = body.substring(0, start) + t.token + body.substring(end);
+                       setBody(newBody);
+                       setTimeout(() => {
+                         input.focus();
+                         input.setSelectionRange(start + t.token.length, start + t.token.length);
+                       }, 0);
+                     } else {
+                       setBody(b => b + t.token);
+                     }
+                   }}
+                   className="bg-white dark:bg-gray-800 hover:bg-ccsa-blue/5 hover:border-ccsa-blue dark:hover:border-blue-400 transition-colors border border-gray-300 dark:border-gray-600 rounded px-2 py-0.5 font-mono text-[10.5px] text-ccsa-blue dark:text-blue-300"
+                 >
+                   {t.label}
+                 </button>
+               ))}
+             </div>
 
-            {/* Body */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="compose-body">Message</Label>
-                {(channel === 'sms' || channel === 'both') && (
-                  <span className={`text-xs ${body.length > SMS_LIMIT ? 'text-red-500' : 'text-gray-400'}`}>
-                    {body.length}/{SMS_LIMIT} chars {body.length > SMS_LIMIT && '— SMS will be split across multiple messages'}
-                  </span>
-                )}
-              </div>
-              <Textarea
-                id="compose-body"
-                placeholder="Write your message here…"
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                rows={8}
-                className="resize-none"
-              />
-            </div>
+             <Tabs defaultValue="edit" className="w-full">
+               <TabsList className="grid w-full grid-cols-2 h-9 p-1 bg-gray-100 dark:bg-gray-800/80 rounded-lg">
+                 <TabsTrigger value="edit" className="text-xs">Write</TabsTrigger>
+                 <TabsTrigger value="preview" className="text-xs" disabled={!body.trim()}>Live Inbox Preview</TabsTrigger>
+               </TabsList>
+
+               <TabsContent value="edit" className="space-y-4 mt-3">
+                 {/* Subject */}
+                 {(channel === 'email' || channel === 'both') && (
+                   <div className="space-y-1.5">
+                     <Label htmlFor="compose-subject" className="text-xs font-semibold uppercase tracking-wider text-gray-500">Subject</Label>
+                     <Input
+                       id="compose-subject"
+                       placeholder="Enter email subject (e.g. Welcome to CCSA, {firstName}!)"
+                       value={subject}
+                       onChange={(e) => setSubject(e.target.value)}
+                       className="text-sm border-gray-200 dark:border-gray-700 focus-visible:ring-ccsa-blue"
+                     />
+                   </div>
+                 )}
+
+                 {/* Body */}
+                 <div className="space-y-1.5">
+                   <div className="flex items-center justify-between">
+                     <Label htmlFor="compose-body" className="text-xs font-semibold uppercase tracking-wider text-gray-500">Message Content (Markdown Supported)</Label>
+                     {(channel === 'sms' || channel === 'both') && (
+                       <span className={`text-[10px] font-mono ${body.length > SMS_LIMIT ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>
+                         {body.length}/{SMS_LIMIT} chars {body.length > SMS_LIMIT && '— SMS will be split'}
+                       </span>
+                     )}
+                   </div>
+                   <Textarea
+                     id="compose-body"
+                     placeholder="Dear {firstName},\n\nWelcome back! We are excited to update you... Use **bold**, *italics*, or [clickable links](https://...) to format your email message."
+                     value={body}
+                     onChange={(e) => setBody(e.target.value)}
+                     rows={10}
+                     className="resize-none text-sm border-gray-200 dark:border-gray-700 focus-visible:ring-ccsa-blue font-sans leading-relaxed p-3"
+                   />
+                 </div>
+               </TabsContent>
+
+               <TabsContent value="preview" className="mt-3">
+                 <div className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden bg-gray-50 dark:bg-gray-900/20">
+                   {/* Email Client Header bar */}
+                   <div className="bg-gray-100/60 dark:bg-gray-800/60 px-4 py-2 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between text-[10px] text-gray-500 select-none">
+                     <div className="flex items-center gap-1.5 font-medium">
+                       <span className="w-2.5 h-2.5 rounded-full bg-red-400/80"></span>
+                       <span className="w-2.5 h-2.5 rounded-full bg-yellow-400/80"></span>
+                       <span className="w-2.5 h-2.5 rounded-full bg-green-400/80"></span>
+                       <span className="ml-2 font-mono text-[9px] tracking-wider uppercase opacity-85">CCSA Inbox Preview</span>
+                     </div>
+                     <Badge variant="outline" className="text-[9px] font-bold bg-white dark:bg-gray-800 uppercase px-2 py-0.5 border-gray-300 dark:border-gray-700">Rich HTML</Badge>
+                   </div>
+
+                   {/* Email Headers */}
+                   <div className="px-4 py-2.5 bg-white dark:bg-gray-900/60 border-b border-gray-150 dark:border-gray-800/60 text-xs space-y-1.5 select-none">
+                     <div><span className="text-gray-400 dark:text-gray-500 inline-block w-14 font-medium">From:</span> <span className="font-semibold text-gray-700 dark:text-gray-300">CCSA Operations &lt;onboarding@resend.dev&gt;</span></div>
+                     <div><span className="text-gray-400 dark:text-gray-500 inline-block w-14 font-medium">To:</span> <span className="text-gray-600 dark:text-gray-400">John Doe (Personalized Preview)</span></div>
+                     {subject.trim() && (
+                       <div><span className="text-gray-400 dark:text-gray-500 inline-block w-14 font-medium">Subject:</span> <span className="font-bold text-gray-900 dark:text-gray-100">{subject.replace(/{firstName}/g, 'John').replace(/{lastName}/g, 'Doe').replace(/{name}/g, 'John Doe')}</span></div>
+                     )}
+                   </div>
+
+                   {/* Email Canvas/Body Frame */}
+                   <div className="p-4 bg-gray-50 dark:bg-gray-950/40 flex justify-center overflow-x-auto min-h-[300px]">
+                     <div className="w-full max-w-[520px] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-sm rounded-lg overflow-hidden flex flex-col">
+                       {/* CCSA University Branding header */}
+                       <div className="bg-[#013358] px-5 py-4 text-white flex items-center justify-between">
+                         <div>
+                           <div className="font-bold text-base tracking-wide">CCSA</div>
+                           <div className="text-[10px] opacity-75">Farmers Information Management System</div>
+                         </div>
+                         <span className="text-[9px] bg-green-600 text-white font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Official Message</span>
+                       </div>
+                       
+                       {/* CCSA Accent strip */}
+                       <div className="bg-[#16A34A] h-[3px]"></div>
+
+                       {/* Dynamic Render HTML content */}
+                       <div className="p-5 text-sm text-gray-800 dark:text-gray-200 leading-relaxed font-sans flex-1">
+                         <p className="margin-0 mb-4 font-semibold text-gray-900 dark:text-gray-100">Dear John Doe,</p>
+                         <div
+                           className="space-y-3 prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300"
+                           dangerouslySetInnerHTML={{
+                             __html: (function() {
+                               let clean = body
+                                 .replace(/&/g, '&amp;')
+                                 .replace(/</g, '&lt;')
+                                 .replace(/>/g, '&gt;');
+                               // replace placeholders
+                               clean = clean
+                                 .replace(/{firstName}/g, 'John')
+                                 .replace(/{lastName}/g, 'Doe')
+                                 .replace(/{name}/g, 'John Doe')
+                                 .replace(/{senderName}/g, 'CCSA Admin')
+                                 .replace(/{email}/g, 'john.doe@example.com')
+                                 .replace(/{phone}/g, '08033334444');
+                               
+                               // Headers
+                               clean = clean.replace(/^### (.*?)$/gm, '<h3 style="margin:16px 0 8px;font-size:14px;font-weight:700;color:#013358;">$1</h3>');
+                               clean = clean.replace(/^## (.*?)$/gm, '<h2 style="margin:20px 0 10px;font-size:16px;font-weight:700;color:#013358;">$1</h2>');
+                               clean = clean.replace(/^# (.*?)$/gm, '<h1 style="margin:24px 0 12px;font-size:18px;font-weight:700;color:#013358;">$1</h1>');
+                               
+                               // Bold & Italics
+                               clean = clean.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                               clean = clean.replace(/\*(.*?)\*/g, '<em>$1</em>');
+                               
+                               // Links
+                               clean = clean.replace(/\[(.*?)\]\((.*?)\)/g, (match, linkText, url) => {
+                                 const cleanUrl = url.replace(/&amp;/g, '&');
+                                 return `<a href="${cleanUrl}" style="color:#013358;text-decoration:underline;font-weight:600;" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
+                               });
+                               
+                               // Bullets
+                               clean = clean.replace(/^(?:•|-|\*)\s+(.*?)$/gm, '<li style="margin-bottom:6px;">$1</li>');
+                               
+                               // Newlines to br
+                               clean = clean.replace(/\n/g, '<br>');
+                               
+                               // Lists wrapping
+                               clean = clean.replace(/(<li.*?>.*?<\/li>)+/g, '<ul style="padding-left:18px;margin:12px 0;">$&</ul>');
+                               clean = clean.replace(/<ul style="padding-left:18px;margin:12px 0;"><br>/g, '<ul style="padding-left:18px;margin:12px 0;">');
+                               clean = clean.replace(/<\/ul><br>/g, '</ul>');
+                               clean = clean.replace(/<li(.*?)><br>/g, '<li$1>');
+                               clean = clean.replace(/<\/li><br>/g, '</li>');
+                               return clean;
+                             })()
+                           }}
+                         />
+                       </div>
+
+                       {/* Footer inside canvas */}
+                       <div className="bg-gray-50 dark:bg-gray-900 border-t border-gray-150 dark:border-gray-800 p-4 text-[10px] text-gray-400 flex items-center justify-between leading-normal select-none">
+                         <div>
+                           Centre for Climate Smart Agriculture &mdash; Cosmopolitan University Abuja<br/>
+                           &copy; {new Date().getFullYear()} CCSA. All rights reserved.
+                         </div>
+                         <div className="text-right">
+                           Official Administrative Message<br/>
+                           Do not reply.
+                         </div>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+               </TabsContent>
+             </Tabs>
 
             {/* Error */}
             {sendState.status === 'error' && (

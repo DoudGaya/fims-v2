@@ -140,9 +140,28 @@ export async function POST(req: NextRequest) {
     for (const recipient of recipientList) {
       const errors: string[] = [];
 
+      // Parse first and last names for personalization
+      const nameParts = recipient.name.split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      const replacePlaceholders = (text: string) => {
+        return text
+          .replace(/{name}/g, recipient.name)
+          .replace(/{recipientName}/g, recipient.name)
+          .replace(/{firstName}/g, firstName)
+          .replace(/{lastName}/g, lastName)
+          .replace(/{email}/g, recipient.email ?? '')
+          .replace(/{phone}/g, recipient.phone ?? '')
+          .replace(/{senderName}/g, session.user.name ?? 'CCSA Admin');
+      };
+
+      const customizedBody = replacePlaceholders(body);
+      const customizedSubject = subject ? replacePlaceholders(subject) : undefined;
+
       if (channel === 'email' || channel === 'both') {
         if (recipient.email) {
-          const result = await sendCustomEmail(recipient.email, recipient.name, subject!, body);
+          const result = await sendCustomEmail(recipient.email, recipient.name, customizedSubject!, customizedBody);
           if (!result.success) errors.push(`Email: ${result.error}`);
         } else {
           errors.push('Email: no email address on file');
@@ -151,7 +170,7 @@ export async function POST(req: NextRequest) {
 
       if (channel === 'sms' || channel === 'both') {
         if (recipient.phone) {
-          const result = await termii.sendMessage(recipient.phone, body);
+          const result = await termii.sendMessage(recipient.phone, customizedBody);
           if (!result.success) errors.push(`SMS: ${result.error}`);
         } else {
           errors.push('SMS: no phone number on file');
