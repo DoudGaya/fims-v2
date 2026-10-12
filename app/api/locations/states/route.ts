@@ -11,6 +11,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
+      data: states,
       states: states
     });
   } catch (error) {
@@ -59,6 +60,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
+      data: fallbackStates,
       states: fallbackStates,
       note: 'Using fallback data due to database error'
     });

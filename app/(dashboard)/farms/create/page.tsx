@@ -37,17 +37,25 @@ function CreateFarmForm() {
     farmSize: '',
     primaryCrop: '',
     secondaryCrop: '',
+    cropVariety: '',
+    produceCategory: '',
     farmOwnership: '',
     farmState: '',
     farmLocalGovernment: '',
+    farmCity: '',
     farmWard: '',
     farmPollingUnit: '',
     farmingSeason: '',
     farmingExperience: '',
+    year: '',
     farmLatitude: '',
     farmLongitude: '',
     soilType: '',
+    soilPH: '',
     soilFertility: '',
+    landforms: '',
+    yieldSeason: '',
+    quantity: '',
     farmPolygon: '',
   });
 
@@ -105,8 +113,16 @@ function CreateFarmForm() {
       if (formData.farmingExperience) payload.farmingExperience = parseInt(formData.farmingExperience);
       if (formData.farmLatitude) payload.farmLatitude = parseFloat(formData.farmLatitude);
       if (formData.farmLongitude) payload.farmLongitude = parseFloat(formData.farmLongitude);
+      if (formData.cropVariety) payload.cropVariety = formData.cropVariety;
+      if (formData.produceCategory) payload.produceCategory = formData.produceCategory;
+      if (formData.farmCity) payload.farmCity = formData.farmCity;
+      if (formData.year) payload.year = parseInt(formData.year);
       if (formData.soilType) payload.soilType = formData.soilType;
+      if (formData.soilPH) payload.soilPH = parseFloat(formData.soilPH);
       if (formData.soilFertility) payload.soilFertility = formData.soilFertility;
+      if (formData.landforms) payload.landforms = formData.landforms;
+      if (formData.yieldSeason) payload.yieldSeason = formData.yieldSeason;
+      if (formData.quantity) payload.quantity = parseFloat(formData.quantity);
       if (farmPolygon) payload.farmPolygon = farmPolygon;
 
       const res = await fetch('/api/farms', {
@@ -145,7 +161,7 @@ function CreateFarmForm() {
       </div>
 
       {error && (
-        <div className="p-4 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm">
+        <div className="p-4 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 text-red-700 dark:text-red-400 text-sm">
           {error}
         </div>
       )}
@@ -188,6 +204,26 @@ function CreateFarmForm() {
             <div className="space-y-2">
               <Label htmlFor="secondaryCrop">Secondary Crops</Label>
               <Input id="secondaryCrop" name="secondaryCrop" value={formData.secondaryCrop} onChange={handleChange} placeholder="e.g. Maize, Beans" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cropVariety">Crop Variety</Label>
+              <Input id="cropVariety" name="cropVariety" value={formData.cropVariety} onChange={handleChange} placeholder="e.g. FARO 44" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="produceCategory">Produce Category</Label>
+              <Select value={formData.produceCategory} onValueChange={(v) => set('produceCategory', v)}>
+                <SelectTrigger id="produceCategory"><SelectValue placeholder="Select category" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Grain">Grain</SelectItem>
+                  <SelectItem value="Vegetable">Vegetable</SelectItem>
+                  <SelectItem value="Fruit">Fruit</SelectItem>
+                  <SelectItem value="Tuber">Tuber</SelectItem>
+                  <SelectItem value="Legume">Legume</SelectItem>
+                  <SelectItem value="Cash Crop">Cash Crop</SelectItem>
+                  <SelectItem value="Spice">Spice</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="farmSize">Farm Size (hectares)</Label>
@@ -239,6 +275,10 @@ function CreateFarmForm() {
               <Input id="farmLocalGovernment" name="farmLocalGovernment" value={formData.farmLocalGovernment} onChange={handleChange} placeholder="e.g. Nassarawa" required />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="farmCity">City / Town</Label>
+              <Input id="farmCity" name="farmCity" value={formData.farmCity} onChange={handleChange} placeholder="e.g. Kano" />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="farmWard">Ward <span className="text-red-500">*</span></Label>
               <Input id="farmWard" name="farmWard" value={formData.farmWard} onChange={handleChange} placeholder="e.g. Kabuwaya" required />
             </div>
@@ -264,6 +304,19 @@ function CreateFarmForm() {
           </CardHeader>
           <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
+              <Label htmlFor="landforms">Landforms</Label>
+              <Select value={formData.landforms} onValueChange={(v) => set('landforms', v)}>
+                <SelectTrigger id="landforms"><SelectValue placeholder="Select" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Lowland">Lowland</SelectItem>
+                  <SelectItem value="Highland">Highland</SelectItem>
+                  <SelectItem value="Valley">Valley</SelectItem>
+                  <SelectItem value="Plateau">Plateau</SelectItem>
+                  <SelectItem value="Floodplain">Floodplain</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="soilType">Soil Type</Label>
               <Select value={formData.soilType} onValueChange={(v) => set('soilType', v)}>
                 <SelectTrigger id="soilType"><SelectValue placeholder="Select type" /></SelectTrigger>
@@ -287,6 +340,40 @@ function CreateFarmForm() {
                   <SelectItem value="Low">Low</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="soilPH">Soil pH</Label>
+              <Input id="soilPH" name="soilPH" type="number" step="0.1" min="0" max="14" value={formData.soilPH} onChange={handleChange} placeholder="e.g. 6.5" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Harvest & Yield */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Harvest &amp; Yield <span className="text-xs font-normal text-muted-foreground">(optional)</span></CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="year">Year Established</Label>
+              <Input id="year" name="year" type="number" min="1900" max="2100" value={formData.year} onChange={handleChange} placeholder={new Date().getFullYear().toString()} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="yieldSeason">Yield Season</Label>
+              <Select value={formData.yieldSeason} onValueChange={(v) => set('yieldSeason', v)}>
+                <SelectTrigger id="yieldSeason"><SelectValue placeholder="Select season" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="First Season (March–July)">First Season (March–July)</SelectItem>
+                  <SelectItem value="Second Season (Aug–Dec)">Second Season (Aug–Dec)</SelectItem>
+                  <SelectItem value="Year Round">Year Round</SelectItem>
+                  <SelectItem value="Dry Season">Dry Season</SelectItem>
+                  <SelectItem value="Wet Season">Wet Season</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="quantity">Recorded Quantity (Kg)</Label>
+              <Input id="quantity" name="quantity" type="number" step="0.1" min="0" value={formData.quantity} onChange={handleChange} placeholder="e.g. 500" />
             </div>
           </CardContent>
         </Card>

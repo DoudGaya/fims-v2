@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     };
 
     // Validate required fields
-    const required = ['firstName', 'lastName', 'email', 'phone', 'enrollmentCode'] as const;
+    const required = ['firstName', 'lastName', 'email', 'phone'] as const;
     for (const field of required) {
       if (!body[field]?.trim()) {
         return NextResponse.json({ error: `${field} is required` }, { status: 400 });
@@ -52,12 +52,22 @@ export async function POST(req: NextRequest) {
     const phone = body.phone!.trim();
 
     // ── Duplicate check ───────────────────────────────────────────────────
-    const existing = await prisma.user.findFirst({
+    const existingUser = await prisma.user.findFirst({
       where: { OR: [{ email }, { phoneNumber: phone }] },
     });
-    if (existing) {
+    if (existingUser) {
       return NextResponse.json(
         { error: 'An account with this email or phone number already exists.' },
+        { status: 409 },
+      );
+    }
+
+    const existingAgent = await prisma.agent.findFirst({
+      where: { OR: [{ email }, { phone }] },
+    });
+    if (existingAgent) {
+      return NextResponse.json(
+        { error: 'An agent profile with this email or phone number already exists.' },
         { status: 409 },
       );
     }

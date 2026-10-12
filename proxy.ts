@@ -6,8 +6,9 @@ export default withAuth(
     const token = req.nextauth.token;
     const { pathname } = req.nextUrl;
 
-    // Redirect already-authenticated users away from the signin page
-    if (pathname === '/auth/signin' && token) {
+    // Redirect already-authenticated users away from the signin page, unless an error occurred
+    const hasError = req.nextUrl.searchParams.has('error');
+    if (pathname === '/auth/signin' && token && !hasError) {
       return NextResponse.redirect(new URL('/dashboard', req.url));
     }
 

@@ -127,10 +127,39 @@ export const authOptions: NextAuthOptions = {
       }
       
       // Handle SSO sign in
-      if (account && account.provider === 'google') {
-        // Log successful SSO
-        if (token.email) {
-           await logSSOAttempt(
+      if (account && account.provider === 'google' && token.email) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: token.email },
+            include: {
+              userRoles: {
+                include: {
+                  role: {
+                    select: {
+                      id: true,
+                      name: true,
+                      permissions: true,
+                      isSystem: true
+                    }
+                  }
+                }
+              }
+            }
+          });
+
+          if (dbUser) {
+            token.id = dbUser.id;
+            token.role = dbUser.role;
+            token.roles = dbUser.userRoles.map(ur => ({
+              id: ur.role.id,
+              name: ur.role.name,
+              permissions: ur.role.permissions
+            }));
+            token.permissions = await getUserPermissions(dbUser.id);
+          }
+
+          // Log successful SSO
+          await logSSOAttempt(
             token.email, 
             'google', 
             'success', 
@@ -139,6 +168,8 @@ export const authOptions: NextAuthOptions = {
             null, // IP address not easily available here without request context
             null
           );
+        } catch (err: any) {
+          ProductionLogger.error('Failed to hydrate Google SSO user in JWT:', err?.message || err);
         }
       }
       
@@ -156,7 +187,7 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account, profile }) {
       // Custom logic for SSO sign in
       if (account?.provider === 'google') {
-        if (!user.email) return false;
+        if (!user.email) return '/auth/signin?error=callback';
         
         try {
           // Check if user exists
@@ -166,12 +197,24 @@ export const authOptions: NextAuthOptions = {
           
           if (!existingUser) {
             await logSSOAttempt(user.email, 'google', 'user_not_found', 'User does not exist');
-            return false; // Or true if you want to allow auto-registration
+            return '/auth/signin?error=user_not_found';
           }
           
-          if (!existingUser.isActive) {
+          if (existingUser.isActive === false) {
             await logSSOAttempt(user.email, 'google', 'error', 'Account inactive');
-            return false;
+            return '/auth/signin?error=account_inactive';
+          }
+
+          if (existingUser.role === 'agent') {
+            await logSSOAttempt(user.email, 'google', 'error', 'Agent attempted web login');
+            return '/auth/signin?error=agent_mobile_only';
+          }
+
+          // Check if user has permissions
+          const permissions = await getUserPermissions(existingUser.id);
+          if (!permissions || permissions.length === 0) {
+            await logSSOAttempt(user.email, 'google', 'error', 'No permissions assigned');
+            return '/auth/signin?error=no_permissions';
           }
           
           // Update SSO fields
@@ -189,7 +232,7 @@ export const authOptions: NextAuthOptions = {
           return true;
         } catch (error) {
           console.error('SSO Sign in error:', error);
-          return false;
+          return '/auth/signin?error=callback';
         }
       }
       return true;

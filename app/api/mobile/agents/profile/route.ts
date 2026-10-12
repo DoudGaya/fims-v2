@@ -3,31 +3,77 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import { invalidateByPrefix } from '@/lib/cache';
+import { getMobileUser } from '@/lib/mobileAuth';
 
 export const dynamic = 'force-dynamic';
 
-const MOBILE_AGENT_ROLES = ['agent', 'data_correction_agent', 'survey_agent'] as const;
+const MOBILE_AGENT_ROLES = [
+  'agent',
+  'data_correction_agent',
+  'survey_agent',
+  'agri_business_agent',
+  'admin'
+] as const;
+
+async function resolveUser(req: NextRequest): Promise<{ userId: string; role: string; email?: string } | null> {
+  // Try mobile Firebase Bearer auth first
+  const authHeader = req.headers.get('authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    const mobileAuth = await getMobileUser(req);
+    if (!('error' in mobileAuth)) {
+      return {
+        userId: mobileAuth.user.id,
+        role: mobileAuth.user.role,
+        email: mobileAuth.user.email,
+      };
+    }
+  }
+
+  // Fallback to NextAuth web session
+  const session = await getServerSession(authOptions);
+  if (session?.user) {
+    return {
+      userId: (session.user as any).id,
+      role: (session.user as any).role,
+      email: session.user.email || undefined,
+    };
+  }
+
+  return null;
+}
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    const user = await resolveUser(req);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = (session.user as any).id;
-    const role = (session.user as any).role;
+    const { userId, role, email } = user;
 
-    if (!MOBILE_AGENT_ROLES.includes(role)) {
+    if (!MOBILE_AGENT_ROLES.includes(role as any)) {
       return NextResponse.json({ error: 'Not an agent' }, { status: 403 });
     }
 
-    const agent = await prisma.agent.findUnique({
-      where: { userId },
+    const agent = await prisma.agent.findFirst({
+      where: {
+        OR: [
+          { userId },
+          ...(email ? [{ email }] : [])
+        ]
+      },
     });
 
     if (!agent) {
       return NextResponse.json({ error: 'Agent profile not found' }, { status: 404 });
+    }
+
+    // Ensure userId is linked if matched by email
+    if (agent.userId !== userId) {
+      await prisma.agent.update({
+        where: { id: agent.id },
+        data: { userId },
+      });
     }
 
     return NextResponse.json(agent);
@@ -39,23 +85,27 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    const user = await resolveUser(req);
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = (session.user as any).id;
-    const role = (session.user as any).role;
+    const { userId, role, email } = user;
 
-    if (!MOBILE_AGENT_ROLES.includes(role)) {
+    if (!MOBILE_AGENT_ROLES.includes(role as any)) {
       return NextResponse.json({ error: 'Not an agent' }, { status: 403 });
     }
 
     const body = await req.json();
 
     // Check if agent exists
-    const existingAgent = await prisma.agent.findUnique({
-      where: { userId },
+    const existingAgent = await prisma.agent.findFirst({
+      where: {
+        OR: [
+          { userId },
+          ...(email ? [{ email }] : [])
+        ]
+      },
     });
 
     if (!existingAgent) {
@@ -124,8 +174,11 @@ export async function PATCH(req: NextRequest) {
     }
 
     const updatedAgent = await prisma.agent.update({
-      where: { userId },
-      data: agentUpdateData,
+      where: { id: existingAgent.id },
+      data: {
+        ...agentUpdateData,
+        userId: existingAgent.userId || userId,
+      },
     });
 
     // Also sync User model if name or phone changed
@@ -139,11 +192,16 @@ export async function PATCH(req: NextRequest) {
       userUpdateData.phoneNumber = agentUpdateData.phone;
     }
 
-    if (Object.keys(userUpdateData).length > 0) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: userUpdateData,
-      });
+    const targetUserId = existingAgent.userId || userId;
+    if (Object.keys(userUpdateData).length > 0 && targetUserId) {
+      try {
+        await prisma.user.update({
+          where: { id: targetUserId },
+          data: userUpdateData,
+        });
+      } catch (userSyncErr) {
+        console.warn('Could not sync User model record during agent profile update:', userSyncErr);
+      }
     }
 
     await invalidateByPrefix('fims:v1:agents');

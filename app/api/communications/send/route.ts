@@ -132,63 +132,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Send messages ────────────────────────────────────────────────────────
-    let sentCount = 0;
-    let failedCount = 0;
-    const failureDetails: { id: string; name: string; error: string }[] = [];
-
-    for (const recipient of recipientList) {
-      const errors: string[] = [];
-
-      // Parse first and last names for personalization
-      const nameParts = recipient.name.split(/\s+/);
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || '';
-
-      const replacePlaceholders = (text: string) => {
-        return text
-          .replace(/{name}/g, recipient.name)
-          .replace(/{recipientName}/g, recipient.name)
-          .replace(/{firstName}/g, firstName)
-          .replace(/{lastName}/g, lastName)
-          .replace(/{email}/g, recipient.email ?? '')
-          .replace(/{phone}/g, recipient.phone ?? '')
-          .replace(/{senderName}/g, session.user.name ?? 'CCSA Admin');
-      };
-
-      const customizedBody = replacePlaceholders(body);
-      const customizedSubject = subject ? replacePlaceholders(subject) : undefined;
-
-      if (channel === 'email' || channel === 'both') {
-        if (recipient.email) {
-          const result = await sendCustomEmail(recipient.email, recipient.name, customizedSubject!, customizedBody);
-          if (!result.success) errors.push(`Email: ${result.error}`);
-        } else {
-          errors.push('Email: no email address on file');
-        }
-      }
-
-      if (channel === 'sms' || channel === 'both') {
-        if (recipient.phone) {
-          const result = await termii.sendMessage(recipient.phone, customizedBody);
-          if (!result.success) errors.push(`SMS: ${result.error}`);
-        } else {
-          errors.push('SMS: no phone number on file');
-        }
-      }
-
-      if (errors.length === 0) {
-        sentCount++;
-      } else {
-        failedCount++;
-        failureDetails.push({ id: recipient.id, name: recipient.name, error: errors.join('; ') });
-      }
-    }
-
-    // ── Log the communication ────────────────────────────────────────────────
+    // ── Create the CommunicationLog entry (Sending status) ──
     const isIndividual = recipients.mode === 'individual';
     const firstRecipient = isIndividual ? recipientList[0] : null;
-    const overallStatus = failedCount === 0 ? 'sent' : sentCount === 0 ? 'failed' : 'partial';
 
     const log = await prisma.communicationLog.create({
       data: {
@@ -202,23 +148,125 @@ export async function POST(req: NextRequest) {
           ? (channel !== 'sms' ? firstRecipient.email : firstRecipient.phone) ?? null
           : null,
         recipientCount: recipientList.length,
-        status: overallStatus,
-        failureDetails: failureDetails.length > 0 ? failureDetails : undefined,
+        status: 'sending',
         filters: !isIndividual ? (recipients.filters ? JSON.parse(JSON.stringify(recipients.filters)) : {}) : undefined,
         sentById: session.user.id,
       },
     });
 
+    // Trigger background send task with batching and rate-limiting
+    sendMessagesInBackground(
+      log.id,
+      recipientList,
+      channel,
+      subject,
+      body,
+      session.user.name ?? 'CCSA Admin'
+    ).catch(err => {
+      console.error('Communications background job failed:', err);
+    });
+
     return NextResponse.json({
       success: true,
-      sentCount,
-      failedCount,
+      message: 'Message sending process initiated.',
       total: recipientList.length,
-      status: overallStatus,
+      status: 'sending',
       logId: log.id,
-    });
+    }, { status: 202 });
   } catch (error: any) {
     console.error('Communications send error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
+}
+
+// Helper to process message queue in background batches
+async function sendMessagesInBackground(
+  logId: string,
+  recipientList: { id: string; name: string; email?: string | null; phone?: string | null }[],
+  channel: 'email' | 'sms' | 'both',
+  subject: string | undefined,
+  body: string,
+  senderName: string
+) {
+  let sentCount = 0;
+  let failedCount = 0;
+  const failureDetails: { id: string; name: string; error: string }[] = [];
+
+  // Batch configurations
+  const BATCH_SIZE = 5;
+  const BATCH_DELAY_MS = 250;
+
+  for (let i = 0; i < recipientList.length; i += BATCH_SIZE) {
+    const batch = recipientList.slice(i, i + BATCH_SIZE);
+
+    await Promise.all(
+      batch.map(async (recipient) => {
+        const errors: string[] = [];
+
+        // Parse first and last names for personalization
+        const nameParts = recipient.name.split(/\s+/);
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        const replacePlaceholders = (text: string) => {
+          return text
+            .replace(/{name}/g, recipient.name)
+            .replace(/{recipientName}/g, recipient.name)
+            .replace(/{firstName}/g, firstName)
+            .replace(/{lastName}/g, lastName)
+            .replace(/{email}/g, recipient.email ?? '')
+            .replace(/{phone}/g, recipient.phone ?? '')
+            .replace(/{senderName}/g, senderName);
+        };
+
+        const customizedBody = replacePlaceholders(body);
+        const customizedSubject = subject ? replacePlaceholders(subject) : undefined;
+
+        try {
+          if (channel === 'email' || channel === 'both') {
+            if (recipient.email) {
+              const result = await sendCustomEmail(recipient.email, recipient.name, customizedSubject!, customizedBody);
+              if (!result.success) errors.push(`Email: ${result.error}`);
+            } else {
+              errors.push('Email: no email address on file');
+            }
+          }
+
+          if (channel === 'sms' || channel === 'both') {
+            if (recipient.phone) {
+              const result = await termii.sendMessage(recipient.phone, customizedBody);
+              if (!result.success) errors.push(`SMS: ${result.error}`);
+            } else {
+              errors.push('SMS: no phone number on file');
+            }
+          }
+        } catch (err: any) {
+          errors.push(`System Error: ${err.message}`);
+        }
+
+        if (errors.length === 0) {
+          sentCount++;
+        } else {
+          failedCount++;
+          failureDetails.push({ id: recipient.id, name: recipient.name, error: errors.join('; ') });
+        }
+      })
+    );
+
+    // Prevent hitting service rate limits
+    if (i + BATCH_SIZE < recipientList.length) {
+      await new Promise((resolve) => setTimeout(resolve, BATCH_DELAY_MS));
+    }
+  }
+
+  // Update CommunicationLog with final results
+  const overallStatus = failedCount === 0 ? 'sent' : sentCount === 0 ? 'failed' : 'partial';
+
+  await prisma.communicationLog.update({
+    where: { id: logId },
+    data: {
+      status: overallStatus,
+      failureDetails: failureDetails.length > 0 ? failureDetails : undefined,
+    },
+  });
 }

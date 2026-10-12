@@ -13,7 +13,10 @@ const applicationSchema = z.object({
   tin: z.string().max(80).optional().nullable(),
   contactName: z.string().min(2).max(160),
   contactRole: z.string().max(120).optional().nullable(),
-  email: z.string().email(),
+  email: z.string().email().optional().or(z.literal('')).nullable().transform((val) => {
+    if (!val || val.trim() === '') return undefined;
+    return val.trim().toLowerCase();
+  }),
   phone: z.string().max(40).optional().nullable(),
   state: z.string().optional().nullable(),
   lga: z.string().optional().nullable(),
@@ -115,7 +118,7 @@ export async function POST(req: NextRequest) {
       tin: data.tin || null,
       contactName: data.contactName.trim(),
       contactRole: data.contactRole || null,
-      email: data.email.toLowerCase().trim(),
+      email: data.email ? data.email.toLowerCase().trim() : (data.phone ? `${data.phone.replace(/\D/g, '')}@lead.ccsa.ng` : `lead_${Date.now()}@placeholder.ccsa.ng`),
       phone: data.phone || null,
       state: data.state || null,
       lga: data.lga || null,

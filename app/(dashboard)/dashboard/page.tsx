@@ -1,6 +1,6 @@
 'use client';
 
-import { useSession } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { usePermissions } from '@/components/PermissionProvider';
@@ -66,7 +66,11 @@ export default function Dashboard() {
     if (!hasPermission(PERMISSIONS.DASHBOARD_ACCESS)) {
       // Redirect to first available route instead of signin
       const firstAvailableRoute = getFirstAvailableRoute(hasPermission);
-      router.push(firstAvailableRoute);
+      if (firstAvailableRoute.startsWith('/auth/signin')) {
+        signOut({ callbackUrl: firstAvailableRoute });
+      } else {
+        router.push(firstAvailableRoute);
+      }
       return;
     }
 
@@ -131,7 +135,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 pb-6">
-      <section className="overflow-hidden rounded-lg border border-[#DCEAF3] bg-white shadow-sm">
+      <section className="overflow-hidden rounded-lg border border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
         <div className="brand-gradient-dark p-6 text-white lg:p-8">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -209,10 +213,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-[#DCEAF3] bg-white shadow-sm dark:bg-card">
+      <div className="rounded-lg border border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm dark:bg-card">
         <div className="border-b border-[#E5E7EB] px-6 py-4">
           <h3 className="text-lg font-bold text-[#1E293B] dark:text-gray-100">Quick Actions</h3>
-          <p className="mt-1 text-sm text-[#64748B]">Jump into the workflows used most often by FIMS teams.</p>
+          <p className="mt-1 text-sm text-[#64748B] dark:text-gray-400">Jump into the workflows used most often by FIMS teams.</p>
         </div>
         <div className="p-6">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

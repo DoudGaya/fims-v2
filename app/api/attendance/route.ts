@@ -65,11 +65,18 @@ export async function POST(req: NextRequest) {
 
     // Get agent ID from request or user
     const agentUserId = validatedData.agentId || (user as any).id;
+    const authenticatedEmail = (user as any)?.email;
 
-    // Find the user first
-    const userRecord = await prisma.user.findUnique({
-      where: { id: agentUserId },
-      select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true, role: true }
+    // Find the user by ID, Firebase UID, or authenticated email
+    const userRecord = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: agentUserId },
+          { firebaseUid: agentUserId },
+          ...(authenticatedEmail ? [{ email: authenticatedEmail }] : []),
+        ],
+      },
+      select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true, role: true, firebaseUid: true }
     });
 
     if (!userRecord) {
@@ -78,34 +85,39 @@ export async function POST(req: NextRequest) {
     
     console.log(`[ATTENDANCE] User found: ${userRecord.email}, Role: ${userRecord.role}`);
 
-    // Find or create Agent record
-    let agent = await prisma.agent.findUnique({
-      where: { userId: agentUserId },
-      select: { id: true, firstName: true, lastName: true }
+    // Find or create Agent record using userRecord.id or email
+    let agent = await prisma.agent.findFirst({
+      where: {
+        OR: [
+          { userId: userRecord.id },
+          ...(userRecord.email ? [{ email: userRecord.email }] : []),
+        ],
+      },
+      select: { id: true, firstName: true, lastName: true, userId: true }
     });
 
     if (!agent) {
       // Check if an agent with this phone number already exists
-      const existingAgentByPhone = await prisma.agent.findUnique({
+      const existingAgentByPhone = await prisma.agent.findFirst({
         where: { phone: userRecord.phoneNumber || 'Unknown' },
         select: { id: true, firstName: true, lastName: true, userId: true }
       });
 
       if (existingAgentByPhone) {
-        console.log(`[ATTENDANCE] Found existing agent by phone: ${userRecord.phoneNumber}, linking to user ${agentUserId}`);
+        console.log(`[ATTENDANCE] Found existing agent by phone: ${userRecord.phoneNumber}, linking to user ${userRecord.id}`);
         agent = existingAgentByPhone;
         
-        if (existingAgentByPhone.userId !== agentUserId) {
+        if (existingAgentByPhone.userId !== userRecord.id) {
           await prisma.agent.update({
             where: { id: existingAgentByPhone.id },
-            data: { userId: agentUserId }
+            data: { userId: userRecord.id }
           });
         }
       } else {
         // Create Agent record if it doesn't exist
         agent = await prisma.agent.create({
           data: {
-            userId: agentUserId,
+            userId: userRecord.id,
             nin: `temp_${Date.now()}`,
             firstName: userRecord.firstName || 'Unknown',
             lastName: userRecord.lastName || 'User',
@@ -113,11 +125,11 @@ export async function POST(req: NextRequest) {
             email: userRecord.email,
             status: 'active'
           },
-          select: { id: true, firstName: true, lastName: true }
+          select: { id: true, firstName: true, lastName: true, userId: true }
         });
       }
     }
-
+    
     // Create attendance record
     const attendance = await prisma.attendance.create({
       data: {
@@ -162,66 +174,78 @@ export async function GET(req: NextRequest) {
     const endDate = searchParams.get('endDate');
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    let whereClause: any = {};
+    const whereClause: any = {};
+    const authenticatedEmail = (user as any)?.email;
+    const callerId = (user as any)?.id;
 
+    // Resolve the calling user (supports CUID, Firebase UID, or email)
+    const callerUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          ...(callerId ? [{ id: callerId }, { firebaseUid: callerId }] : []),
+          ...(authenticatedEmail ? [{ email: authenticatedEmail }] : []),
+        ],
+      },
+      select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true, role: true }
+    });
+
+    if (!callerUser) {
+      return NextResponse.json({ error: 'User record not found' }, { status: 404 });
+    }
+
+    const isPrivileged = ['admin', 'super_admin', 'coordinator', 'supervisor'].includes(callerUser.role);
+
+    // If an agentId was specified in query params:
     if (agentId) {
-      const userRecord = await prisma.user.findUnique({
-        where: { id: agentId },
-        select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true, role: true }
+      const targetAgent = await prisma.agent.findFirst({
+        where: {
+          OR: [
+            { id: agentId },
+            { userId: agentId },
+            { user: { OR: [{ id: agentId }, { firebaseUid: agentId }, { email: agentId }] } },
+          ],
+        },
+        select: { id: true, userId: true }
       });
-      
-      if (userRecord) {
-        let agent = await prisma.agent.findUnique({
-          where: { userId: agentId },
-          select: { id: true }
-        });
 
-        if (!agent) {
-          agent = await prisma.agent.create({
-            data: {
-              userId: agentId,
-              nin: `temp_${Date.now()}`,
-              firstName: userRecord.firstName || 'Unknown',
-              lastName: userRecord.lastName || 'User',
-              phone: userRecord.phoneNumber || 'Unknown',
-              email: userRecord.email,
-              status: 'active'
-            },
-            select: { id: true }
-          });
-        }
-        
-        whereClause.agentId = agent.id;
+      if (!isPrivileged && targetAgent && targetAgent.userId !== callerUser.id) {
+        return NextResponse.json({ error: 'Forbidden: You can only view your own attendance' }, { status: 403 });
+      }
+
+      if (targetAgent) {
+        whereClause.agentId = targetAgent.id;
+      } else {
+        return NextResponse.json({
+          attendanceRecords: [],
+          summary: { totalRecords: 0, checkIns: 0, checkOuts: 0, totalDuration: 0 },
+          pagination: { limit, total: 0 }
+        });
       }
     } else {
-      const userRecord = await prisma.user.findUnique({
-        where: { id: (user as any).id },
-        select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true, role: true }
-      });
-      
-      if (userRecord) {
-        let agent = await prisma.agent.findUnique({
-          where: { userId: (user as any).id },
+      // If no agentId specified:
+      if (!isPrivileged) {
+        // Field agents can only see their own attendance records
+        const callerAgent = await prisma.agent.findFirst({
+          where: {
+            OR: [
+              { userId: callerUser.id },
+              ...(callerUser.email ? [{ email: callerUser.email }] : []),
+            ],
+          },
           select: { id: true }
         });
 
-        if (!agent) {
-          agent = await prisma.agent.create({
-            data: {
-              userId: (user as any).id,
-              nin: `temp_${Date.now()}`,
-              firstName: userRecord.firstName || 'Unknown',
-              lastName: userRecord.lastName || 'User',
-              phone: userRecord.phoneNumber || 'Unknown',
-              email: userRecord.email,
-              status: 'active'
-            },
-            select: { id: true }
+        if (callerAgent) {
+          whereClause.agentId = callerAgent.id;
+        } else {
+          return NextResponse.json({
+            attendanceRecords: [],
+            summary: { totalRecords: 0, checkIns: 0, checkOuts: 0, totalDuration: 0 },
+            pagination: { limit, total: 0 }
           });
         }
-        
-        whereClause.agentId = agent.id;
       }
+      // If privileged, leave whereClause.agentId unset to allow seeing all agents' attendance
     }
 
     if (startDate && endDate) {

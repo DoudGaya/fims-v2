@@ -1,16 +1,21 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 import { getCached, cacheKey } from '@/lib/cache';
+import { getMobileUser } from '@/lib/mobileAuth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    let session = await getServerSession(authOptions);
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      const nextReq = new NextRequest(request.url, { headers: request.headers });
+      const authResult = await getMobileUser(nextReq);
+      if ('error' in authResult) {
+        return authResult.error;
+      }
     }
 
     const { searchParams } = new URL(request.url);

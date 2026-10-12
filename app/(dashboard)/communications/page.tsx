@@ -77,6 +77,7 @@ function channelBadge(channel: string) {
 function statusBadge(status: string) {
   if (status === 'sent') return <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-0">Sent</Badge>;
   if (status === 'partial') return <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border-0">Partial</Badge>;
+  if (status === 'sending') return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-0 animate-pulse">Sending...</Badge>;
   return <Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 border-0">Failed</Badge>;
 }
 
@@ -201,7 +202,11 @@ function ComposeTab({ onSent }: { onSent: () => void }) {
   const [countLoading, setCountLoading] = useState(false);
 
   // Send state
-  type SendState = { status: 'idle' } | { status: 'sending' } | { status: 'success'; sentCount: number; failedCount: number } | { status: 'error'; message: string };
+  type SendState = 
+    | { status: 'idle' } 
+    | { status: 'sending' } 
+    | { status: 'success'; total: number; isBulk: boolean } 
+    | { status: 'error'; message: string };
   const [sendState, setSendState] = useState<SendState>({ status: 'idle' });
 
   // Search recipients (individual mode)
@@ -291,7 +296,7 @@ function ComposeTab({ onSent }: { onSent: () => void }) {
         setSendState({ status: 'error', message: data.error ?? 'Failed to send' });
         return;
       }
-      setSendState({ status: 'success', sentCount: data.sentCount, failedCount: data.failedCount });
+      setSendState({ status: 'success', total: data.total, isBulk: mode === 'bulk' });
       onSent();
     } catch {
       setSendState({ status: 'error', message: 'Network error — please try again' });
@@ -311,10 +316,14 @@ function ComposeTab({ onSent }: { onSent: () => void }) {
           <CheckCircle2Icon className="h-10 w-10 text-green-600" />
         </div>
         <div className="text-center space-y-1">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Message Sent!</h3>
-          <p className="text-sm text-muted-foreground">
-            {sendState.sentCount} message{sendState.sentCount !== 1 ? 's' : ''} delivered successfully
-            {sendState.failedCount > 0 && `, ${sendState.failedCount} failed`}.
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            {sendState.isBulk ? 'Bulk Sending Queued!' : 'Message Sent!'}
+          </h3>
+          <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+            {sendState.isBulk 
+              ? `We are delivering ${sendState.total} messages in the background. You can monitor the status on the Message History tab.`
+              : 'Your message has been successfully queued for background delivery.'
+            }
           </p>
         </div>
         <Button onClick={handleReset} className="bg-ccsa-blue hover:bg-blue-800">Compose Another</Button>

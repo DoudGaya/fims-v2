@@ -240,7 +240,7 @@ export default function EditFarmPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Edit Farm</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Edit Farm</h1>
           <p className="text-muted-foreground mt-1">
             Updating records for <span className="font-semibold text-primary">{farmerName}</span>
           </p>
@@ -259,7 +259,7 @@ export default function EditFarmPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-500 p-4 text-red-700">
+        <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 text-red-700 dark:text-red-400">
           <p className="font-bold">Error</p>
           <p>{error}</p>
         </div>

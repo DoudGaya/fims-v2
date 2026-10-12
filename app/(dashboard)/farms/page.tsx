@@ -164,11 +164,11 @@ function FarmsContent() {
   return (
     <div className="space-y-6 pb-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 rounded-lg border border-[#DCEAF3] bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 rounded-lg border border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-[#013358]">FIMS Operations</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-normal text-[#1E293B]">Farm Management</h1>
-          <p className="mt-1 text-[#64748B]">
+          <p className="text-xs font-bold uppercase tracking-wide text-[#013358] dark:text-blue-400">FIMS Operations</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-normal text-[#1E293B] dark:text-gray-100">Farm Management</h1>
+          <p className="mt-1 text-[#64748B] dark:text-gray-400">
             Track and manage farm lands, crops, and geographical data.
           </p>
         </div>
@@ -184,43 +184,43 @@ function FarmsContent() {
 
       {/* Analytics Cards */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="border-[#DCEAF3] bg-white shadow-sm">
+        <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Total Farms</CardTitle>
-            <MapPinIcon className="h-4 w-4 text-[#013358]" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Total Farms</CardTitle>
+            <MapPinIcon className="h-4 w-4 text-[#013358] dark:text-blue-400" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B]">{analytics?.totalFarms?.toLocaleString() || 0}</div>
+            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">{analytics?.totalFarms?.toLocaleString() || 0}</div>
           </CardContent>
         </Card>
 
-        <Card className="border-[#DCEAF3] bg-white shadow-sm">
+        <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Total Area (Hectares)</CardTitle>
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Total Area (Hectares)</CardTitle>
             <div className="h-2 w-2 rounded-full bg-[#3B82F6]" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B]">{analytics?.totalArea?.toLocaleString(undefined, { maximumFractionDigits: 1 }) || 0} Ha</div>
+            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">{analytics?.totalArea?.toLocaleString(undefined, { maximumFractionDigits: 1 }) || 0} Ha</div>
           </CardContent>
         </Card>
 
-        <Card className="border-[#DCEAF3] bg-white shadow-sm">
+        <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Average Farm Size</CardTitle>
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Average Farm Size</CardTitle>
             <div className="h-2 w-2 rounded-full bg-[#10B981]" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B]">{analytics?.avgSize?.toLocaleString(undefined, { maximumFractionDigits: 2 }) || 0} Ha</div>
+            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">{analytics?.avgSize?.toLocaleString(undefined, { maximumFractionDigits: 2 }) || 0} Ha</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="border-[#DCEAF3] bg-white shadow-sm">
+        <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-[#1E293B]">Farms by State</CardTitle>
-            <div className="text-sm text-[#64748B]">Distribution of farms across states</div>
+            <CardTitle className="text-[#1E293B] dark:text-gray-100">Farms by State</CardTitle>
+            <div className="text-sm text-[#64748B] dark:text-gray-400">Distribution of farms across states</div>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
@@ -241,10 +241,10 @@ function FarmsContent() {
           </CardContent>
         </Card>
 
-        <Card className="border-[#DCEAF3] bg-white shadow-sm">
+        <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-[#1E293B]">Primary Crops</CardTitle>
-            <div className="text-sm text-[#64748B]">Most common crops being cultivated</div>
+            <CardTitle className="text-[#1E293B] dark:text-gray-100">Primary Crops</CardTitle>
+            <div className="text-sm text-[#64748B] dark:text-gray-400">Most common crops being cultivated</div>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
@@ -279,7 +279,7 @@ function FarmsContent() {
       </div>
 
       {/* Filters & Actions */}
-      <Card className="border-[#DCEAF3] bg-white shadow-sm">
+      <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
         <CardContent className="p-4">
           <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
@@ -317,7 +317,7 @@ function FarmsContent() {
       </Card>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-lg border border-[#DCEAF3] bg-white shadow-sm">
+      <div className="overflow-hidden rounded-lg border border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>
@@ -348,20 +348,20 @@ function FarmsContent() {
               farms.map((farm) => (
                 <TableRow key={farm.id} className="cursor-pointer">
                   <TableCell>
-                    <div className="font-semibold text-[#1E293B]">{farm.primaryCrop}</div>
-                    <div className="text-sm text-[#64748B]">{farm.farmSize ? `${farm.farmSize} Hectares` : 'Size Unknown'}</div>
+                    <div className="font-semibold text-[#1E293B] dark:text-gray-100">{farm.primaryCrop}</div>
+                    <div className="text-sm text-[#64748B] dark:text-gray-400">{farm.farmSize ? `${farm.farmSize} Hectares` : 'Size Unknown'}</div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center text-sm text-[#64748B]">
-                      <MapPinIcon className="mr-1 h-4 w-4 text-[#94A3B8]" />
+                    <div className="flex items-center text-sm text-[#64748B] dark:text-gray-400">
+                      <MapPinIcon className="mr-1 h-4 w-4 text-[#94A3B8] dark:text-gray-500" />
                       {farm.farmState}, {farm.farmLocalGovernment}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="text-sm font-semibold text-[#1E293B]">{farm.farmer.firstName} {farm.farmer.lastName}</div>
-                    <div className="text-xs text-[#64748B]">{farm.farmer.nin}</div>
+                    <div className="text-sm font-semibold text-[#1E293B] dark:text-gray-100">{farm.farmer.firstName} {farm.farmer.lastName}</div>
+                    <div className="text-xs text-[#64748B] dark:text-gray-400">{farm.farmer.nin}</div>
                   </TableCell>
-                  <TableCell className="text-[#64748B]">
+                  <TableCell className="text-[#64748B] dark:text-gray-400">
                     {new Date(farm.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
@@ -387,7 +387,7 @@ function FarmsContent() {
 
       {/* Pagination */}
       <div className="flex items-center justify-between px-2">
-        <div className="text-sm text-[#64748B]">
+        <div className="text-sm text-[#64748B] dark:text-gray-400">
           Showing {(pagination.page - 1) * pagination.limit + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} entries
         </div>
         <div className="flex items-center space-x-2">

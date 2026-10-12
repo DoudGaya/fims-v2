@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -10,7 +10,11 @@ import { usePermissions } from '@/components/PermissionProvider';
 import { PERMISSIONS } from '@/lib/permissions';
 import Link from 'next/link';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
-import { use } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 
 const clusterSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -142,264 +146,244 @@ export default function EditClusterPage({ params }: { params: Promise<{ id: stri
   };
 
   if (status === 'loading' || loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-4xl mx-auto py-6">
-      <div className="mb-6 flex items-center">
-        <Link href="/clusters" className="mr-4 text-gray-500 hover:text-gray-700">
-          <ArrowLeftIcon className="h-5 w-5" />
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
+      <div className="flex items-center gap-4">
+        <Link href="/clusters">
+          <Button variant="outline" size="icon" className="rounded-lg shadow-xs">
+            <ArrowLeftIcon className="h-4 w-4" />
+          </Button>
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900">Edit Cluster</h1>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Edit Cluster</h1>
+          <p className="text-sm text-muted-foreground">Modify the cluster region details and contact info.</p>
+        </div>
       </div>
 
-      <div className="bg-white shadow px-4 py-5 sm:rounded-lg sm:p-6">
-        {submitError && (
-          <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
-            <div className="flex">
-              <div className="ml-3">
-                <p className="text-sm text-red-700">{submitError}</p>
-              </div>
-            </div>
-          </div>
-        )}
+      {submitError && (
+        <div className="bg-destructive/15 border-l-4 border-destructive p-4 rounded-md">
+          <p className="text-sm text-destructive-foreground font-medium">{submitError}</p>
+        </div>
+      )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 divide-y divide-gray-200">
-          <div className="space-y-6 sm:space-y-5">
-            <div>
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Cluster Information</h3>
-              <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                Basic details about the cluster.
-              </p>
-            </div>
-
-            <div className="space-y-6 sm:space-y-5">
-              <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
-                <label htmlFor="title" className="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
-                  Cluster Title *
-                </label>
-                <div className="mt-1 sm:mt-0 sm:col-span-2">
-                  <input
-                    type="text"
-                    id="title"
-                    {...register('title')}
-                    className="max-w-lg block w-full shadow-sm focus:ring-green-500 focus:border-green-500 sm:max-w-xs sm:text-sm border-gray-300 rounded-md"
-                  />
-                  {errors.title && <p className="mt-2 text-sm text-red-600">{errors.title.message}</p>}
-                </div>
-              </div>
-
-              <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
-                  Description
-                </label>
-                <div className="mt-1 sm:mt-0 sm:col-span-2">
-                  <textarea
-                    id="description"
-                    rows={3}
-                    {...register('description')}
-                    className="max-w-lg shadow-sm block w-full focus:ring-green-500 focus:border-green-500 sm:text-sm border border-gray-300 rounded-md"
-                  />
-                </div>
-              </div>
-
-              <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
-                <label htmlFor="isActive" className="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
-                  Status
-                </label>
-                <div className="mt-1 sm:mt-0 sm:col-span-2">
-                  <div className="flex items-center">
-                    <input
-                      id="isActive"
-                      type="checkbox"
-                      {...register('isActive')}
-                      className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                    />
-                    <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
-                      Active
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-8 space-y-6 sm:space-y-5">
-            <div>
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Cluster Lead Information</h3>
-              <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                Personal and contact details of the cluster lead.
-              </p>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <Card className="border-border shadow-xs">
+          <CardHeader>
+            <CardTitle className="text-lg font-bold">Cluster Details</CardTitle>
+            <CardDescription>Basic information about this cluster region.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 pt-0 space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="title" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Cluster Title <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                type="text"
+                id="title"
+                {...register('title')}
+                placeholder="e.g. Kano East Rice Cluster"
+                className={errors.title ? "border-destructive focus-visible:ring-destructive/20" : ""}
+              />
+              {errors.title && <p className="text-xs font-semibold text-destructive">{errors.title.message}</p>}
             </div>
 
-            <div className="space-y-6 sm:space-y-5">
-              <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
-                <label htmlFor="clusterLeadFirstName" className="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
-                  First Name *
-                </label>
-                <div className="mt-1 sm:mt-0 sm:col-span-2">
-                  <input
-                    type="text"
-                    id="clusterLeadFirstName"
-                    {...register('clusterLeadFirstName')}
-                    className="max-w-lg block w-full shadow-sm focus:ring-green-500 focus:border-green-500 sm:max-w-xs sm:text-sm border-gray-300 rounded-md"
-                  />
-                  {errors.clusterLeadFirstName && <p className="mt-2 text-sm text-red-600">{errors.clusterLeadFirstName.message}</p>}
-                </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="description" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Description
+              </Label>
+              <Textarea
+                id="description"
+                rows={3}
+                {...register('description')}
+                placeholder="Provide a brief description of the cluster area, crop focus, or boundaries."
+              />
+            </div>
+
+            <div className="flex items-center space-x-3 rounded-lg border border-border bg-card p-4 shadow-xs">
+              <input
+                id="isActive"
+                type="checkbox"
+                {...register('isActive')}
+                className="h-4 w-4 rounded border-gray-300 text-blue-700 focus:ring-blue-700 dark:border-gray-600 dark:text-blue-400 transition-colors cursor-pointer"
+              />
+              <div className="grid gap-1.5 leading-none">
+                <Label htmlFor="isActive" className="text-sm font-semibold text-foreground cursor-pointer">
+                  Active Status
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  This cluster is active and visible across the system.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border shadow-xs">
+          <CardHeader>
+            <CardTitle className="text-lg font-bold">Cluster Lead Information</CardTitle>
+            <CardDescription>Personal, contact, and banking details of the assigned cluster lead.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 pt-0 space-y-6">
+            <div className="border-b border-border pb-2">
+              <h4 className="text-sm font-semibold text-foreground">Personal Details</h4>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-1.5">
+                <Label htmlFor="clusterLeadFirstName" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  First Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  type="text"
+                  id="clusterLeadFirstName"
+                  {...register('clusterLeadFirstName')}
+                  placeholder="First Name"
+                  className={errors.clusterLeadFirstName ? "border-destructive focus-visible:ring-destructive/20" : ""}
+                />
+                {errors.clusterLeadFirstName && <p className="text-xs font-semibold text-destructive">{errors.clusterLeadFirstName.message}</p>}
               </div>
 
-              <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
-                <label htmlFor="clusterLeadLastName" className="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
-                  Last Name *
-                </label>
-                <div className="mt-1 sm:mt-0 sm:col-span-2">
-                  <input
-                    type="text"
-                    id="clusterLeadLastName"
-                    {...register('clusterLeadLastName')}
-                    className="max-w-lg block w-full shadow-sm focus:ring-green-500 focus:border-green-500 sm:max-w-xs sm:text-sm border-gray-300 rounded-md"
-                  />
-                  {errors.clusterLeadLastName && <p className="mt-2 text-sm text-red-600">{errors.clusterLeadLastName.message}</p>}
-                </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="clusterLeadLastName" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Last Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  type="text"
+                  id="clusterLeadLastName"
+                  {...register('clusterLeadLastName')}
+                  placeholder="Last Name"
+                  className={errors.clusterLeadLastName ? "border-destructive focus-visible:ring-destructive/20" : ""}
+                />
+                {errors.clusterLeadLastName && <p className="text-xs font-semibold text-destructive">{errors.clusterLeadLastName.message}</p>}
               </div>
 
-              <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
-                <label htmlFor="clusterLeadEmail" className="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
-                  Email *
-                </label>
-                <div className="mt-1 sm:mt-0 sm:col-span-2">
-                  <input
-                    type="email"
-                    id="clusterLeadEmail"
-                    {...register('clusterLeadEmail')}
-                    className="max-w-lg block w-full shadow-sm focus:ring-green-500 focus:border-green-500 sm:max-w-xs sm:text-sm border-gray-300 rounded-md"
-                  />
-                  {errors.clusterLeadEmail && <p className="mt-2 text-sm text-red-600">{errors.clusterLeadEmail.message}</p>}
-                </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="clusterLeadEmail" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Email <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  type="email"
+                  id="clusterLeadEmail"
+                  {...register('clusterLeadEmail')}
+                  placeholder="email@example.com"
+                  className={errors.clusterLeadEmail ? "border-destructive focus-visible:ring-destructive/20" : ""}
+                />
+                {errors.clusterLeadEmail && <p className="text-xs font-semibold text-destructive">{errors.clusterLeadEmail.message}</p>}
               </div>
 
-              <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
-                <label htmlFor="clusterLeadPhone" className="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
-                  Phone *
-                </label>
-                <div className="mt-1 sm:mt-0 sm:col-span-2">
-                  <input
-                    type="text"
-                    id="clusterLeadPhone"
-                    {...register('clusterLeadPhone')}
-                    className="max-w-lg block w-full shadow-sm focus:ring-green-500 focus:border-green-500 sm:max-w-xs sm:text-sm border-gray-300 rounded-md"
-                  />
-                  {errors.clusterLeadPhone && <p className="mt-2 text-sm text-red-600">{errors.clusterLeadPhone.message}</p>}
-                </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="clusterLeadPhone" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Phone <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  type="text"
+                  id="clusterLeadPhone"
+                  {...register('clusterLeadPhone')}
+                  placeholder="Phone Number"
+                  className={errors.clusterLeadPhone ? "border-destructive focus-visible:ring-destructive/20" : ""}
+                />
+                {errors.clusterLeadPhone && <p className="text-xs font-semibold text-destructive">{errors.clusterLeadPhone.message}</p>}
               </div>
 
-              <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
-                <label htmlFor="clusterLeadNIN" className="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="clusterLeadNIN" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   NIN
-                </label>
-                <div className="mt-1 sm:mt-0 sm:col-span-2">
-                  <input
-                    type="text"
-                    id="clusterLeadNIN"
-                    {...register('clusterLeadNIN')}
-                    className="max-w-lg block w-full shadow-sm focus:ring-green-500 focus:border-green-500 sm:max-w-xs sm:text-sm border-gray-300 rounded-md"
-                  />
-                </div>
+                </Label>
+                <Input
+                  type="text"
+                  id="clusterLeadNIN"
+                  {...register('clusterLeadNIN')}
+                  placeholder="National Identification Number"
+                />
               </div>
 
-              <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
-                <label htmlFor="clusterLeadAddress" className="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor="clusterLeadAddress" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Address
-                </label>
-                <div className="mt-1 sm:mt-0 sm:col-span-2">
-                  <input
-                    type="text"
-                    id="clusterLeadAddress"
-                    {...register('clusterLeadAddress')}
-                    className="max-w-lg block w-full shadow-sm focus:ring-green-500 focus:border-green-500 sm:max-w-xs sm:text-sm border-gray-300 rounded-md"
-                  />
-                </div>
+                </Label>
+                <Input
+                  type="text"
+                  id="clusterLeadAddress"
+                  {...register('clusterLeadAddress')}
+                  placeholder="Lead Physical Address"
+                />
               </div>
+            </div>
 
-              {/* Bank Details */}
-              <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
-                <label htmlFor="clusterLeadBankName" className="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
+            <div className="border-b border-border pt-4 pb-2">
+              <h4 className="text-sm font-semibold text-foreground">Financial &amp; Bank Details</h4>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="space-y-1.5">
+                <Label htmlFor="clusterLeadBankName" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Bank Name
-                </label>
-                <div className="mt-1 sm:mt-0 sm:col-span-2">
-                  <input
-                    type="text"
-                    id="clusterLeadBankName"
-                    {...register('clusterLeadBankName')}
-                    className="max-w-lg block w-full shadow-sm focus:ring-green-500 focus:border-green-500 sm:max-w-xs sm:text-sm border-gray-300 rounded-md"
-                  />
-                </div>
+                </Label>
+                <Input
+                  type="text"
+                  id="clusterLeadBankName"
+                  {...register('clusterLeadBankName')}
+                  placeholder="Bank Name"
+                />
               </div>
 
-              <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
-                <label htmlFor="clusterLeadAccountNumber" className="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="clusterLeadAccountNumber" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Account Number
-                </label>
-                <div className="mt-1 sm:mt-0 sm:col-span-2">
-                  <input
-                    type="text"
-                    id="clusterLeadAccountNumber"
-                    {...register('clusterLeadAccountNumber')}
-                    className="max-w-lg block w-full shadow-sm focus:ring-green-500 focus:border-green-500 sm:max-w-xs sm:text-sm border-gray-300 rounded-md"
-                  />
-                </div>
+                </Label>
+                <Input
+                  type="text"
+                  id="clusterLeadAccountNumber"
+                  {...register('clusterLeadAccountNumber')}
+                  placeholder="Account Number"
+                />
               </div>
 
-              <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
-                <label htmlFor="clusterLeadAccountName" className="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="clusterLeadAccountName" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Account Name
-                </label>
-                <div className="mt-1 sm:mt-0 sm:col-span-2">
-                  <input
-                    type="text"
-                    id="clusterLeadAccountName"
-                    {...register('clusterLeadAccountName')}
-                    className="max-w-lg block w-full shadow-sm focus:ring-green-500 focus:border-green-500 sm:max-w-xs sm:text-sm border-gray-300 rounded-md"
-                  />
-                </div>
+                </Label>
+                <Input
+                  type="text"
+                  id="clusterLeadAccountName"
+                  {...register('clusterLeadAccountName')}
+                  placeholder="Account Name"
+                />
               </div>
 
-              <div className="sm:grid sm:grid-cols-3 sm:gap-4 sm:items-start sm:border-t sm:border-gray-200 sm:pt-5">
-                <label htmlFor="clusterLeadBVN" className="block text-sm font-medium text-gray-700 sm:mt-px sm:pt-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="clusterLeadBVN" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   BVN
-                </label>
-                <div className="mt-1 sm:mt-0 sm:col-span-2">
-                  <input
-                    type="text"
-                    id="clusterLeadBVN"
-                    {...register('clusterLeadBVN')}
-                    className="max-w-lg block w-full shadow-sm focus:ring-green-500 focus:border-green-500 sm:max-w-xs sm:text-sm border-gray-300 rounded-md"
-                  />
-                </div>
+                </Label>
+                <Input
+                  type="text"
+                  id="clusterLeadBVN"
+                  {...register('clusterLeadBVN')}
+                  placeholder="Bank Verification Number"
+                />
               </div>
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          <div className="pt-5">
-            <div className="flex justify-end">
-              <Link
-                href="/clusters"
-                className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-              >
-                Cancel
-              </Link>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
-              >
-                {isSubmitting ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
+        <div className="flex justify-end gap-3 pt-4">
+          <Link href="/clusters">
+            <Button type="button" variant="outline">
+              Cancel
+            </Button>
+          </Link>
+          <Button type="submit" disabled={isSubmitting} className="min-w-32">
+            {isSubmitting ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

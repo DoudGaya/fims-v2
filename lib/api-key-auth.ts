@@ -148,9 +148,12 @@ export async function requireApiKey(
     );
   }
 
-  // ── 2. Look up the key by hash ────────────────────────────────────────────
+  // ── 2. Look up the key by hash & associated organisation ──────────────────
   const keyHash = hashToken(token);
-  const apiKey = await prisma.apiKey.findUnique({ where: { keyHash } });
+  const apiKey = await prisma.apiKey.findUnique({
+    where: { keyHash },
+    include: { organization: true },
+  });
 
   if (!apiKey) {
     return NextResponse.json(
@@ -171,10 +174,42 @@ export async function requireApiKey(
     return NextResponse.json(
       {
         error: 'Unauthorized',
-        message: 'This API key has expired. Please contact your CCSA administrator to renew access.',
+        message: 'This API key has expired. Please contact your administrator or renew access in your Client Portal.',
       },
       { status: 401 }
     );
+  }
+
+  // ── 3b. Validate Organization Subscription & Monthly Quota ────────────────
+  if (apiKey.organization) {
+    if (apiKey.organization.status === 'SUSPENDED') {
+      return NextResponse.json(
+        {
+          error: 'Forbidden',
+          message: 'Your organization account is suspended. Please settle any overdue invoices in the Client Portal.',
+        },
+        { status: 403 }
+      );
+    }
+
+    if (
+      apiKey.organization.monthlyQuota > 0 &&
+      apiKey.organization.currentUsage >= apiKey.organization.monthlyQuota
+    ) {
+      logUsage(apiKey.id, endpoint, method, 402, ip);
+      return NextResponse.json(
+        {
+          error: 'Payment Required',
+          message: `Monthly quota of ${apiKey.organization.monthlyQuota.toLocaleString()} queries has been exhausted. Please upgrade your plan in the Client Portal.`,
+          quota: {
+            tier: apiKey.organization.tier,
+            monthlyQuota: apiKey.organization.monthlyQuota,
+            currentUsage: apiKey.organization.currentUsage,
+          },
+        },
+        { status: 402 }
+      );
+    }
   }
 
   // ── 4. Check scope ────────────────────────────────────────────────────────
@@ -207,8 +242,16 @@ export async function requireApiKey(
     );
   }
 
-  // ── 6. Log successful auth (async) ────────────────────────────────────────
+  // ── 6. Log successful auth (async) & increment organisation quota ──────────
   logUsage(apiKey.id, endpoint, method, 200, ip);
+  if (apiKey.organizationId) {
+    prisma.organization
+      .update({
+        where: { id: apiKey.organizationId },
+        data: { currentUsage: { increment: 1 } },
+      })
+      .catch((err) => console.error('[Quota Increment Error]', err));
+  }
 
   return {
     apiKey: {

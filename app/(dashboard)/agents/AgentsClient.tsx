@@ -407,11 +407,11 @@ export default function AgentsClient() {
   return (
     <div className="space-y-6 pb-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 rounded-lg border border-[#DCEAF3] bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 rounded-lg border border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-[#013358]">FIMS Workforce</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-[#013358] dark:text-blue-400">FIMS Workforce</p>
           <h1 className="mt-2 text-3xl font-bold tracking-normal text-[#1E293B] dark:text-white">Agents Management</h1>
-          <p className="mt-1 text-[#64748B]">
+          <p className="mt-1 text-[#64748B] dark:text-gray-400">
             Recruit, onboard, and manage field agents.
           </p>
         </div>
@@ -426,7 +426,7 @@ export default function AgentsClient() {
               {downloading ? 'Generating...' : 'Generate Report'}
             </Button>
             <Button asChild>
-              <Link href="/agents/new">
+              <Link href="/agents/create">
                 <PlusIcon className="mr-2 h-4 w-4" />
                 Add Agent
               </Link>
@@ -437,96 +437,96 @@ export default function AgentsClient() {
 
       {/* Analytics Cards */}
       <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-8">
-        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm">
+        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Applications</CardTitle>
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Applications</CardTitle>
             <InboxArrowDownIcon className="h-4 w-4 text-[#02426F]" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B]">
+            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">
               {analyticsLoading ? '...' : analytics?.newApplications || 0}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm">
+        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Interviewing</CardTitle>
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Interviewing</CardTitle>
             <PhoneIcon className="h-4 w-4 text-[#F59E0B]" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B]">
+            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">
               {analyticsLoading ? '...' : analytics?.interviewing || 0}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm">
+        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Active</CardTitle>
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Active</CardTitle>
             <CheckCircleIcon className="h-4 w-4 text-[#10B981]" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B]">
+            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">
               {analyticsLoading ? '...' : analytics?.activeAgents || 0}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm">
+        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Total</CardTitle>
-            <UserIcon className="h-4 w-4 text-[#013358]" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Total</CardTitle>
+            <UserIcon className="h-4 w-4 text-[#013358] dark:text-blue-400" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B]">
+            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">
               {analyticsLoading ? '...' : analytics?.totalAgents || 0}
             </div>
           </CardContent>
         </Card>
-        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm">
+        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Inactive</CardTitle>
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Inactive</CardTitle>
             <XCircleIcon className="h-4 w-4 text-[#EF4444]" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B]">
+            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">
               {analyticsLoading ? '...' : analytics?.inactiveAgents || 0}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm">
+        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Enrollment</CardTitle>
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Enrollment</CardTitle>
             <UserIcon className="h-4 w-4 text-[#02426F]" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B]">
+            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">
               {analyticsLoading ? '...' : analytics?.enrollmentCount || 0}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm">
+        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Correction</CardTitle>
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Correction</CardTitle>
             <PencilIcon className="h-4 w-4 text-[#F59E0B]" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B]">
+            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">
               {analyticsLoading ? '...' : analytics?.correctionCount || 0}
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm">
+        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Survey</CardTitle>
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Survey</CardTitle>
             <CheckCircleIcon className="h-4 w-4 text-[#3B82F6]" />
           </CardHeader>
           <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B]">
+            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">
               {analyticsLoading ? '...' : analytics?.surveyCount || 0}
             </div>
           </CardContent>
@@ -535,10 +535,10 @@ export default function AgentsClient() {
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="border-[#DCEAF3] bg-white shadow-sm">
+        <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-[#1E293B]">Application Status</CardTitle>
-            <div className="text-sm text-[#64748B]">Distribution of agent recruitment pipeline</div>
+            <CardTitle className="text-[#1E293B] dark:text-gray-100">Application Status</CardTitle>
+            <div className="text-sm text-[#64748B] dark:text-gray-400">Distribution of agent recruitment pipeline</div>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
@@ -575,10 +575,10 @@ export default function AgentsClient() {
           </CardContent>
         </Card>
 
-        <Card className="border-[#DCEAF3] bg-white shadow-sm">
+        <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-[#1E293B]">Top Assignments</CardTitle>
-            <div className="text-sm text-[#64748B]">Agents by Assigned State</div>
+            <CardTitle className="text-[#1E293B] dark:text-gray-100">Top Assignments</CardTitle>
+            <div className="text-sm text-[#64748B] dark:text-gray-400">Agents by Assigned State</div>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
@@ -601,7 +601,7 @@ export default function AgentsClient() {
       </div>
 
       {/* Filters & Actions */}
-      <Card className="border-[#DCEAF3] bg-white shadow-sm">
+      <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
         <CardContent className="p-4">
           {error && (
             <div className="mb-4 p-4 text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-700 flex justify-between items-center">
@@ -612,7 +612,7 @@ export default function AgentsClient() {
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="bg-white border-red-300 text-red-700 hover:bg-red-50"
+                className="bg-white dark:bg-gray-800 border-red-300 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
                 onClick={() => { setError(null); fetchAgents(); }}
               >
                 Retry
@@ -748,7 +748,7 @@ export default function AgentsClient() {
       </Card>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-lg border border-[#DCEAF3] bg-white shadow-sm dark:bg-gray-900">
+      <div className="overflow-hidden rounded-lg border border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
         {/* Batch action bar */}
         {selectedIds.size > 0 && (
           <div className="flex items-center gap-3 border-b border-[#DCEAF3] bg-[#F3F8FC] px-4 py-2">
@@ -814,10 +814,10 @@ export default function AgentsClient() {
                         {agent.displayName?.substring(0, 2).toUpperCase() || <UserIcon className="h-5 w-5" />}
                       </div>
                       <div>
-                        <Link href={`/agents/${agent.id}`} className="font-semibold text-[#1E293B] hover:text-[#02426F] hover:underline dark:text-gray-100">
+                        <Link href={`/agents/${agent.id}`} className="font-semibold text-[#1E293B] dark:text-gray-100 hover:text-[#02426F] hover:underline">
                           {agent.displayName}
                         </Link>
-                        <div className="text-xs text-[#64748B]">{agent.email}</div>
+                        <div className="text-xs text-[#64748B] dark:text-gray-400">{agent.email}</div>
                         <div className="mt-0.5 font-mono text-xs text-[#94A3B8]">
                           {agent.phoneNumber && !agent.phoneNumber.startsWith('temp_') ? agent.phoneNumber : <span className="italic opacity-50">No Phone</span>}
                         </div>
@@ -829,7 +829,7 @@ export default function AgentsClient() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-[#64748B]">
+                  <TableCell className="font-mono text-xs text-[#64748B] dark:text-gray-400">
                     {agent.agent?.nin ? agent.agent.nin : <span className="text-gray-300">-</span>}
                   </TableCell>
                    <TableCell className="text-sm">
@@ -838,8 +838,8 @@ export default function AgentsClient() {
                   <TableCell>
                     {agent.agent?.assignedState ? (
                       <div>
-                        <div className="text-sm font-semibold text-[#1E293B]">{agent.agent.assignedState}</div>
-                        <div className="text-xs text-[#64748B]">{agent.agent.assignedLGA || '-'}</div>
+                        <div className="text-sm font-semibold text-[#1E293B] dark:text-gray-100">{agent.agent.assignedState}</div>
+                        <div className="text-xs text-[#64748B] dark:text-gray-400">{agent.agent.assignedLGA || '-'}</div>
                       </div>
                     ) : (
                       <div className="opacity-60">
@@ -889,7 +889,7 @@ export default function AgentsClient() {
                       </div>
                     )}
                   </TableCell>
-                  <TableCell className="text-sm text-[#64748B]">
+                  <TableCell className="text-sm text-[#64748B] dark:text-gray-400">
                     {new Date(agent.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">

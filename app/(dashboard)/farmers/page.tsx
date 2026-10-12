@@ -268,11 +268,11 @@ function FarmersContent() {
   return (
     <div className="space-y-6 pb-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 rounded-lg border border-[#DCEAF3] bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 rounded-lg border border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-[#013358]">FIMS Operations</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-normal text-[#1E293B] dark:text-white">Farmers Management</h1>
-          <p className="mt-1 text-[#64748B]">
+          <p className="text-xs font-bold uppercase tracking-wide text-[#013358] dark:text-blue-400">FIMS Operations</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-normal text-[#1E293B] dark:text-gray-100 dark:text-white">Farmers Management</h1>
+          <p className="mt-1 text-[#64748B] dark:text-gray-400">
             Overview and management of registered farmers across all regions.
           </p>
         </div>
@@ -288,63 +288,63 @@ function FarmersContent() {
 
       {/* Analytics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm lg:col-span-1">
+        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Total Farmers</CardTitle>
-            <UsersIcon className="h-4 w-4 text-[#013358]" />
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Total Farmers</CardTitle>
+            <UsersIcon className="h-4 w-4 text-[#013358] dark:text-blue-400" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B]">{analytics?.totalFarmers?.toLocaleString() || 0}</div>
+            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">{analytics?.totalFarmers?.toLocaleString() || 0}</div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm lg:col-span-1">
+        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Enrolled</CardTitle>
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Enrolled</CardTitle>
             <div className="h-2 w-2 rounded-full bg-[#02426F]" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B]">{analytics?.farmersByStatus?.['Enrolled']?.toLocaleString() || 0}</div>
+            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">{analytics?.farmersByStatus?.['Enrolled']?.toLocaleString() || 0}</div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm lg:col-span-1">
+        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Farm Captured</CardTitle>
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Farm Captured</CardTitle>
             <div className="h-2 w-2 rounded-full bg-[#3B82F6]" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B]">{analytics?.farmersByStatus?.['FarmCaptured']?.toLocaleString() || 0}</div>
+            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">{analytics?.farmersByStatus?.['FarmCaptured']?.toLocaleString() || 0}</div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm lg:col-span-1">
+        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Validated</CardTitle>
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Validated</CardTitle>
             <div className="h-2 w-2 rounded-full bg-[#F59E0B]" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B]">{analytics?.farmersByStatus?.['Validated']?.toLocaleString() || 0}</div>
+            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">{analytics?.farmersByStatus?.['Validated']?.toLocaleString() || 0}</div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-1 border-[#DCEAF3] bg-white shadow-sm lg:col-span-1">
+        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm lg:col-span-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-4">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569]">Verified</CardTitle>
+            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Verified</CardTitle>
             <div className="h-2 w-2 rounded-full bg-[#10B981]" />
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B]">{analytics?.farmersByStatus?.['Verified']?.toLocaleString() || 0}</div>
+            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">{analytics?.farmersByStatus?.['Verified']?.toLocaleString() || 0}</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card className="border-[#DCEAF3] bg-white shadow-sm">
+        <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-[#1E293B]">Registration Status</CardTitle>
-            <div className="text-sm text-[#64748B]">Distribution of farmer onboarding stages</div>
+            <CardTitle className="text-[#1E293B] dark:text-gray-100">Registration Status</CardTitle>
+            <div className="text-sm text-[#64748B] dark:text-gray-400">Distribution of farmer onboarding stages</div>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
@@ -380,10 +380,10 @@ function FarmersContent() {
           </CardContent>
         </Card>
 
-        <Card className="border-[#DCEAF3] bg-white shadow-sm">
+        <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-[#1E293B]">Top Locations</CardTitle>
-            <div className="text-sm text-[#64748B]">Farmers by State</div>
+            <CardTitle className="text-[#1E293B] dark:text-gray-100">Top Locations</CardTitle>
+            <div className="text-sm text-[#64748B] dark:text-gray-400">Farmers by State</div>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
@@ -406,7 +406,7 @@ function FarmersContent() {
       </div>
 
       {/* Filters & Actions */}
-      <Card className="border-[#DCEAF3] bg-white shadow-sm">
+      <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
         <CardContent className="p-4">
           <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
@@ -482,7 +482,7 @@ function FarmersContent() {
                   variant="outline"
                   onClick={() => batchUpdateStatus('Validated')}
                   disabled={batchLoading}
-                  className="border-[#DCEAF3] bg-white hover:bg-[#F3F8FC]"
+                  className="border-[#DCEAF3] bg-white dark:bg-gray-800 hover:bg-[#F3F8FC] dark:hover:bg-gray-700"
                 >
                   <CheckBadgeIcon className="mr-1 h-4 w-4 text-[#F59E0B]" />
                   Validate
@@ -492,7 +492,7 @@ function FarmersContent() {
                   variant="outline"
                   onClick={() => batchUpdateStatus('Verified')}
                   disabled={batchLoading}
-                  className="border-[#DCEAF3] bg-white hover:bg-[#F3F8FC]"
+                  className="border-[#DCEAF3] bg-white dark:bg-gray-800 hover:bg-[#F3F8FC] dark:hover:bg-gray-700"
                 >
                   <CheckBadgeIcon className="mr-1 h-4 w-4 text-[#10B981]" />
                   Verify
@@ -502,7 +502,7 @@ function FarmersContent() {
                   variant="outline"
                   onClick={() => batchUpdateStatus('Enrolled')}
                   disabled={batchLoading}
-                  className="border-[#DCEAF3] bg-white hover:bg-[#F3F8FC]"
+                  className="border-[#DCEAF3] bg-white dark:bg-gray-800 hover:bg-[#F3F8FC] dark:hover:bg-gray-700"
                 >
                   <ClockIcon className="mr-1 h-4 w-4 text-[#02426F]" />
                   Reset
@@ -512,7 +512,7 @@ function FarmersContent() {
                   variant="outline"
                   onClick={() => batchUpdateStatus('Rejected')}
                   disabled={batchLoading}
-                  className="border-[#FECACA] bg-white hover:bg-red-50"
+                  className="border-[#FECACA] bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/20"
                 >
                   <XCircleIcon className="mr-1 h-4 w-4 text-[#EF4444]" />
                   Reject
@@ -524,7 +524,7 @@ function FarmersContent() {
       )}
 
       {/* Table */}
-      <div className="overflow-hidden rounded-lg border border-[#DCEAF3] bg-white shadow-sm dark:bg-gray-900">
+      <div className="overflow-hidden rounded-lg border border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm dark:bg-gray-800">
         <Table>
           <TableHeader>
             <TableRow>
@@ -576,12 +576,12 @@ function FarmersContent() {
                   </TableCell>
                   <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)}>
                     <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F3F8FC] text-sm font-bold text-[#013358]">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F3F8FC] dark:bg-blue-900/20 text-sm font-bold text-[#013358] dark:text-blue-300">
                         {farmer.firstName[0]}{farmer.lastName[0]}
                       </div>
                       <div>
-                        <div className="font-semibold text-[#1E293B] dark:text-gray-100">{farmer.firstName} {farmer.lastName}</div>
-                        <div className="text-xs text-[#64748B]">{farmer.phone}</div>
+                        <div className="font-semibold text-[#1E293B] dark:text-gray-100 dark:text-gray-100">{farmer.firstName} {farmer.lastName}</div>
+                        <div className="text-xs text-[#64748B] dark:text-gray-400">{farmer.phone}</div>
                       </div>
                     </div>
                   </TableCell>
@@ -591,7 +591,7 @@ function FarmersContent() {
                   </TableCell>
                   <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)}>
                     <div className="text-sm font-medium">{farmer.state}</div>
-                    <div className="text-xs text-[#64748B]">{farmer.cluster?.title || 'No Cluster'}</div>
+                    <div className="text-xs text-[#64748B] dark:text-gray-400">{farmer.cluster?.title || 'No Cluster'}</div>
                   </TableCell>
                   <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)}>
                     <Badge variant="outline"
@@ -607,7 +607,7 @@ function FarmersContent() {
                       {farmer.status}
                     </Badge>
                   </TableCell>
-                  <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)} className="text-[#64748B]">
+                  <TableCell onClick={() => router.push(`/farmers/${farmer.id}`)} className="text-[#64748B] dark:text-gray-400">
                     {new Date(farmer.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>

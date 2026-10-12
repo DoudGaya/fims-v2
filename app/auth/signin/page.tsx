@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { signIn, useSession } from 'next-auth/react';
+import { signIn, signOut, useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -20,10 +20,19 @@ function SignInContent() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam) {
+      // If user landed on signin with an error while technically authenticated, clear the session to break redirect loops
+      if (status === 'authenticated') {
+        signOut({ redirect: false });
+      }
+      return;
+    }
+
     if (status === 'authenticated') {
       router.push('/dashboard');
     }
-  }, [status, router]);
+  }, [status, searchParams, router]);
 
   // Handle SSO errors from query params
   useEffect(() => {
@@ -31,14 +40,22 @@ function SignInContent() {
     if (errorParam) {
       if (errorParam === 'user_not_found') {
         setSSOError('Your email is not registered. Contact the administrator.');
+      } else if (errorParam === 'unauthorized_email' || errorParam === 'AccessDenied') {
+        setSSOError('This email account is not authorized to access the system. Contact the administrator.');
       } else if (errorParam === 'sso_disabled') {
         setSSOError('SSO is not enabled for your account. Use credentials instead.');
       } else if (errorParam === 'no_dashboard_access') {
         setSSOError('You do not have permission to access the dashboard.');
       } else if (errorParam === 'no_permissions') {
-        setSSOError('You do not have any permissions assigned. Contact the administrator.');
+        setSSOError('Your account does not have any web dashboard permissions assigned. Contact the administrator.');
+      } else if (errorParam === 'agent_mobile_only') {
+        setSSOError('Field agents must use the mobile application. Web dashboard access is restricted.');
+      } else if (errorParam === 'account_inactive') {
+        setSSOError('Your account has been deactivated. Contact the administrator.');
       } else if (errorParam === 'callback') {
         setSSOError('An error occurred during sign-in. Please try again.');
+      } else {
+        setSSOError(`Sign-in rejected: ${errorParam}`);
       }
     }
   }, [searchParams]);

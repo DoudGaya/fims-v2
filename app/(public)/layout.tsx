@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
+import { PortalBrandFooter } from '@/components/portal/portal-brand-footer';
 
 const navLinks = [
   { label: 'Home', href: '/fims' },
@@ -76,50 +77,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
 
       <main className="flex-1">{children}</main>
 
-      <footer className="border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div className="flex items-center gap-3">
-              <div className="relative h-8 w-20">
-                <Image
-                  src="/ccsa-logo.png"
-                  alt="CCSA"
-                  fill
-                  className="object-contain object-left"
-                  sizes="80px"
-                />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-[#013358] dark:text-blue-300">
-                  CCSA — FIMS
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Farmer Information Management System
-                </p>
-              </div>
-            </div>
-
-            <nav className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-500 dark:text-gray-400">
-              {navLinks.map(({ label, href }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  className="hover:text-[#013358] dark:hover:text-white transition-colors"
-                >
-                  {label}
-                </Link>
-              ))}
-            </nav>
-          </div>
-
-          <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-400 dark:text-gray-500">
-            <p>
-              &copy; {new Date().getFullYear()} Centre for Climate Smart Agriculture, Cosmopolitan University Abuja.
-            </p>
-            <p>All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      <PortalBrandFooter />
     </div>
   );
 }

@@ -289,7 +289,7 @@ export default function ClusterDetailsPage({ params }: { params: Promise<{ id: s
         </TabsList>
 
         <TabsContent value="farmers" className="space-y-4">
-          <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white p-4 rounded-lg border">
+          <div className="flex flex-col sm:flex-row gap-4 justify-between items-center bg-white dark:bg-gray-800 p-4 rounded-lg border dark:border-gray-700">
             <div className="relative w-full sm:w-[300px]">
               <MagnifyingGlassIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
               <Input
