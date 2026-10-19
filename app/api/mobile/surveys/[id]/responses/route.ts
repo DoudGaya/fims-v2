@@ -63,12 +63,50 @@ export async function POST(req: NextRequest, { params }: Params) {
   const survey = await prisma.survey.findFirst({
     where: { id, isActive: true },
     include: {
-      questions: { select: { id: true, isRequired: true, questionType: true } },
+      questions: {
+        select: {
+          id: true,
+          isRequired: true,
+          questionType: true,
+          options: { select: { id: true } },
+        },
+      },
+      assignments: { select: { agentId: true, clusterId: true } },
     },
   });
 
   if (!survey) {
     return NextResponse.json({ error: 'Survey not found or not active' }, { status: 404 });
+  }
+
+  if (survey.assignments.length > 0 && user.role !== 'admin') {
+    const isAssigned = survey.assignments.some((a) => a.agentId === user.id);
+    if (!isAssigned) {
+      return NextResponse.json({ error: 'Access denied: Survey is not assigned to you' }, { status: 403 });
+    }
+  }
+
+  // Validate that all supplied answers correspond to questions in this survey
+  const questionMap = new Map(survey.questions.map((q) => [q.id, q]));
+  for (const a of body.answers) {
+    const question = questionMap.get(a.questionId);
+    if (!question) {
+      return NextResponse.json(
+        { error: `Question ${a.questionId} does not belong to this survey` },
+        { status: 400 }
+      );
+    }
+    if (a.selectedOptionIds && a.selectedOptionIds.length > 0) {
+      const validOptionIds = new Set(question.options.map((o) => o.id));
+      for (const optId of a.selectedOptionIds) {
+        if (!validOptionIds.has(optId)) {
+          return NextResponse.json(
+            { error: `Option ${optId} does not belong to question ${a.questionId}` },
+            { status: 400 }
+          );
+        }
+      }
+    }
   }
 
   // Validate required questions are answered

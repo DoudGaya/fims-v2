@@ -33,8 +33,18 @@ export function PermissionProvider({ children }: PermissionProviderProps) {
   const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const getRoleDefaults = (name?: string | null): string[] => {
+    if (!name) return [];
+    if (ROLE_PERMISSIONS[name]) return ROLE_PERMISSIONS[name];
+    const normalized = name.toLowerCase().trim().replace(/[-\s]+/g, '_');
+    return ROLE_PERMISSIONS[normalized] || [];
+  };
+
   useEffect(() => {
-    if (status === 'loading') return;
+    if (status === 'loading') {
+      setLoading(true);
+      return;
+    }
 
     if (session?.user) {
       // Use permissions directly from session (fetched from database)
@@ -43,8 +53,13 @@ export function PermissionProvider({ children }: PermissionProviderProps) {
       // Merge session permissions with role-based defaults so new permissions
       // added to ROLE_PERMISSIONS are available even before the token refreshes
       const userRole = (session.user as any).role;
-      const roleDefaults = ROLE_PERMISSIONS[userRole] || [];
-      const merged = Array.from(new Set([...sessionPermissions, ...roleDefaults]));
+      const userRoles = (session.user as any).roles || [];
+      const roleDefaults = getRoleDefaults(userRole);
+      const rolesDefaults = Array.isArray(userRoles)
+        ? userRoles.flatMap((r: any) => getRoleDefaults(typeof r === 'string' ? r : r?.name))
+        : [];
+
+      const merged = Array.from(new Set([...sessionPermissions, ...roleDefaults, ...rolesDefaults]));
       setPermissions(merged);
     } else {
       setPermissions([]);

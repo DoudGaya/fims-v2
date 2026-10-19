@@ -73,7 +73,14 @@ export type PlanKey = keyof typeof SUBSCRIPTION_PLANS;
 
 export class PaystackService {
   private static getSecretKey(): string {
-    return process.env.PAYSTACK_SECRET_KEY || 'sk_test_mock_paystack_secret_key';
+    const key = process.env.PAYSTACK_SECRET_KEY;
+    if (!key || key.startsWith('sk_test_mock')) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('PAYSTACK_SECRET_KEY must be configured with a valid secret key in production');
+      }
+      return key || 'sk_test_mock_paystack_secret_key';
+    }
+    return key;
   }
 
   public static getPublicKey(): string {
@@ -137,6 +144,9 @@ export class PaystackService {
 
     // Mock verification for local tests
     if (secretKey.startsWith('sk_test_mock')) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('Mock payment verification is prohibited in production');
+      }
       return {
         status: true,
         message: 'Mock verification successful',
@@ -183,7 +193,10 @@ export class PaystackService {
   public static verifyWebhookSignature(signature: string | null, rawBody: string): boolean {
     if (!signature) return false;
     const secretKey = this.getSecretKey();
-    if (secretKey.startsWith('sk_test_mock')) return true;
+    if (secretKey.startsWith('sk_test_mock')) {
+      if (process.env.NODE_ENV === 'production') return false;
+      return true;
+    }
 
     try {
       const hash = crypto.createHmac('sha512', secretKey).update(rawBody).digest('hex');

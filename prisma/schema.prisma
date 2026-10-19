@@ -279,6 +279,49 @@ model ApiAccessRequest {
   @@map("api_access_requests")
 }
 
+/// Submitted by agricultural teams, extension officers, and researchers requesting Zora access.
+model ZoraAccessRequest {
+  id                String              @id @default(cuid())
+  fullName          String
+  email             String              @unique
+  organizationName  String
+  role              String
+  phone             String?
+  useCase           String
+  status            AccessRequestStatus @default(PENDING)
+  adminNotes        String?
+  generatedPassword String?
+  credentialsSentAt DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@map("zora_access_requests")
+}
+
+/// Zora access grants for farmers and extension agents
+model ZoraAccessGrant {
+  subjectType String   @map("subject_type")
+  subjectId   String   @map("subject_id")
+  enabled     Boolean  @default(false)
+  updatedBy   String   @map("updated_by")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@id([subjectType, subjectId])
+  @@map("zora_access_grants")
+}
+
+/// Audit event stream for Zora access grants and revocations
+model ZoraAccessEvent {
+  id          BigInt   @id @default(autoincrement())
+  subjectType String   @map("subject_type")
+  subjectId   String   @map("subject_id")
+  enabled     Boolean
+  actorId     String   @map("actor_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("zora_access_events")
+}
+
 /// Request to delete a farm, pending admin approval.
 model FarmDeleteRequest {
   id                String              @id @default(cuid())

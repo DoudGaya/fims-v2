@@ -48,22 +48,30 @@ export async function GET(req: NextRequest, { params }: RouteContext) {
 
   const { id } = await params;
 
-  const farm = await prisma.farm.findUnique({ where: { id } });
+  const farm = await prisma.farm.findUnique({
+    where: { id },
+    include: { farmer: { select: { agentId: true } } },
+  });
   if (!farm) return NextResponse.json({ error: 'Farm not found' }, { status: 404 });
+
+  if (user.role === 'agent' && farm.farmer?.agentId !== user.id) {
+    return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+  }
 
   return NextResponse.json(farm);
 }
 
 /**
  * PUT /api/mobile/farms/[id]
- * Update a farm. Allowed roles: agent, data_correction_agent, admin
+ * Update a farm. Allowed roles: agent, admin
+ * (data_correction_agent must use the dedicated /api/mobile/correction/farms/[farmId] queue)
  */
 export async function PUT(req: NextRequest, { params }: RouteContext) {
   const authResult = await getMobileUser(req);
   if ('error' in authResult) return authResult.error;
   const { user } = authResult;
 
-  const roleError = requireRole(user, 'agent', 'data_correction_agent', 'admin');
+  const roleError = requireRole(user, 'agent', 'admin');
   if (roleError) return roleError;
 
   const { id } = await params;
@@ -83,8 +91,15 @@ export async function PUT(req: NextRequest, { params }: RouteContext) {
     );
   }
 
-  const existing = await prisma.farm.findUnique({ where: { id }, select: { id: true } });
+  const existing = await prisma.farm.findUnique({
+    where: { id },
+    select: { id: true, farmer: { select: { agentId: true } } },
+  });
   if (!existing) return NextResponse.json({ error: 'Farm not found' }, { status: 404 });
+
+  if (user.role === 'agent' && existing.farmer?.agentId !== user.id) {
+    return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+  }
 
   const updated = await prisma.farm.update({ where: { id }, data: parsed.data });
   return NextResponse.json(updated);
@@ -104,8 +119,15 @@ export async function DELETE(req: NextRequest, { params }: RouteContext) {
 
   const { id } = await params;
 
-  const existing = await prisma.farm.findUnique({ where: { id }, select: { id: true } });
+  const existing = await prisma.farm.findUnique({
+    where: { id },
+    select: { id: true, farmer: { select: { agentId: true } } },
+  });
   if (!existing) return NextResponse.json({ error: 'Farm not found' }, { status: 404 });
+
+  if (user.role === 'agent' && existing.farmer?.agentId !== user.id) {
+    return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+  }
 
   await prisma.farm.delete({ where: { id } });
   return NextResponse.json({ success: true });

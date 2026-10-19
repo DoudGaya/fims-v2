@@ -32,17 +32,24 @@ export async function getUserPermissions(userId: string): Promise<string[]> {
     // constants work immediately without requiring a DB role update.
     const permissions = new Set<string>();
 
+    const getRoleDefaults = (name?: string | null): string[] => {
+      if (!name) return [];
+      if (ROLE_PERMISSIONS[name]) return ROLE_PERMISSIONS[name];
+      const normalized = name.toLowerCase().trim().replace(/[-\s]+/g, '_');
+      return ROLE_PERMISSIONS[normalized] || [];
+    };
+
     // Merge role-based defaults first (lowest precedence)
     const legacyRole: string | undefined = (userWithRoles as any).role;
-    if (legacyRole && ROLE_PERMISSIONS[legacyRole]) {
-      ROLE_PERMISSIONS[legacyRole].forEach(p => permissions.add(p));
+    if (legacyRole) {
+      getRoleDefaults(legacyRole).forEach(p => permissions.add(p));
     }
 
     userWithRoles.userRoles.forEach(userRole => {
       // Merge role-name defaults
-      const roleName = userRole.role.name;
-      if (roleName && ROLE_PERMISSIONS[roleName]) {
-        ROLE_PERMISSIONS[roleName].forEach(p => permissions.add(p));
+      const roleName = userRole.role?.name;
+      if (roleName) {
+        getRoleDefaults(roleName).forEach(p => permissions.add(p));
       }
 
       // In Prisma, JSON fields are typed as JsonValue, which can be anything.

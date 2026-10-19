@@ -613,3 +613,203 @@ export async function sendCustomEmail(
     return { success: false, error: error.message };
   }
 }
+
+export async function sendZoraAccessRequestNotification(params: {
+  fullName: string;
+  email: string;
+  organizationName: string;
+  role: string;
+  phone?: string | null;
+  useCase: string;
+  requestId: string;
+}) {
+  const resend = getResendClient();
+  if (!resend) {
+    console.warn('Email service not configured - skipping Zora access request notification');
+    return null;
+  }
+
+  const adminEmail = 'abdulrahman.dauda@cosmopolitan.edu.ng';
+  const fimsBaseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const reviewUrl = `${fimsBaseUrl}/requests/zora-requests`;
+  const fromAddress = getFromAddress();
+  const subject = `New Zora Access Request: ${params.fullName} (${params.organizationName})`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>New Zora Access Request</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; color: #1e293b; margin: 0; padding: 20px; background-color: #f8fafc; }
+          .card { max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+          .header { background: #075d37; color: #ffffff; padding: 24px 28px; }
+          .header h1 { margin: 0; font-size: 20px; font-weight: 700; }
+          .header p { margin: 4px 0 0; opacity: 0.9; font-size: 13px; }
+          .content { padding: 28px; }
+          .field { margin-bottom: 14px; }
+          .label { font-size: 11px; text-transform: uppercase; font-weight: 700; color: #64748b; letter-spacing: 0.5px; }
+          .value { font-size: 14px; color: #0f172a; margin-top: 3px; font-weight: 500; }
+          .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+          .box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #334155; }
+          .btn { display: inline-block; background: #075d37; color: #ffffff !important; text-decoration: none; padding: 11px 24px; border-radius: 8px; font-weight: 600; font-size: 14px; margin-top: 18px; }
+          .footer { padding: 16px 28px; background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8; text-align: center; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="header">
+            <h1>CCSA Zora — New Access Request</h1>
+            <p>Centre for Climate-Smart Agriculture · Cosmopolitan University Abuja</p>
+          </div>
+          <div class="content">
+            <p style="margin-top: 0; font-size: 14px; color: #334155;">
+              A new user has submitted a request for institutional access to the <strong>CCSA Zora</strong> workspace.
+            </p>
+            <div class="field">
+              <div class="label">Applicant Name</div>
+              <div class="value">${params.fullName}</div>
+            </div>
+            <div class="field">
+              <div class="label">Organization / State ADP</div>
+              <div class="value">${params.organizationName}</div>
+            </div>
+            <div class="field">
+              <div class="label">Agricultural Role</div>
+              <div class="value"><span class="badge">${params.role}</span></div>
+            </div>
+            <div class="field">
+              <div class="label">Work Email</div>
+              <div class="value"><a href="mailto:${params.email}" style="color: #075d37;">${params.email}</a></div>
+            </div>
+            ${params.phone ? `<div class="field"><div class="label">Phone / WhatsApp</div><div class="value">${params.phone}</div></div>` : ''}
+            <div class="field">
+              <div class="label">Intended Use & Operational Focus</div>
+              <div class="box">${params.useCase}</div>
+            </div>
+            <div style="text-align: center; margin-top: 24px;">
+              <a href="${reviewUrl}" class="btn">Review & Grant Access in FIMS</a>
+            </div>
+          </div>
+          <div class="footer">
+            Centre for Climate-Smart Agriculture (CCSA) · Automated notification to ${adminEmail}
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: fromAddress,
+      to: [adminEmail],
+      subject,
+      html,
+      text: `New Zora Access Request\n\nName: ${params.fullName}\nEmail: ${params.email}\nOrg: ${params.organizationName}\nRole: ${params.role}\nUse Case: ${params.useCase}\n\nReview in FIMS: ${reviewUrl}`,
+    });
+    if (error) {
+      console.error('Error sending Zora access notification:', error);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.error('Error sending Zora access notification:', err);
+    return null;
+  }
+}
+
+export async function sendZoraCredentialsEmail(params: {
+  recipientEmail: string;
+  recipientName: string;
+  temporaryPassword: string;
+  loginUrl: string;
+}) {
+  const resend = getResendClient();
+  if (!resend) {
+    console.warn('Email service not configured - skipping Zora credentials email');
+    return null;
+  }
+
+  const fromAddress = getFromAddress();
+  const subject = 'Your CCSA Zora Workspace Access Credentials';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Your Zora Credentials</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; color: #1e293b; margin: 0; padding: 20px; background-color: #f8fafc; }
+          .card { max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; }
+          .header { background: #075d37; color: #ffffff; padding: 24px 28px; }
+          .header h1 { margin: 0; font-size: 20px; font-weight: 700; }
+          .header p { margin: 4px 0 0; opacity: 0.9; font-size: 13px; }
+          .content { padding: 28px; }
+          .cred-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 18px; margin: 20px 0; }
+          .cred-item { margin-bottom: 10px; }
+          .cred-label { font-size: 11px; text-transform: uppercase; font-weight: 700; color: #166534; }
+          .cred-value { font-size: 15px; font-family: ui-monospace, monospace; color: #0f172a; font-weight: 600; margin-top: 2px; }
+          .btn { display: inline-block; background: #075d37; color: #ffffff !important; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; margin-top: 14px; }
+          .footer { padding: 16px 28px; background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8; text-align: center; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="header">
+            <h1>Welcome to CCSA Zora</h1>
+            <p>Centre for Climate-Smart Agriculture · Cosmopolitan University Abuja</p>
+          </div>
+          <div class="content">
+            <p style="margin-top: 0; font-size: 14px; color: #334155;">
+              Dear ${params.recipientName},
+            </p>
+            <p style="font-size: 14px; color: #334155;">
+              Your application for institutional access to <strong>CCSA Zora (Agricultural Super Intelligence)</strong> has been approved. Your workspace account is now active.
+            </p>
+            <div class="cred-box">
+              <div class="cred-item">
+                <div class="cred-label">Login Email Address</div>
+                <div class="cred-value">${params.recipientEmail}</div>
+              </div>
+              <div class="cred-item" style="margin-bottom: 0;">
+                <div class="cred-label">Temporary Password</div>
+                <div class="cred-value" style="background: #ffffff; padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; display: inline-block;">
+                  ${params.temporaryPassword}
+                </div>
+              </div>
+            </div>
+            <p style="font-size: 13px; color: #64748b;">
+              For security, please sign in and change your password upon your first session.
+            </p>
+            <div style="text-align: center; margin: 24px 0 10px;">
+              <a href="${params.loginUrl}" class="btn">Sign In to Zora Workspace</a>
+            </div>
+          </div>
+          <div class="footer">
+            Centre for Climate-Smart Agriculture (CCSA) · Cosmopolitan University Abuja
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: fromAddress,
+      to: [params.recipientEmail],
+      subject,
+      html,
+      text: `Hello ${params.recipientName},\n\nYour CCSA Zora account has been approved!\n\nEmail: ${params.recipientEmail}\nTemporary Password: ${params.temporaryPassword}\n\nSign In: ${params.loginUrl}`,
+    });
+    if (error) {
+      console.error('Error sending Zora credentials email:', error);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.error('Error sending Zora credentials email:', err);
+    return null;
+  }
+}
+

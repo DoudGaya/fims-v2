@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { ZoraAccessButton } from '@/components/ZoraAccessButton';
 import { useRouter, useParams } from 'next/navigation';
 import { usePermissions } from '@/components/PermissionProvider';
 import { PERMISSIONS } from '@/lib/permissions';
@@ -251,7 +252,8 @@ export default function FarmerDetailsPage() {
             </div>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <ZoraAccessButton type="farmer" id={farmer.id} />
           <Button variant="outline" asChild>
             <Link href="/farmers"><ArrowLeftIcon className="mr-2 size-4" /> Back</Link>
           </Button>

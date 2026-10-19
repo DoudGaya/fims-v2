@@ -154,6 +154,7 @@ const navigationConfig = [
     icon: ClipboardList,
     requiredPermission: PERMISSIONS.REQUESTS_READ,
     items: [
+      { title: 'Zora Requests', url: '/requests/zora-requests' },
       { title: 'Delete Requests', url: '/requests/delete-requests' },
       { title: 'Account Deletions', url: '/account-deletions' },
     ],

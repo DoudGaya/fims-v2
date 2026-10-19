@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { ZoraAccessButton } from '@/components/ZoraAccessButton';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { usePermissions } from '@/components/PermissionProvider';
@@ -893,6 +894,7 @@ export default function AgentsClient() {
                     {new Date(agent.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
+                    <ZoraAccessButton type="agent" id={agent.id} />
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="h-8 w-8 p-0">

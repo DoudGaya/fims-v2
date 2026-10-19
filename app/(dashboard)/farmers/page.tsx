@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
+import { ZoraAccessButton } from '@/components/ZoraAccessButton';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { usePermissions } from '@/components/PermissionProvider';
@@ -611,6 +612,7 @@ function FarmersContent() {
                     {new Date(farmer.createdAt).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                    <ZoraAccessButton type="farmer" id={farmer.id} />
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="h-8 w-8 p-0">

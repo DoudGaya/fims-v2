@@ -80,10 +80,17 @@ export async function POST(req: NextRequest) {
 
   const { farmerId, ...farmData } = parsed.data;
 
-  // Verify farmer exists
-  const farmer = await prisma.farmer.findUnique({ where: { id: farmerId }, select: { id: true } });
+  // Verify farmer exists and belongs to the agent
+  const farmer = await prisma.farmer.findUnique({
+    where: { id: farmerId },
+    select: { id: true, agentId: true },
+  });
   if (!farmer) {
     return NextResponse.json({ error: 'Farmer not found' }, { status: 404 });
+  }
+
+  if (user.role === 'agent' && farmer.agentId !== user.id) {
+    return NextResponse.json({ error: 'Access denied' }, { status: 403 });
   }
 
   const farm = await prisma.farm.create({

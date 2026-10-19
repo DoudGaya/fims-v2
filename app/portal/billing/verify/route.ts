@@ -22,6 +22,10 @@ export async function GET(req: NextRequest) {
       });
 
       if (invoice) {
+        if (invoice.status === 'PAID') {
+          return NextResponse.redirect(`${baseUrl}/portal/dashboard?payment=already_processed&ref=${encodeURIComponent(reference)}`);
+        }
+
         const now = new Date();
         const cycleEnd = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
         const metadata = result.data.metadata || {};

@@ -24,10 +24,21 @@ export async function GET(req: NextRequest, { params }: Params) {
         orderBy: { order: 'asc' },
         include: { options: { orderBy: { order: 'asc' } } },
       },
+      assignments: {
+        select: { agentId: true, clusterId: true },
+      },
     },
   });
 
   if (!survey) return NextResponse.json({ error: 'Survey not found or not active' }, { status: 404 });
 
-  return NextResponse.json(survey);
+  if (survey.assignments.length > 0 && user.role !== 'admin') {
+    const isAssigned = survey.assignments.some((a) => a.agentId === user.id);
+    if (!isAssigned) {
+      return NextResponse.json({ error: 'Access denied: Survey is not assigned to you' }, { status: 403 });
+    }
+  }
+
+  const { assignments: _a, ...result } = survey;
+  return NextResponse.json(result);
 }

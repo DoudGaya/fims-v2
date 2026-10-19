@@ -51,12 +51,12 @@ type DashboardAnalytics = {
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { hasPermission } = usePermissions();
+  const { hasPermission, loading: permissionsLoading } = usePermissions();
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (status === 'loading') return;
+    if (status === 'loading' || permissionsLoading) return;
     if (!session) {
       router.push('/auth/signin');
       return;
@@ -75,7 +75,7 @@ export default function Dashboard() {
     }
 
     fetchDashboardAnalytics();
-  }, [session, status, hasPermission, router]);
+  }, [session, status, permissionsLoading, hasPermission, router]);
 
   const fetchDashboardAnalytics = async () => {
     try {
@@ -108,7 +108,7 @@ export default function Dashboard() {
     return num?.toLocaleString() || 0;
   };
 
-  if (status === 'loading' || loading) {
+  if (status === 'loading' || permissionsLoading || loading) {
     return <PageLoader />;
   }
 

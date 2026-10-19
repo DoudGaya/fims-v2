@@ -172,6 +172,15 @@ export const authOptions: NextAuthOptions = {
           ProductionLogger.error('Failed to hydrate Google SSO user in JWT:', err?.message || err);
         }
       }
+
+      // Rehydrate permissions if missing from an existing token
+      if (token.id && (!token.permissions || (Array.isArray(token.permissions) && token.permissions.length === 0))) {
+        try {
+          token.permissions = await getUserPermissions(token.id as string);
+        } catch (err: any) {
+          ProductionLogger.error('Failed to rehydrate JWT permissions:', err?.message || err);
+        }
+      }
       
       return token;
     },
