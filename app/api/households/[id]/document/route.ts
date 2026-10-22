@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { formatPollingUnit } from '@/lib/textUtils';
+import { formatPollingUnit, toTitleCase } from '@/lib/textUtils';
 import * as QRCode from 'qrcode';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -37,16 +37,23 @@ export async function GET(
       return new NextResponse('Household record not found', { status: 404 });
     }
 
-    // Load logo as base64
-    let logoBase64 = '';
+    // Load both logos as base64
+    let certLogoBase64 = '';
+    let ccsaLogoBase64 = '';
     try {
-      const logoPath = path.join(process.cwd(), 'public', 'certificate-logo.png');
-      if (fs.existsSync(logoPath)) {
-        const fileBuffer = fs.readFileSync(logoPath);
-        logoBase64 = `data:image/png;base64,${fileBuffer.toString('base64')}`;
+      const certLogoPath = path.join(process.cwd(), 'public', 'certificate-logo.png');
+      if (fs.existsSync(certLogoPath)) {
+        const fileBuffer = fs.readFileSync(certLogoPath);
+        certLogoBase64 = `data:image/png;base64,${fileBuffer.toString('base64')}`;
+      }
+
+      const ccsaLogoPath = path.join(process.cwd(), 'public', 'ccsa-logo.png');
+      if (fs.existsSync(ccsaLogoPath)) {
+        const fileBuffer = fs.readFileSync(ccsaLogoPath);
+        ccsaLogoBase64 = `data:image/png;base64,${fileBuffer.toString('base64')}`;
       }
     } catch (e) {
-      console.warn('Could not read certificate-logo.png:', e);
+      console.warn('Could not read logos:', e);
     }
 
     // Determine verification URL
@@ -66,10 +73,41 @@ export async function GET(
       },
     });
 
-    const fullName = [household.headFirstName, household.headMiddleName, household.headLastName]
+    // Lookup cluster lead for this location
+    let clusterLeadName = 'M. B. Garkida';
+    try {
+      const cluster = await prisma.cluster.findFirst({
+        where: {
+          OR: [
+            { clusterLeadLGA: { equals: household.lga, mode: 'insensitive' } },
+            { clusterLeadState: { equals: household.state, mode: 'insensitive' } },
+            { title: { contains: household.lga, mode: 'insensitive' } },
+          ],
+        },
+        select: {
+          clusterLeadFirstName: true,
+          clusterLeadLastName: true,
+        },
+      });
+
+      if (cluster && (cluster.clusterLeadFirstName || cluster.clusterLeadLastName)) {
+        clusterLeadName = `${cluster.clusterLeadFirstName || ''} ${cluster.clusterLeadLastName || ''}`.trim();
+      }
+    } catch (e) {
+      console.warn('Could not query cluster lead:', e);
+    }
+
+    const formattedClusterLead = toTitleCase(clusterLeadName);
+    const clusterLeadSig = clusterLeadName
+      .split(' ')
       .filter(Boolean)
-      .join(' ')
-      .toUpperCase();
+      .map((w, idx, arr) => (idx === arr.length - 1 ? toTitleCase(w) : `${w[0].toUpperCase()}.`))
+      .join(' ');
+
+    const rawFullName = [household.headFirstName, household.headMiddleName, household.headLastName]
+      .filter(Boolean)
+      .join(' ');
+    const formattedFullName = toTitleCase(rawFullName);
 
     const issueDate = new Date().toLocaleDateString('en-GB', {
       day: '2-digit',
@@ -83,18 +121,26 @@ export async function GET(
       year: 'numeric',
     });
 
-    const agentName = household.agent
-      ? household.agent.displayName || `${household.agent.firstName || ''} ${household.agent.lastName || ''}`.trim()
-      : 'CCSA Field Enumerator';
+    // Capitalized Location Hierarchy
+    const formattedState = toTitleCase(household.state);
+    const formattedLga = toTitleCase(household.lga);
+    const formattedWard = toTitleCase(household.ward);
+    const formattedAddress = toTitleCase(household.address) || 'Designated Community Settlement';
+    const formattedPollingUnit = toTitleCase(formatPollingUnit(household.pollingUnit));
+    const formattedGender = toTitleCase(household.headGender || 'Male');
+    const formattedMarital = toTitleCase(household.headMaritalStatus || 'Married');
+    const formattedOccupation = toTitleCase(household.headEmploymentStatus || 'Self-Employed / Farming');
+    const formattedEnergy = toTitleCase(household.primaryEnergySource || 'National Grid / Standalone Solar');
+    const formattedPue = household.hasPUE ? toTitleCase(household.pueType || 'Active Equipment') : 'Residential Only';
 
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CCSA Dwelling Certificate - ${household.houseNumber}</title>
+  <title>CCSA Official Dwelling Certificate - ${household.houseNumber}</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Comic+Neue:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Great+Vibes&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
 
     @page {
       size: A4 portrait;
@@ -116,7 +162,7 @@ export async function GET(
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Screen Container */
+    /* Screen Wrap */
     .screen-wrap {
       padding: 24px 12px;
       display: flex;
@@ -161,15 +207,15 @@ export async function GET(
       background: #f1f5f9;
     }
 
-    /* A4 Rigid Certificate Container */
+    /* Rigid A4 Certificate Container */
     .certificate-sheet {
       width: 196mm;
-      height: 278mm;
+      min-height: 278mm;
       max-height: 278mm;
       background: #ffffff;
       position: relative;
       margin: 0 auto;
-      padding: 10mm 11mm;
+      padding: 11mm 12mm;
       box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
       border-radius: 4px;
       overflow: hidden;
@@ -180,7 +226,7 @@ export async function GET(
       page-break-after: avoid;
     }
 
-    /* Elegant Classical Security Border */
+    /* Classical Security Framing */
     .security-border {
       position: absolute;
       top: 3.5mm;
@@ -205,9 +251,9 @@ export async function GET(
     /* Corner Security Accents */
     .corner-ornament {
       position: absolute;
-      width: 14px;
-      height: 14px;
-      border-color: #C5A059;
+      width: 15px;
+      height: 15px;
+      border-color: #081B33;
       pointer-events: none;
     }
     .corner-tl { top: 6mm; left: 6mm; border-top: 2.5px solid #081B33; border-left: 2.5px solid #081B33; }
@@ -215,7 +261,7 @@ export async function GET(
     .corner-bl { bottom: 6mm; left: 6mm; border-bottom: 2.5px solid #081B33; border-left: 2.5px solid #081B33; }
     .corner-br { bottom: 6mm; right: 6mm; border-bottom: 2.5px solid #081B33; border-right: 2.5px solid #081B33; }
 
-    /* Security Watermark in Background */
+    /* Watermark */
     .watermark {
       position: absolute;
       top: 50%;
@@ -240,56 +286,70 @@ export async function GET(
       justify-content: space-between;
     }
 
-    /* Header Section */
+    /* Header Section with Dual Logos */
     .header {
       text-align: center;
-      padding-bottom: 8px;
+      padding-bottom: 4px;
     }
-    .header-top {
+    .header-dual-logos {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .header-logo-wrap {
+      width: 70px;
+      height: 60px;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 12px;
-      margin-bottom: 4px;
+      flex-shrink: 0;
+    }
+    .header-logo-wrap.left-logo {
+      justify-content: flex-start;
+    }
+    .header-logo-wrap.right-logo {
+      justify-content: flex-end;
     }
     .logo-img {
-      width: 58px;
-      height: 58px;
+      max-width: 68px;
+      max-height: 58px;
       object-fit: contain;
     }
     .header-titles {
+      flex: 1;
       text-align: center;
     }
     .org-title {
       font-size: 15px;
       font-weight: 900;
       color: #081B33;
-      letter-spacing: 0.8px;
+      letter-spacing: 0.6px;
       text-transform: uppercase;
       margin: 0;
       line-height: 1.2;
     }
     .org-sub {
-      font-size: 11.5px;
+      font-size: 12px;
       font-weight: 700;
       color: #0369a1;
-      margin-top: 1px;
-      letter-spacing: 0.4px;
+      margin-top: 1.5px;
+      letter-spacing: 0.3px;
     }
     .org-tagline {
       font-size: 9px;
       font-weight: 800;
       color: #b45309;
-      letter-spacing: 1px;
+      letter-spacing: 0.9px;
       text-transform: uppercase;
-      margin-top: 1px;
+      margin-top: 2px;
     }
 
     .gold-divider {
       height: 2px;
       background: linear-gradient(90deg, transparent, #C5A059, #081B33, #C5A059, transparent);
-      margin: 6px auto;
-      width: 80%;
+      margin: 7px auto 5px auto;
+      width: 82%;
     }
 
     .doc-main-title {
@@ -308,24 +368,24 @@ export async function GET(
       margin-top: 1px;
     }
 
-    /* Identification Banner (House Code + Status + QR) */
+    /* Identification Banner (House Code + Dates + QR) */
     .id-banner {
       background: #FDFBF6;
       border: 1.5px solid #E8D4A8;
       border-radius: 6px;
-      padding: 8px 12px;
-      margin: 8px 0;
+      padding: 10px 14px;
+      margin: 9px 0 11px 0;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 14px;
     }
     .id-left {
       flex: 1;
       min-width: 0;
     }
     .id-label {
-      font-size: 8.5px;
+      font-size: 9px;
       font-weight: 800;
       color: #854d0e;
       text-transform: uppercase;
@@ -333,37 +393,28 @@ export async function GET(
     }
     .id-code {
       font-family: 'Courier New', Courier, monospace;
-      font-size: 19px;
+      font-size: 20px;
       font-weight: 900;
       color: #081B33;
       letter-spacing: 0.8px;
-      margin: 2px 0;
+      margin: 3px 0 4px 0;
       white-space: nowrap;
     }
-    .id-badges {
+    .id-meta-row {
       display: flex;
       align-items: center;
-      gap: 6px;
-      margin-top: 4px;
+      gap: 7px;
+      font-size: 9px;
+      color: #475569;
+      font-weight: 500;
     }
-    .badge-status {
-      background: #dcfce7;
-      color: #15803d;
-      border: 1px solid #86efac;
-      font-size: 8.5px;
-      font-weight: 800;
-      padding: 2px 7px;
-      border-radius: 4px;
-      text-transform: uppercase;
-      letter-spacing: 0.4px;
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
+    .meta-item strong {
+      font-weight: 700;
+      color: #081B33;
     }
-    .badge-meta {
-      font-size: 8.5px;
-      color: #64748b;
-      font-weight: 600;
+    .meta-dot {
+      color: #cbd5e1;
+      font-weight: 900;
     }
 
     .id-qr {
@@ -377,8 +428,8 @@ export async function GET(
       flex-shrink: 0;
     }
     .qr-img {
-      width: 62px;
-      height: 62px;
+      width: 60px;
+      height: 60px;
       display: block;
     }
     .qr-text {
@@ -402,8 +453,8 @@ export async function GET(
     .grid-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 9px;
-      margin-bottom: 8px;
+      gap: 11px;
+      margin-bottom: 10px;
     }
 
     .data-card {
@@ -415,7 +466,7 @@ export async function GET(
     .card-header {
       background: #081B33;
       color: #ffffff;
-      padding: 5px 10px;
+      padding: 6px 12px;
       font-size: 9.5px;
       font-weight: 800;
       letter-spacing: 0.6px;
@@ -426,18 +477,23 @@ export async function GET(
     }
     .card-header.gold-accent {
       background: #1e293b;
-      border-left: 3px solid #C5A059;
+      border-left: 3.5px solid #C5A059;
     }
     .card-header.navy-accent {
       background: #081B33;
-      border-left: 3px solid #0284c7;
+      border-left: 3.5px solid #0284c7;
+    }
+    .header-tag {
+      font-size: 7.5px;
+      opacity: 0.85;
+      font-weight: 600;
     }
 
     .card-body {
-      padding: 7px 10px;
+      padding: 10px 12px;
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 7.5px;
     }
 
     .field-row {
@@ -445,14 +501,14 @@ export async function GET(
       justify-content: space-between;
       align-items: baseline;
       border-bottom: 1px dashed #f1f5f9;
-      padding-bottom: 3px;
+      padding-bottom: 4px;
     }
     .field-row:last-child {
       border-bottom: none;
       padding-bottom: 0;
     }
     .field-key {
-      font-size: 8.5px;
+      font-size: 9px;
       font-weight: 600;
       color: #64748b;
       text-transform: uppercase;
@@ -461,7 +517,7 @@ export async function GET(
       margin-right: 8px;
     }
     .field-val {
-      font-size: 9.5px;
+      font-size: 10px;
       font-weight: 600;
       color: #0f172a;
       text-align: right;
@@ -470,31 +526,10 @@ export async function GET(
       font-weight: 700;
       color: #081B33;
     }
-
-    /* Verified Micro-Tags */
-    .tag-verified {
-      display: inline-block;
-      font-size: 7.5px;
-      font-weight: 800;
-      color: #15803d;
-      background: #f0fdf4;
-      border: 0.5px solid #86efac;
-      padding: 0.5px 4px;
-      border-radius: 3px;
-      margin-left: 4px;
-      vertical-align: middle;
-    }
-    .tag-unverified {
-      display: inline-block;
-      font-size: 7.5px;
-      font-weight: 700;
-      color: #9a3412;
-      background: #fff7ed;
-      border: 0.5px solid #fdba74;
-      padding: 0.5px 4px;
-      border-radius: 3px;
-      margin-left: 4px;
-      vertical-align: middle;
+    .font-mono {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 10px;
+      letter-spacing: 0.4px;
     }
 
     /* Full-Width Overview Bar */
@@ -503,58 +538,58 @@ export async function GET(
       border: 1px solid #e2e8f0;
       border-radius: 6px;
       overflow: hidden;
-      margin-bottom: 8px;
+      margin-bottom: 11px;
     }
     .summary-grid {
-      padding: 7px 10px;
+      padding: 10px 14px;
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
+      gap: 10px;
       background: #f8fafc;
     }
     .summary-item {
       border-right: 1px solid #e2e8f0;
-      padding-right: 6px;
+      padding-right: 8px;
     }
     .summary-item:last-child {
       border-right: none;
     }
     .summary-title {
-      font-size: 7.5px;
+      font-size: 8px;
       font-weight: 800;
       color: #64748b;
       text-transform: uppercase;
       letter-spacing: 0.4px;
     }
     .summary-val {
-      font-size: 9.5px;
+      font-size: 10.5px;
       font-weight: 700;
       color: #081B33;
-      margin-top: 2px;
-      line-height: 1.2;
+      margin-top: 3px;
+      line-height: 1.25;
     }
     .summary-sub {
-      font-size: 7.5px;
+      font-size: 8px;
       color: #64748b;
-      margin-top: 1px;
+      margin-top: 2px;
     }
 
-    /* Official Attestation & Dual Signatures Block */
+    /* Attestation & Dual Signatures Block */
     .attestation-section {
       background: #FDFBF6;
-      border: 1px solid #E8D4A8;
+      border: 1.5px solid #E8D4A8;
       border-radius: 6px;
-      padding: 8px 12px;
+      padding: 10px 14px;
       margin-top: auto;
     }
     .attestation-statement {
-      font-size: 8px;
+      font-size: 8.5px;
       color: #475569;
-      line-height: 1.35;
+      line-height: 1.4;
       text-align: justify;
-      margin-bottom: 7px;
+      margin-bottom: 8px;
       border-bottom: 1px dashed #d1c5b0;
-      padding-bottom: 5px;
+      padding-bottom: 6px;
     }
 
     .signatures-row {
@@ -562,41 +597,47 @@ export async function GET(
       justify-content: space-between;
       align-items: flex-end;
       gap: 16px;
+      padding-top: 4px;
     }
     .sig-col {
       flex: 1;
       text-align: center;
     }
-    .sig-script {
-      font-family: 'Comic Neue', cursive;
-      font-size: 15px;
-      font-weight: 700;
+    .font-signature {
+      font-family: 'Great Vibes', 'Caveat', cursive;
+      font-size: 24px;
+      font-weight: 500;
       color: #081B33;
       margin-bottom: 2px;
-      line-height: 1;
+      line-height: 1.1;
       letter-spacing: 0.5px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .sig-line {
       width: 85%;
-      height: 1px;
+      height: 1.2px;
       background: #081B33;
-      margin: 2px auto 3px auto;
+      margin: 2px auto 4px auto;
     }
     .sig-name {
-      font-size: 8.5px;
+      font-size: 9px;
       font-weight: 800;
       color: #081B33;
-      text-transform: uppercase;
       letter-spacing: 0.3px;
     }
     .sig-role {
-      font-size: 7.5px;
-      font-weight: 600;
+      font-size: 8px;
+      font-weight: 700;
       color: #0369a1;
+      margin-top: 1px;
     }
     .sig-dept {
-      font-size: 6.5px;
+      font-size: 7px;
       color: #64748b;
+      margin-top: 1px;
     }
 
     /* Official Embossed Seal Motif */
@@ -609,8 +650,8 @@ export async function GET(
       flex-shrink: 0;
     }
     .seal-badge {
-      width: 44px;
-      height: 44px;
+      width: 46px;
+      height: 46px;
       border-radius: 50%;
       border: 2px dashed #C5A059;
       background: #ffffff;
@@ -621,27 +662,27 @@ export async function GET(
       box-shadow: inset 0 0 0 2px rgba(8, 27, 51, 0.05);
     }
     .seal-text-top {
-      font-size: 5px;
+      font-size: 5.5px;
       font-weight: 900;
       color: #081B33;
       letter-spacing: 0.5px;
     }
     .seal-star {
-      font-size: 9px;
+      font-size: 10px;
       color: #C5A059;
       line-height: 1;
     }
     .seal-text-bot {
-      font-size: 5px;
+      font-size: 5.5px;
       font-weight: 800;
       color: #b45309;
     }
 
-    /* Micro Footer & Tamper Notice */
+    /* Micro Footer & Audit Trail */
     .cert-footer {
       border-top: 1px solid #cbd5e1;
-      padding-top: 4px;
-      margin-top: 5px;
+      padding-top: 5px;
+      margin-top: 6px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -654,7 +695,7 @@ export async function GET(
       color: #081B33;
     }
 
-    /* Strict Print Styles */
+    /* Print Setup */
     @media print {
       body {
         background: #ffffff !important;
@@ -674,7 +715,7 @@ export async function GET(
         height: 278mm !important;
         max-height: 278mm !important;
         margin: 0 !important;
-        padding: 8mm 9mm !important;
+        padding: 9mm 10mm !important;
         overflow: hidden !important;
         page-break-inside: avoid !important;
         page-break-after: avoid !important;
@@ -712,14 +753,19 @@ export async function GET(
       <div class="watermark">CCSA VERIFIED</div>
 
       <div class="content-area">
-        <!-- 1. Institutional Authority Header -->
+        <!-- 1. Header with Dual Logos -->
         <div class="header">
-          <div class="header-top">
-            ${logoBase64 ? `<img src="${logoBase64}" class="logo-img" alt="Cosmopolitan University / CCSA Logo" />` : ''}
+          <div class="header-dual-logos">
+            <div class="header-logo-wrap left-logo">
+              ${certLogoBase64 ? `<img src="${certLogoBase64}" class="logo-img" alt="Cosmopolitan University Logo" />` : ''}
+            </div>
             <div class="header-titles">
               <h1 class="org-title">Centre for Climate-Smart Agriculture</h1>
               <div class="org-sub">Cosmopolitan University Abuja</div>
               <div class="org-tagline">CCSA / AGROMONEY • Energy & Rural Development Registry</div>
+            </div>
+            <div class="header-logo-wrap right-logo">
+              ${ccsaLogoBase64 ? `<img src="${ccsaLogoBase64}" class="logo-img" alt="CCSA Logo" />` : ''}
             </div>
           </div>
           <div class="gold-divider"></div>
@@ -732,15 +778,12 @@ export async function GET(
           <div class="id-left">
             <div class="id-label">Official Dwelling Identification Code</div>
             <div class="id-code">${household.houseNumber}</div>
-            <div class="id-badges">
-              <span class="badge-status">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-                ${household.interventionStatus || 'Confirmed & Active'}
-              </span>
-              <span class="badge-meta">Issued: <strong>${issueDate}</strong></span>
-              <span class="badge-meta">• Reg: ${registeredDate}</span>
+            <div class="id-meta-row">
+              <span class="meta-item">Issued: <strong>${issueDate}</strong></span>
+              <span class="meta-dot">•</span>
+              <span class="meta-item">Registered: <strong>${registeredDate}</strong></span>
+              <span class="meta-dot">•</span>
+              <span class="meta-item">Registry Ref: <strong>${household.id.slice(-8).toUpperCase()}</strong></span>
             </div>
           </div>
           <div class="id-qr">
@@ -758,34 +801,28 @@ export async function GET(
           <div class="data-card">
             <div class="card-header navy-accent">
               <span>Head of Household Credentials</span>
-              <span style="font-size:7.5px; opacity:0.8;">Primary Contact</span>
+              <span class="header-tag">Primary Contact</span>
             </div>
             <div class="card-body">
               <div class="field-row">
                 <span class="field-key">Full Legal Name</span>
-                <span class="field-val"><strong>${fullName}</strong></span>
+                <span class="field-val"><strong>${formattedFullName}</strong></span>
               </div>
               <div class="field-row">
                 <span class="field-key">National ID (NIN)</span>
-                <span class="field-val">
-                  ${household.headNin || 'N/A'}
-                  ${household.headNinVerified ? '<span class="tag-verified">✓ NIMC Verified</span>' : '<span class="tag-unverified">Unverified</span>'}
-                </span>
+                <span class="field-val font-mono">${household.headNin || 'Not Provided'}</span>
               </div>
               <div class="field-row">
                 <span class="field-key">Primary Phone</span>
-                <span class="field-val">
-                  ${household.headPhone || 'N/A'}
-                  ${household.headPhoneVerified ? '<span class="tag-verified">✓ OTP Validated</span>' : '<span class="tag-unverified">Unverified</span>'}
-                </span>
+                <span class="field-val font-mono">${household.headPhone || 'Not Provided'}</span>
               </div>
               <div class="field-row">
-                <span class="field-key">Gender / Status</span>
-                <span class="field-val">${household.headGender || 'MALE'} • ${household.headMaritalStatus || 'MARRIED'}</span>
+                <span class="field-key">Gender & Status</span>
+                <span class="field-val">${formattedGender} • ${formattedMarital}</span>
               </div>
               <div class="field-row">
                 <span class="field-key">Occupation</span>
-                <span class="field-val">${household.headEmploymentStatus || 'Self-Employed / Farming'}</span>
+                <span class="field-val">${formattedOccupation}</span>
               </div>
             </div>
           </div>
@@ -794,31 +831,29 @@ export async function GET(
           <div class="data-card">
             <div class="card-header gold-accent">
               <span>Dwelling Spatial Georeference</span>
-              <span style="font-size:7.5px; opacity:0.8;">GPS Audited</span>
+              <span class="header-tag">GPS Audited</span>
             </div>
             <div class="card-body">
               <div class="field-row">
                 <span class="field-key">Physical Address</span>
-                <span class="field-val"><strong>${household.address || 'Designated Community Settlement'}</strong></span>
+                <span class="field-val"><strong>${formattedAddress}</strong></span>
               </div>
               <div class="field-row">
-                <span class="field-key">State / LGA / Ward</span>
-                <span class="field-val">${household.state} • ${household.lga} • ${household.ward}</span>
+                <span class="field-key">State & LGA</span>
+                <span class="field-val"><strong>${formattedState}</strong> • <strong>${formattedLga}</strong></span>
+              </div>
+              <div class="field-row">
+                <span class="field-key">Ward Boundary</span>
+                <span class="field-val"><strong>${formattedWard}</strong></span>
               </div>
               <div class="field-row">
                 <span class="field-key">INEC Polling Unit</span>
-                <span class="field-val">${formatPollingUnit(household.pollingUnit)}</span>
+                <span class="field-val">${formattedPollingUnit}</span>
               </div>
               <div class="field-row">
-                <span class="field-key">GPS Coordinates</span>
-                <span class="field-val" style="font-family: monospace; font-size: 8.5px;">
-                  ${household.latitude && household.longitude ? `${household.latitude.toFixed(6)}°N, ${household.longitude.toFixed(6)}°E` : 'Geolocated'}
-                </span>
-              </div>
-              <div class="field-row">
-                <span class="field-key">Location Reference</span>
-                <span class="field-val" style="font-size: 8px; color: #475569;">
-                  ${household.gpsAddress ? household.gpsAddress.slice(0, 36) : 'Verified on field by GPS capture'}
+                <span class="field-key">GPS Georeference</span>
+                <span class="field-val font-mono">
+                  ${household.latitude && household.longitude ? `${household.latitude.toFixed(6)}° N, ${household.longitude.toFixed(6)}° E` : 'Geolocated'}
                 </span>
               </div>
             </div>
@@ -827,32 +862,32 @@ export async function GET(
 
         <!-- 4. Energy, Connectivity & Demographic Summary Bar -->
         <div class="full-card">
-          <div class="card-header" style="background:#0f172a; border-left: 3px solid #10b981;">
-            <span>Dwelling Profile, Productive Energy & Connectivity</span>
-            <span style="font-size:7.5px; opacity:0.8;">Baseline Survey Metrics</span>
+          <div class="card-header" style="background:#0f172a; border-left: 3.5px solid #10b981;">
+            <span>Dwelling Profile, Productive Energy & Infrastructure</span>
+            <span class="header-tag">Baseline Survey Metrics</span>
           </div>
           <div class="summary-grid">
             <div class="summary-item">
-              <div class="summary-title">Household Size</div>
+              <div class="summary-title">Household Occupancy</div>
               <div class="summary-val">${household.totalHouseholdMembers || 1} Residents</div>
-              <div class="summary-sub">${household.wivesCount} Wives, ${household.childrenCount} Children</div>
+              <div class="summary-sub">${household.wivesCount || 0} Wives • ${household.childrenCount || 0} Children</div>
             </div>
             <div class="summary-item">
               <div class="summary-title">Primary Energy Source</div>
-              <div class="summary-val">${household.primaryEnergySource || 'National Grid / Mini-Grid'}</div>
+              <div class="summary-val">${formattedEnergy}</div>
               <div class="summary-sub">Power Access Baseline</div>
             </div>
             <div class="summary-item">
               <div class="summary-title">Productive Power (PUE)</div>
               <div class="summary-val" style="color: ${household.hasPUE ? '#059669' : '#081B33'};">
-                ${household.hasPUE ? (household.pueType || 'Active Equipment') : 'Residential Only'}
+                ${formattedPue}
               </div>
-              <div class="summary-sub">${household.pueEquipment?.length ? household.pueEquipment.join(', ') : 'Dwelling Infrastructure'}</div>
+              <div class="summary-sub">${household.pueEquipment?.length ? toTitleCase(household.pueEquipment.join(', ')) : 'Standard Domestic Load'}</div>
             </div>
             <div class="summary-item">
               <div class="summary-title">Telecommunications</div>
               <div class="summary-val">${household.telcoProviders?.length ? household.telcoProviders.join(', ') : 'MTN / Airtel'}</div>
-              <div class="summary-sub">Coverage: ${household.networkType || '4G / GSM Active'}</div>
+              <div class="summary-sub">Network: ${household.networkType || '4G / GSM Active'}</div>
             </div>
           </div>
         </div>
@@ -864,16 +899,16 @@ export async function GET(
           </div>
 
           <div class="signatures-row">
-            <!-- Left: Project Director -->
+            <!-- Left: Cluster Lead -->
             <div class="sig-col">
-              <div class="sig-script">Prof. Ibrahim K. G.</div>
+              <div class="sig-script font-signature">${clusterLeadSig}</div>
               <div class="sig-line"></div>
-              <div class="sig-name">Project Director</div>
-              <div class="sig-role">Centre for Climate-Smart Agriculture (CCSA)</div>
-              <div class="sig-dept">Cosmopolitan University Abuja</div>
+              <div class="sig-name">${formattedClusterLead}</div>
+              <div class="sig-role">Cluster Lead</div>
+              <div class="sig-dept">CCSA Field Operations Authority</div>
             </div>
 
-            <!-- Centre: Institutional Seal -->
+            <!-- Centre: Institutional Gold Seal -->
             <div class="official-seal-col">
               <div class="seal-badge">
                 <span class="seal-text-top">OFFICIAL</span>
@@ -882,24 +917,24 @@ export async function GET(
               </div>
             </div>
 
-            <!-- Right: Field Enumerator -->
+            <!-- Right: Center CEO -->
             <div class="sig-col">
-              <div class="sig-script">${agentName}</div>
+              <div class="sig-script font-signature">Dr. R. A. Kanya</div>
               <div class="sig-line"></div>
-              <div class="sig-name">${agentName}</div>
-              <div class="sig-role">Chief Field Enumerator / Officer</div>
-              <div class="sig-dept">Field Reg Ref: ${household.agentId ? household.agentId.slice(-8).toUpperCase() : 'CCSA-FIELD'}</div>
+              <div class="sig-name">Dr. Rislan Abdulaziz Kanya</div>
+              <div class="sig-role">Centre CEO</div>
+              <div class="sig-dept">Centre for Climate-Smart Agriculture (CCSA)</div>
             </div>
           </div>
         </div>
 
-        <!-- 6. Audit & Security Stamp Bar -->
+        <!-- 6. Micro-Audit Reference Footer -->
         <div class="cert-footer">
           <div>
             DOC REF: <span class="footer-audit">CCSA-DWEL-${household.id.slice(-10).toUpperCase()}</span> • Issued: ${issueDate}
           </div>
           <div style="font-style: italic; opacity: 0.85;">
-            Tamper-evident official document. Scan QR or visit <span style="font-family: monospace;">fims.cosmopolitan.edu.ng/verify-dwelling</span> to inspect authenticity.
+            Tamper-evident official document. Scan QR to inspect live credentials on <span style="font-family: monospace;">fims.cosmopolitan.edu.ng</span>
           </div>
           <div>
             PAGE 1 OF 1 (OFFICIAL)
