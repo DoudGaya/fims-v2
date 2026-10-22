@@ -47,6 +47,7 @@ import {
   ArrowPathIcon,
   PlusIcon,
   TrashIcon,
+  DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 
 export default function HouseholdsDirectoryPage() {
@@ -392,7 +393,7 @@ export default function HouseholdsDirectoryPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-[#F8FAFC] dark:bg-gray-800/80 border-b border-[#DCEAF3] dark:border-gray-700">
-                <TableHead className="w-[160px] font-semibold">House Number</TableHead>
+                <TableHead className="w-40 font-semibold">House Number</TableHead>
                 <TableHead className="font-semibold">House Leader & NIN</TableHead>
                 <TableHead className="font-semibold">Location</TableHead>
                 <TableHead className="font-semibold text-center">Dependents</TableHead>
@@ -558,6 +559,17 @@ export default function HouseholdsDirectoryPage() {
                           <Link href={`/households/${h.id}`}>
                             <EyeIcon className="size-4 mr-1" /> View
                           </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          asChild
+                          className="h-8 px-2 text-[#081B33] hover:text-[#0369a1] hover:bg-slate-100"
+                          title="Print / View Official Dwelling Document"
+                        >
+                          <a href={`/api/households/${h.id}/document`} target="_blank" rel="noopener noreferrer">
+                            <DocumentTextIcon className="size-4 mr-1 text-slate-600" /> Slip
+                          </a>
                         </Button>
                         <Button
                           variant="ghost"

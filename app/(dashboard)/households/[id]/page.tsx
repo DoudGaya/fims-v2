@@ -50,6 +50,8 @@ import {
   GlobeAltIcon,
   PhotoIcon,
   TrashIcon,
+  DocumentTextIcon,
+  PrinterIcon,
 } from '@heroicons/react/24/outline';
 
 export default function HouseholdDetailPage() {
@@ -242,6 +244,30 @@ export default function HouseholdDetailPage() {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+
+          <Button
+            variant="default"
+            size="sm"
+            className="bg-[#013358] hover:bg-[#024474] text-white shadow-sm"
+            onClick={() => window.open(`/api/households/${id}/document`, '_blank')}
+          >
+            <DocumentTextIcon className="mr-1.5 size-4" /> Official Dwelling Document
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            asChild
+            className="border-emerald-200 text-emerald-800 hover:bg-emerald-50"
+          >
+            <a
+              href={`/verify-dwelling/${household.houseNumber}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <CheckCircleIcon className="mr-1.5 size-4 text-emerald-600" /> Verify Public URL
+            </a>
+          </Button>
 
           <Button
             variant="outline"
