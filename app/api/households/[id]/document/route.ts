@@ -62,11 +62,11 @@ export async function GET(
     const baseUrl = `${proto}://${host}`;
     const verificationUrl = `${baseUrl}/verify-dwelling/${household.houseNumber}`;
 
-    // Generate high-definition QR Code
+    // Generate high-resolution QR Code
     const qrCodeDataUrl = await QRCode.toDataURL(verificationUrl, {
-      errorCorrectionLevel: 'M',
+      errorCorrectionLevel: 'H',
       margin: 1,
-      width: 220,
+      width: 280,
       color: {
         dark: '#081B33',
         light: '#FFFFFF',
@@ -74,7 +74,7 @@ export async function GET(
     });
 
     // Lookup cluster lead for this location
-    let clusterLeadName = 'M. B. Garkida';
+    let clusterLeadName = 'Sadiq Abdulaziz';
     try {
       const cluster = await prisma.cluster.findFirst({
         where: {
@@ -121,7 +121,7 @@ export async function GET(
       year: 'numeric',
     });
 
-    // Capitalized Location Hierarchy
+    // Capitalized Location & Demographic details
     const formattedState = toTitleCase(household.state);
     const formattedLga = toTitleCase(household.lga);
     const formattedWard = toTitleCase(household.ward);
@@ -130,7 +130,7 @@ export async function GET(
     const formattedGender = toTitleCase(household.headGender || 'Male');
     const formattedMarital = toTitleCase(household.headMaritalStatus || 'Married');
     const formattedOccupation = toTitleCase(household.headEmploymentStatus || 'Self-Employed / Farming');
-    const formattedEnergy = toTitleCase(household.primaryEnergySource || 'National Grid / Standalone Solar');
+    const formattedEnergy = toTitleCase(household.primaryEnergySource || 'National Grid / Solar');
     const formattedPue = household.hasPUE ? toTitleCase(household.pueType || 'Active Equipment') : 'Residential Only';
 
     const html = `<!DOCTYPE html>
@@ -162,9 +162,9 @@ export async function GET(
       -webkit-font-smoothing: antialiased;
     }
 
-    /* Screen Wrap */
+    /* Screen Wrapper */
     .screen-wrap {
-      padding: 24px 12px;
+      padding: 20px 10px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -173,7 +173,7 @@ export async function GET(
     .actions-bar {
       width: 100%;
       max-width: 196mm;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
       display: flex;
       justify-content: flex-end;
       gap: 10px;
@@ -184,7 +184,7 @@ export async function GET(
       background: #081B33;
       color: #ffffff;
       border: 1px solid #081B33;
-      padding: 9px 18px;
+      padding: 8px 18px;
       font-size: 13px;
       font-weight: 600;
       border-radius: 6px;
@@ -207,21 +207,18 @@ export async function GET(
       background: #f1f5f9;
     }
 
-    /* Rigid A4 Certificate Container */
+    /* Rigid Single-Page A4 Certificate Container */
     .certificate-sheet {
       width: 196mm;
-      min-height: 278mm;
-      max-height: 278mm;
       background: #ffffff;
       position: relative;
       margin: 0 auto;
-      padding: 11mm 12mm;
+      padding: 8mm 10mm;
       box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
       border-radius: 4px;
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
       page-break-inside: avoid;
       page-break-after: avoid;
     }
@@ -229,20 +226,20 @@ export async function GET(
     /* Classical Security Framing */
     .security-border {
       position: absolute;
-      top: 3.5mm;
-      left: 3.5mm;
-      right: 3.5mm;
-      bottom: 3.5mm;
+      top: 3mm;
+      left: 3mm;
+      right: 3mm;
+      bottom: 3mm;
       border: 2px solid #081B33;
       border-radius: 6px;
       pointer-events: none;
     }
     .security-inner-border {
       position: absolute;
-      top: 5.2mm;
-      left: 5.2mm;
-      right: 5.2mm;
-      bottom: 5.2mm;
+      top: 4.5mm;
+      left: 4.5mm;
+      right: 4.5mm;
+      bottom: 4.5mm;
       border: 1px solid #C5A059;
       border-radius: 4px;
       pointer-events: none;
@@ -251,23 +248,23 @@ export async function GET(
     /* Corner Security Accents */
     .corner-ornament {
       position: absolute;
-      width: 15px;
-      height: 15px;
+      width: 14px;
+      height: 14px;
       border-color: #081B33;
       pointer-events: none;
     }
-    .corner-tl { top: 6mm; left: 6mm; border-top: 2.5px solid #081B33; border-left: 2.5px solid #081B33; }
-    .corner-tr { top: 6mm; right: 6mm; border-top: 2.5px solid #081B33; border-right: 2.5px solid #081B33; }
-    .corner-bl { bottom: 6mm; left: 6mm; border-bottom: 2.5px solid #081B33; border-left: 2.5px solid #081B33; }
-    .corner-br { bottom: 6mm; right: 6mm; border-bottom: 2.5px solid #081B33; border-right: 2.5px solid #081B33; }
+    .corner-tl { top: 5mm; left: 5mm; border-top: 2px solid #081B33; border-left: 2px solid #081B33; }
+    .corner-tr { top: 5mm; right: 5mm; border-top: 2px solid #081B33; border-right: 2px solid #081B33; }
+    .corner-bl { bottom: 5mm; left: 5mm; border-bottom: 2px solid #081B33; border-left: 2px solid #081B33; }
+    .corner-br { bottom: 5mm; right: 5mm; border-bottom: 2px solid #081B33; border-right: 2px solid #081B33; }
 
-    /* Watermark */
+    /* Security Watermark */
     .watermark {
       position: absolute;
-      top: 50%;
+      top: 48%;
       left: 50%;
       transform: translate(-50%, -50%) rotate(-30deg);
-      font-size: 88px;
+      font-size: 80px;
       font-weight: 900;
       letter-spacing: 12px;
       color: rgba(8, 27, 51, 0.024);
@@ -282,8 +279,6 @@ export async function GET(
       z-index: 1;
       display: flex;
       flex-direction: column;
-      height: 100%;
-      justify-content: space-between;
     }
 
     /* Header Section with Dual Logos */
@@ -295,11 +290,11 @@ export async function GET(
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 14px;
+      gap: 12px;
     }
     .header-logo-wrap {
-      width: 70px;
-      height: 60px;
+      width: 65px;
+      height: 52px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -312,8 +307,8 @@ export async function GET(
       justify-content: flex-end;
     }
     .logo-img {
-      max-width: 68px;
-      max-height: 58px;
+      max-width: 65px;
+      max-height: 50px;
       object-fit: contain;
     }
     .header-titles {
@@ -321,257 +316,190 @@ export async function GET(
       text-align: center;
     }
     .org-title {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 900;
       color: #081B33;
       letter-spacing: 0.6px;
       text-transform: uppercase;
       margin: 0;
-      line-height: 1.2;
+      line-height: 1.15;
     }
     .org-sub {
-      font-size: 12px;
+      font-size: 11.5px;
       font-weight: 700;
       color: #0369a1;
       margin-top: 1.5px;
       letter-spacing: 0.3px;
     }
     .org-tagline {
-      font-size: 9px;
+      font-size: 8.5px;
       font-weight: 800;
       color: #b45309;
-      letter-spacing: 0.9px;
+      letter-spacing: 0.8px;
       text-transform: uppercase;
-      margin-top: 2px;
+      margin-top: 1.5px;
     }
 
     .gold-divider {
       height: 2px;
       background: linear-gradient(90deg, transparent, #C5A059, #081B33, #C5A059, transparent);
-      margin: 7px auto 5px auto;
-      width: 82%;
+      margin: 6px auto 5px auto;
+      width: 85%;
     }
 
     .doc-main-title {
-      font-size: 14.5px;
+      font-size: 13.5px;
       font-weight: 900;
       color: #081B33;
-      letter-spacing: 1px;
+      letter-spacing: 0.8px;
       text-transform: uppercase;
-      margin: 2px 0 0 0;
+      margin: 0;
     }
     .doc-caption {
-      font-size: 9.5px;
+      font-size: 9px;
       color: #64748b;
       font-weight: 500;
       letter-spacing: 0.2px;
       margin-top: 1px;
     }
 
-    /* Identification Banner (House Code + Dates + QR) */
-    .id-banner {
-      background: #FDFBF6;
-      border: 1.5px solid #E8D4A8;
-      border-radius: 6px;
-      padding: 10px 14px;
-      margin: 9px 0 11px 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
+    /* Structured Credential Tables */
+    .ledger-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 7px;
     }
-    .id-left {
-      flex: 1;
-      min-width: 0;
-    }
-    .id-label {
-      font-size: 9px;
-      font-weight: 800;
-      color: #854d0e;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-    }
-    .id-code {
-      font-family: 'Courier New', Courier, monospace;
-      font-size: 20px;
-      font-weight: 900;
-      color: #081B33;
-      letter-spacing: 0.8px;
-      margin: 3px 0 4px 0;
-      white-space: nowrap;
-    }
-    .id-meta-row {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      font-size: 9px;
-      color: #475569;
-      font-weight: 500;
-    }
-    .meta-item strong {
-      font-weight: 700;
-      color: #081B33;
-    }
-    .meta-dot {
-      color: #cbd5e1;
-      font-weight: 900;
-    }
-
-    .id-qr {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: #ffffff;
-      padding: 4px 8px;
-      border-radius: 5px;
-      border: 1px solid #cbd5e1;
-      flex-shrink: 0;
-    }
-    .qr-img {
-      width: 60px;
-      height: 60px;
-      display: block;
-    }
-    .qr-text {
-      max-width: 95px;
-      line-height: 1.25;
-    }
-    .qr-title {
-      font-size: 8px;
-      font-weight: 900;
-      color: #081B33;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-    }
-    .qr-sub {
-      font-size: 7px;
-      color: #64748b;
-      margin-top: 1px;
-    }
-
-    /* Core Data Cards Grid (2-Column) */
-    .grid-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 11px;
-      margin-bottom: 10px;
-    }
-
-    .data-card {
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      overflow: hidden;
-    }
-    .card-header {
+    .ledger-table th {
       background: #081B33;
       color: #ffffff;
-      padding: 6px 12px;
-      font-size: 9.5px;
-      font-weight: 800;
-      letter-spacing: 0.6px;
-      text-transform: uppercase;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .card-header.gold-accent {
-      background: #1e293b;
-      border-left: 3.5px solid #C5A059;
-    }
-    .card-header.navy-accent {
-      background: #081B33;
-      border-left: 3.5px solid #0284c7;
-    }
-    .header-tag {
-      font-size: 7.5px;
-      opacity: 0.85;
-      font-weight: 600;
-    }
-
-    .card-body {
-      padding: 10px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 7.5px;
-    }
-
-    .field-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      border-bottom: 1px dashed #f1f5f9;
-      padding-bottom: 4px;
-    }
-    .field-row:last-child {
-      border-bottom: none;
-      padding-bottom: 0;
-    }
-    .field-key {
       font-size: 9px;
-      font-weight: 600;
-      color: #64748b;
+      font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: 0.3px;
-      flex-shrink: 0;
-      margin-right: 8px;
+      letter-spacing: 0.5px;
+      padding: 4.5px 8px;
+      text-align: left;
+      border: 1px solid #081B33;
     }
-    .field-val {
-      font-size: 10px;
+    .ledger-table th.gold-header {
+      background: #1e293b;
+      border-left: 3px solid #C5A059;
+    }
+    .ledger-table th.green-header {
+      background: #0f172a;
+      border-left: 3px solid #10b981;
+    }
+    .ledger-table td {
+      padding: 4.5px 8px;
+      font-size: 9.5px;
+      border: 1px solid #e2e8f0;
+      vertical-align: middle;
+    }
+    .cell-label {
+      width: 28%;
+      background: #f8fafc;
+      font-weight: 600;
+      color: #475569;
+      text-transform: uppercase;
+      font-size: 8.5px;
+      letter-spacing: 0.3px;
+    }
+    .cell-val {
       font-weight: 600;
       color: #0f172a;
-      text-align: right;
     }
-    .field-val strong {
+    .cell-val strong {
       font-weight: 700;
       color: #081B33;
     }
     .font-mono {
       font-family: 'Courier New', Courier, monospace;
-      font-size: 10px;
       letter-spacing: 0.4px;
     }
 
-    /* Full-Width Overview Bar */
-    .full-card {
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
+    /* Big Prominent Verification Section (With Dwelling Code below QR) */
+    .verification-section {
+      background: #FDFBF6;
+      border: 1.5px solid #E8D4A8;
       border-radius: 6px;
-      overflow: hidden;
-      margin-bottom: 11px;
-    }
-    .summary-grid {
       padding: 10px 14px;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      background: #f8fafc;
+      margin-top: 8px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
     }
-    .summary-item {
-      border-right: 1px solid #e2e8f0;
-      padding-right: 8px;
+    .qr-column {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 6px 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    .summary-item:last-child {
-      border-right: none;
+    .qr-large-img {
+      width: 100px;
+      height: 100px;
+      display: block;
     }
-    .summary-title {
-      font-size: 8px;
+    .qr-code-label {
+      font-size: 7.5px;
       font-weight: 800;
-      color: #64748b;
+      color: #854d0e;
       text-transform: uppercase;
-      letter-spacing: 0.4px;
+      letter-spacing: 0.6px;
+      margin-top: 4px;
     }
-    .summary-val {
-      font-size: 10.5px;
-      font-weight: 700;
+    .qr-dwelling-code {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 13px;
+      font-weight: 900;
       color: #081B33;
-      margin-top: 3px;
-      line-height: 1.25;
+      letter-spacing: 0.8px;
+      margin-top: 1px;
+      white-space: nowrap;
     }
-    .summary-sub {
+
+    .verification-info {
+      flex: 1;
+    }
+    .ver-title {
+      font-size: 10px;
+      font-weight: 900;
+      color: #081B33;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin: 0 0 3px 0;
+    }
+    .ver-desc {
+      font-size: 8.5px;
+      color: #475569;
+      line-height: 1.4;
+      margin: 0 0 5px 0;
+    }
+    .ver-url-box {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 3px 7px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 8.5px;
+      font-weight: 700;
+      color: #0369a1;
+      word-break: break-all;
+    }
+    .ver-meta-row {
+      margin-top: 5px;
+      display: flex;
+      gap: 12px;
       font-size: 8px;
       color: #64748b;
-      margin-top: 2px;
+      font-weight: 600;
+    }
+    .ver-meta-row strong {
+      color: #081B33;
     }
 
     /* Attestation & Dual Signatures Block */
@@ -579,25 +507,24 @@ export async function GET(
       background: #FDFBF6;
       border: 1.5px solid #E8D4A8;
       border-radius: 6px;
-      padding: 10px 14px;
-      margin-top: auto;
+      padding: 8px 12px;
+      margin-top: 8px;
     }
     .attestation-statement {
-      font-size: 8.5px;
+      font-size: 8px;
       color: #475569;
-      line-height: 1.4;
+      line-height: 1.35;
       text-align: justify;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       border-bottom: 1px dashed #d1c5b0;
-      padding-bottom: 6px;
+      padding-bottom: 4px;
     }
 
     .signatures-row {
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
-      gap: 16px;
-      padding-top: 4px;
+      gap: 14px;
     }
     .sig-col {
       flex: 1;
@@ -605,37 +532,36 @@ export async function GET(
     }
     .font-signature {
       font-family: 'Great Vibes', 'Caveat', cursive;
-      font-size: 24px;
+      font-size: 22px;
       font-weight: 500;
       color: #081B33;
-      margin-bottom: 2px;
-      line-height: 1.1;
-      letter-spacing: 0.5px;
-      height: 28px;
+      margin-bottom: 1px;
+      line-height: 1;
+      height: 24px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
     .sig-line {
-      width: 85%;
+      width: 82%;
       height: 1.2px;
       background: #081B33;
-      margin: 2px auto 4px auto;
+      margin: 2px auto 3px auto;
     }
     .sig-name {
-      font-size: 9px;
+      font-size: 8.5px;
       font-weight: 800;
       color: #081B33;
       letter-spacing: 0.3px;
     }
     .sig-role {
-      font-size: 8px;
+      font-size: 7.5px;
       font-weight: 700;
       color: #0369a1;
       margin-top: 1px;
     }
     .sig-dept {
-      font-size: 7px;
+      font-size: 6.5px;
       color: #64748b;
       margin-top: 1px;
     }
@@ -646,12 +572,12 @@ export async function GET(
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      width: 78px;
+      width: 65px;
       flex-shrink: 0;
     }
     .seal-badge {
-      width: 46px;
-      height: 46px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       border: 2px dashed #C5A059;
       background: #ffffff;
@@ -662,27 +588,27 @@ export async function GET(
       box-shadow: inset 0 0 0 2px rgba(8, 27, 51, 0.05);
     }
     .seal-text-top {
-      font-size: 5.5px;
+      font-size: 5px;
       font-weight: 900;
       color: #081B33;
       letter-spacing: 0.5px;
     }
     .seal-star {
-      font-size: 10px;
+      font-size: 9px;
       color: #C5A059;
       line-height: 1;
     }
     .seal-text-bot {
-      font-size: 5.5px;
+      font-size: 5px;
       font-weight: 800;
       color: #b45309;
     }
 
-    /* Micro Footer & Audit Trail */
+    /* Micro Footer */
     .cert-footer {
       border-top: 1px solid #cbd5e1;
-      padding-top: 5px;
-      margin-top: 6px;
+      padding-top: 4px;
+      margin-top: 5px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -695,7 +621,7 @@ export async function GET(
       color: #081B33;
     }
 
-    /* Print Setup */
+    /* Print Setup: Strictly fits 1 Page */
     @media print {
       body {
         background: #ffffff !important;
@@ -712,10 +638,10 @@ export async function GET(
         border-radius: 0 !important;
         width: 100% !important;
         max-width: 100% !important;
-        height: 278mm !important;
+        height: auto !important;
         max-height: 278mm !important;
         margin: 0 !important;
-        padding: 9mm 10mm !important;
+        padding: 6mm 8mm !important;
         overflow: hidden !important;
         page-break-inside: avoid !important;
         page-break-after: avoid !important;
@@ -753,11 +679,11 @@ export async function GET(
       <div class="watermark">CCSA VERIFIED</div>
 
       <div class="content-area">
-        <!-- 1. Header with Dual Logos -->
+        <!-- 1. Institutional Authority Header with Dual Logos -->
         <div class="header">
           <div class="header-dual-logos">
             <div class="header-logo-wrap left-logo">
-              ${certLogoBase64 ? `<img src="${certLogoBase64}" class="logo-img" alt="Cosmopolitan University Logo" />` : ''}
+              ${certLogoBase64 ? `<img src="${certLogoBase64}" class="logo-img" alt="Cosmopolitan University" />` : ''}
             </div>
             <div class="header-titles">
               <h1 class="org-title">Centre for Climate-Smart Agriculture</h1>
@@ -769,130 +695,125 @@ export async function GET(
             </div>
           </div>
           <div class="gold-divider"></div>
-          <div class="doc-main-title">Official Dwelling Identification Certificate</div>
-          <div class="doc-caption">National Household Georeferencing, Demographics & Energy Survey Registry</div>
+          <div class="doc-main-title">Official Dwelling Identification & Energy Registry Document</div>
+          <div class="doc-caption">National Household Georeferencing & Productive Energy Mapping System</div>
         </div>
 
-        <!-- 2. Primary Identification & Verification QR Strip -->
-        <div class="id-banner">
-          <div class="id-left">
-            <div class="id-label">Official Dwelling Identification Code</div>
-            <div class="id-code">${household.houseNumber}</div>
-            <div class="id-meta-row">
-              <span class="meta-item">Issued: <strong>${issueDate}</strong></span>
-              <span class="meta-dot">•</span>
-              <span class="meta-item">Registered: <strong>${registeredDate}</strong></span>
-              <span class="meta-dot">•</span>
-              <span class="meta-item">Registry Ref: <strong>${household.id.slice(-8).toUpperCase()}</strong></span>
-            </div>
-          </div>
-          <div class="id-qr">
-            <img src="${qrCodeDataUrl}" class="qr-img" alt="Tamper-Evident QR Verification" />
-            <div class="qr-text">
-              <div class="qr-title">Scan to Verify</div>
-              <div class="qr-sub">Instant live registry audit via smartphone camera</div>
-            </div>
-          </div>
-        </div>
+        <!-- 2. Section 1: Head of Household Credential -->
+        <table class="ledger-table">
+          <thead>
+            <tr>
+              <th colspan="2">1. Head of Household Credential</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="cell-label">Full Legal Name</td>
+              <td class="cell-val"><strong>${formattedFullName}</strong></td>
+            </tr>
+            <tr>
+              <td class="cell-label">National Identity (NIN)</td>
+              <td class="cell-val font-mono">${household.headNin || 'Not Provided'}</td>
+            </tr>
+            <tr>
+              <td class="cell-label">Primary Phone Number</td>
+              <td class="cell-val font-mono">${household.headPhone || 'Not Provided'}</td>
+            </tr>
+            <tr>
+              <td class="cell-label">Demographic Details</td>
+              <td class="cell-val">Gender: <strong>${formattedGender}</strong> · Marital Status: <strong>${formattedMarital}</strong> · Occupation: <strong>${formattedOccupation}</strong></td>
+            </tr>
+          </tbody>
+        </table>
 
-        <!-- 3. Two-Column Information Cards: Head of Household & Spatial Location -->
-        <div class="grid-row">
-          <!-- Card A: Head of Household Credentials -->
-          <div class="data-card">
-            <div class="card-header navy-accent">
-              <span>Head of Household Credentials</span>
-              <span class="header-tag">Primary Contact</span>
-            </div>
-            <div class="card-body">
-              <div class="field-row">
-                <span class="field-key">Full Legal Name</span>
-                <span class="field-val"><strong>${formattedFullName}</strong></span>
-              </div>
-              <div class="field-row">
-                <span class="field-key">National ID (NIN)</span>
-                <span class="field-val font-mono">${household.headNin || 'Not Provided'}</span>
-              </div>
-              <div class="field-row">
-                <span class="field-key">Primary Phone</span>
-                <span class="field-val font-mono">${household.headPhone || 'Not Provided'}</span>
-              </div>
-              <div class="field-row">
-                <span class="field-key">Gender & Status</span>
-                <span class="field-val">${formattedGender} • ${formattedMarital}</span>
-              </div>
-              <div class="field-row">
-                <span class="field-key">Occupation</span>
-                <span class="field-val">${formattedOccupation}</span>
-              </div>
-            </div>
-          </div>
+        <!-- 3. Section 2: Physical Location & Spatial Georeferencing -->
+        <table class="ledger-table">
+          <thead>
+            <tr>
+              <th colspan="2" class="gold-header">2. Physical Location & Spatial Georeferencing</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="cell-label">Full Dwelling Address</td>
+              <td class="cell-val">
+                <strong>${formattedAddress}</strong> · ${formattedWard}, ${formattedLga}, ${formattedState}
+                ${household.gpsAddress ? `<div style="font-size:8.5px; color:#64748b; margin-top:1px;">GPS Reverse Address: ${household.gpsAddress}</div>` : ''}
+              </td>
+            </tr>
+            <tr>
+              <td class="cell-label">Administrative Boundary</td>
+              <td class="cell-val">State: <strong>${formattedState}</strong> · LGA: <strong>${formattedLga}</strong> · Ward: <strong>${formattedWard}</strong></td>
+            </tr>
+            <tr>
+              <td class="cell-label">Polling Unit (INEC)</td>
+              <td class="cell-val"><strong>${formattedPollingUnit}</strong></td>
+            </tr>
+            <tr>
+              <td class="cell-label">GPS Georeference</td>
+              <td class="cell-val font-mono">
+                ${household.latitude && household.longitude ? `Latitude: ${household.latitude.toFixed(6)}° N, Longitude: ${household.longitude.toFixed(6)}° E (Audited Field Capture)` : 'Georeferenced'}
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-          <!-- Card B: Spatial Location & Georeferencing -->
-          <div class="data-card">
-            <div class="card-header gold-accent">
-              <span>Dwelling Spatial Georeference</span>
-              <span class="header-tag">GPS Audited</span>
-            </div>
-            <div class="card-body">
-              <div class="field-row">
-                <span class="field-key">Physical Address</span>
-                <span class="field-val"><strong>${formattedAddress}</strong></span>
-              </div>
-              <div class="field-row">
-                <span class="field-key">State & LGA</span>
-                <span class="field-val"><strong>${formattedState}</strong> • <strong>${formattedLga}</strong></span>
-              </div>
-              <div class="field-row">
-                <span class="field-key">Ward Boundary</span>
-                <span class="field-val"><strong>${formattedWard}</strong></span>
-              </div>
-              <div class="field-row">
-                <span class="field-key">INEC Polling Unit</span>
-                <span class="field-val">${formattedPollingUnit}</span>
-              </div>
-              <div class="field-row">
-                <span class="field-key">GPS Georeference</span>
-                <span class="field-val font-mono">
-                  ${household.latitude && household.longitude ? `${household.latitude.toFixed(6)}° N, ${household.longitude.toFixed(6)}° E` : 'Geolocated'}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <!-- 4. Section 3: Household Occupancy & Energy Profile -->
+        <table class="ledger-table">
+          <thead>
+            <tr>
+              <th colspan="2" class="green-header">3. Household Demographics & Energy Profile</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="cell-label">Registered Occupants</td>
+              <td class="cell-val">
+                <strong>${household.totalHouseholdMembers || 1} Residents</strong> (${household.wivesCount || 0} Wives, ${household.childrenCount || 0} Children, ${household.otherDependentsCount || 0} Dependents)
+              </td>
+            </tr>
+            <tr>
+              <td class="cell-label">Primary Energy Source</td>
+              <td class="cell-val"><strong>${formattedEnergy}</strong> (Baseline Power Access)</td>
+            </tr>
+            <tr>
+              <td class="cell-label">Productive Use of Energy (PUE)</td>
+              <td class="cell-val">
+                ${household.hasPUE ? `<strong style="color:#059669;">Active Productive Equipment on Site</strong> (${formattedPue})` : 'Residential Dwelling Only'}
+                ${household.pueEquipment?.length ? `<span style="font-size:8.5px; color:#475569;"> · Equipment: ${household.pueEquipment.join(', ')}</span>` : ''}
+              </td>
+            </tr>
+            <tr>
+              <td class="cell-label">Telecommunications</td>
+              <td class="cell-val">
+                Providers: <strong>${household.telcoProviders?.length ? household.telcoProviders.join(', ') : 'MTN / Airtel'}</strong> · Coverage: <strong>${household.networkType || 'GSM / 4G'}</strong>
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
-        <!-- 4. Energy, Connectivity & Demographic Summary Bar -->
-        <div class="full-card">
-          <div class="card-header" style="background:#0f172a; border-left: 3.5px solid #10b981;">
-            <span>Dwelling Profile, Productive Energy & Infrastructure</span>
-            <span class="header-tag">Baseline Survey Metrics</span>
+        <!-- 5. Big Prominent Verification Section with Dwelling Code Directly Below It -->
+        <div class="verification-section">
+          <div class="qr-column">
+            <img src="${qrCodeDataUrl}" class="qr-large-img" alt="Official Tamper-Evident QR Verification" />
+            <div class="qr-code-label">Dwelling Identifier Code</div>
+            <div class="qr-dwelling-code">${household.houseNumber}</div>
           </div>
-          <div class="summary-grid">
-            <div class="summary-item">
-              <div class="summary-title">Household Occupancy</div>
-              <div class="summary-val">${household.totalHouseholdMembers || 1} Residents</div>
-              <div class="summary-sub">${household.wivesCount || 0} Wives • ${household.childrenCount || 0} Children</div>
+          <div class="verification-info">
+            <div class="ver-title">Cryptographic Tamper-Evident Verification</div>
+            <div class="ver-desc">
+              Scan this QR code with any smartphone camera or optical reader to instantly authenticate this dwelling credential, verify surveyor attribution, and inspect official registry records on the national CCSA database.
             </div>
-            <div class="summary-item">
-              <div class="summary-title">Primary Energy Source</div>
-              <div class="summary-val">${formattedEnergy}</div>
-              <div class="summary-sub">Power Access Baseline</div>
-            </div>
-            <div class="summary-item">
-              <div class="summary-title">Productive Power (PUE)</div>
-              <div class="summary-val" style="color: ${household.hasPUE ? '#059669' : '#081B33'};">
-                ${formattedPue}
-              </div>
-              <div class="summary-sub">${household.pueEquipment?.length ? toTitleCase(household.pueEquipment.join(', ')) : 'Standard Domestic Load'}</div>
-            </div>
-            <div class="summary-item">
-              <div class="summary-title">Telecommunications</div>
-              <div class="summary-val">${household.telcoProviders?.length ? household.telcoProviders.join(', ') : 'MTN / Airtel'}</div>
-              <div class="summary-sub">Network: ${household.networkType || '4G / GSM Active'}</div>
+            <div class="ver-url-box">${verificationUrl}</div>
+            <div class="ver-meta-row">
+              <span>Cataloged: <strong>${registeredDate}</strong></span>
+              <span>Document Issue Date: <strong>${issueDate}</strong></span>
+              <span>Security Stamp: <strong>CCSA-DWEL-VALID</strong></span>
             </div>
           </div>
         </div>
 
-        <!-- 5. Official Attestation & Dual Signatures -->
+        <!-- 6. Official Attestation & Dual Signatures -->
         <div class="attestation-section">
           <div class="attestation-statement">
             <strong>OFFICIAL CERTIFICATION & ATTESTATION:</strong> It is hereby confirmed that the dwelling described above has undergone formal survey, biometric enumeration, and geospatial mapping in accordance with the National Household and Energy Baseline Survey standards conducted by the Centre for Climate-Smart Agriculture (CCSA) at Cosmopolitan University Abuja. This certificate constitutes an authentic identification instrument on the CCSA national data registry.
@@ -928,13 +849,13 @@ export async function GET(
           </div>
         </div>
 
-        <!-- 6. Micro-Audit Reference Footer -->
+        <!-- 7. Micro-Audit Reference Footer -->
         <div class="cert-footer">
           <div>
-            DOC REF: <span class="footer-audit">CCSA-DWEL-${household.id.slice(-10).toUpperCase()}</span> • Issued: ${issueDate}
+            DOC REF: <span class="footer-audit">CCSA-DWEL-${household.id.slice(-10).toUpperCase()}</span> · Issued: ${issueDate}
           </div>
           <div style="font-style: italic; opacity: 0.85;">
-            Tamper-evident official document. Scan QR to inspect live credentials on <span style="font-family: monospace;">fims.cosmopolitan.edu.ng</span>
+            Official State Record · Unauthorized reproduction or modification without cryptographic verification key is prohibited.
           </div>
           <div>
             PAGE 1 OF 1 (OFFICIAL)
