@@ -1,7 +1,7 @@
 'use client';
 
 import { useSession } from 'next-auth/react';
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { useState, useEffect, createContext, useContext, ReactNode, useCallback, useMemo } from 'react';
 import { ROLE_PERMISSIONS } from '@/lib/rolePermissions';
 
 export { ROLE_PERMISSIONS };
@@ -68,26 +68,26 @@ export function PermissionProvider({ children }: PermissionProviderProps) {
     setLoading(false);
   }, [session, status]);
 
-  const hasPermission = (permission: string) => {
+  const hasPermission = useCallback((permission: string) => {
     return permissions.includes(permission);
-  };
+  }, [permissions]);
 
-  const hasAnyPermission = (permissionList: string[]) => {
+  const hasAnyPermission = useCallback((permissionList: string[]) => {
     return permissionList.some((permission) => permissions.includes(permission));
-  };
+  }, [permissions]);
 
-  const hasAllPermissions = (permissionList: string[]) => {
+  const hasAllPermissions = useCallback((permissionList: string[]) => {
     return permissionList.every((permission) => permissions.includes(permission));
-  };
+  }, [permissions]);
 
-  const value = {
+  const value = useMemo(() => ({
     permissions,
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,
     role: (session?.user as any)?.role || null,
     loading: loading || status === 'loading',
-  };
+  }), [permissions, hasPermission, hasAnyPermission, hasAllPermissions, session, loading, status]);
 
   return (
     <PermissionContext.Provider value={value}>

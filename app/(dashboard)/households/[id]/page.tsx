@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -53,27 +53,8 @@ export default function HouseholdDetailPage() {
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (status === 'loading' || permissionsLoading) return;
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin');
-    } else if (status === 'authenticated') {
-      const userRole = (session?.user as any)?.role?.toLowerCase();
-      const isPrivileged = ['admin', 'super_admin', 'manager'].includes(userRole);
-      if (
-        !isPrivileged &&
-        !hasPermission(PERMISSIONS.HOUSEHOLDS_READ) &&
-        !hasPermission(PERMISSIONS.FARMERS_READ) &&
-        !hasPermission(PERMISSIONS.DASHBOARD_ACCESS)
-      ) {
-        router.push('/dashboard');
-      } else if (id) {
-        fetchHouseholdDetails();
-      }
-    }
-  }, [status, permissionsLoading, hasPermission, id]);
-
-  const fetchHouseholdDetails = async () => {
+  const fetchHouseholdDetails = useCallback(async () => {
+    if (!id) return;
     try {
       setLoading(true);
       const res = await fetch(`/api/households/${id}`);
@@ -89,7 +70,27 @@ export default function HouseholdDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    if (status === 'loading' || permissionsLoading) return;
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin');
+      return;
+    }
+    const userRole = (session?.user as any)?.role?.toLowerCase();
+    const isPrivileged = ['admin', 'super_admin', 'manager'].includes(userRole);
+    if (
+      !isPrivileged &&
+      !hasPermission(PERMISSIONS.HOUSEHOLDS_READ) &&
+      !hasPermission(PERMISSIONS.FARMERS_READ) &&
+      !hasPermission(PERMISSIONS.DASHBOARD_ACCESS)
+    ) {
+      router.push('/dashboard');
+      return;
+    }
+    fetchHouseholdDetails();
+  }, [status, permissionsLoading, fetchHouseholdDetails]);
 
   const handleStatusUpdate = async (newStatus: string) => {
     if (!household || newStatus === household.interventionStatus) return;

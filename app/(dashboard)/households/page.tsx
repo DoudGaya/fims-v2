@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -61,27 +61,7 @@ export default function HouseholdsDirectoryPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
 
-  useEffect(() => {
-    if (status === 'loading' || permissionsLoading) return;
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin');
-    } else if (status === 'authenticated') {
-      const userRole = (session?.user as any)?.role?.toLowerCase();
-      const isPrivileged = ['admin', 'super_admin', 'manager'].includes(userRole);
-      if (
-        !isPrivileged &&
-        !hasPermission(PERMISSIONS.HOUSEHOLDS_READ) &&
-        !hasPermission(PERMISSIONS.FARMERS_READ) &&
-        !hasPermission(PERMISSIONS.DASHBOARD_ACCESS)
-      ) {
-        router.push('/dashboard');
-      } else {
-        fetchHouseholds();
-      }
-    }
-  }, [status, permissionsLoading, hasPermission, page, telcoFilter, pueFilter, networkFilter, statusFilter]);
-
-  const fetchHouseholds = async () => {
+  const fetchHouseholds = useCallback(async () => {
     try {
       setLoading(true);
       setErrorMessage(null);
@@ -112,7 +92,27 @@ export default function HouseholdsDirectoryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search, telcoFilter, pueFilter, networkFilter, statusFilter]);
+
+  useEffect(() => {
+    if (status === 'loading' || permissionsLoading) return;
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin');
+      return;
+    }
+    const userRole = (session?.user as any)?.role?.toLowerCase();
+    const isPrivileged = ['admin', 'super_admin', 'manager'].includes(userRole);
+    if (
+      !isPrivileged &&
+      !hasPermission(PERMISSIONS.HOUSEHOLDS_READ) &&
+      !hasPermission(PERMISSIONS.FARMERS_READ) &&
+      !hasPermission(PERMISSIONS.DASHBOARD_ACCESS)
+    ) {
+      router.push('/dashboard');
+      return;
+    }
+    fetchHouseholds();
+  }, [status, permissionsLoading, fetchHouseholds]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -357,17 +357,15 @@ export default function HouseholdsDirectoryPage() {
                 <TableHead className="text-right font-semibold">Action</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
               {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
-                      <div className="flex items-center justify-center gap-2">
-                        <ArrowPathIcon className="size-4 animate-spin" /> Loading households…
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <ArrowPathIcon className="size-5 animate-spin text-[#013358]" />
+                      <span className="text-xs font-medium text-gray-600">Loading household records…</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
               ) : households.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-12">
