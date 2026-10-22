@@ -487,7 +487,7 @@ export class CertificateGenerator {
         const leftCenterX = 18 + (colWidth / 2);
         const clusterLeadName = clusterData
             ? formatFullName(clusterData.clusterLeadFirstName, '', clusterData.clusterLeadLastName).toUpperCase()
-            : 'ALH. MUSA BELLO GARKIDA';
+            : '';
 
         // Simulated Stamp / Signature mark
         pdf.setFont('times', 'italic');
