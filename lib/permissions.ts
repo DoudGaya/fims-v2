@@ -19,6 +19,11 @@ export async function getUserPermissions(userId: string): Promise<string[]> {
               }
             }
           }
+        },
+        userPermissions: {
+          include: {
+            permission: true
+          }
         }
       }
     });
@@ -27,7 +32,7 @@ export async function getUserPermissions(userId: string): Promise<string[]> {
       return [];
     }
 
-    // Collect all permissions from all assigned roles.
+    // Collect all permissions from all assigned roles and individual user permissions.
     // Also merge in ROLE_PERMISSIONS defaults so that newly-added permission
     // constants work immediately without requiring a DB role update.
     const permissions = new Set<string>();
@@ -60,6 +65,13 @@ export async function getUserPermissions(userId: string): Promise<string[]> {
         rolePermissions.forEach(permission => {
           permissions.add(permission);
         });
+      }
+    });
+
+    // Merge user-specific direct permissions
+    userWithRoles.userPermissions?.forEach(up => {
+      if (up.permission?.name) {
+        permissions.add(up.permission.name);
       }
     });
 

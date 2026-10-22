@@ -16,13 +16,20 @@ const checkPermission = (permissions: string[] | undefined, permission: string) 
 };
 
 // All mobile agent roles managed from this dashboard
-const MOBILE_AGENT_ROLES = ['agent', 'data_correction_agent', 'survey_agent', 'agri_business_agent'] as const;
+const MOBILE_AGENT_ROLES = [
+  'agent',
+  'household_agent',
+  'data_correction_agent',
+  'survey_agent',
+  'agri_business_agent',
+] as const;
 
 // Map agentType param → User.role value
 const AGENT_TYPE_ROLE_MAP: Record<string, string> = {
   enrollment: 'agent',
+  household: 'household_agent',
   correction: 'data_correction_agent',
-  survey:     'survey_agent',
+  survey: 'survey_agent',
   agribusiness: 'agri_business_agent',
 };
 
@@ -35,8 +42,10 @@ export async function GET(req: NextRequest) {
     }
 
     const userPermissions = (session.user as any).permissions as string[];
+    const userRole = (session.user as any).role?.toLowerCase();
+    const isPrivileged = ['admin', 'super_admin', 'manager', 'project_manager'].includes(userRole);
 
-    if (!checkPermission(userPermissions, PERMISSIONS.AGENTS_READ)) {
+    if (!isPrivileged && !checkPermission(userPermissions, PERMISSIONS.AGENTS_READ)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
@@ -51,12 +60,12 @@ export async function GET(req: NextRequest) {
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
 
-    const roleType = searchParams.get('roleType') || '';
+    const roleType = searchParams.get('roleType') || searchParams.get('type') || '';
     const skip = (page - 1) * limit;
 
-    // Build where clause — include all three mobile agent role types
-    const roleFilter = roleType && AGENT_TYPE_ROLE_MAP[roleType]
-      ? AGENT_TYPE_ROLE_MAP[roleType]
+    // Build where clause — include all mobile agent role types
+    const roleFilter = roleType && roleType !== 'all' && AGENT_TYPE_ROLE_MAP[roleType.toLowerCase()]
+      ? AGENT_TYPE_ROLE_MAP[roleType.toLowerCase()]
       : undefined;
 
     const where: Prisma.UserWhereInput = {
@@ -74,8 +83,6 @@ export async function GET(req: NextRequest) {
     }
 
     // Initialize agent conditions if not already present
-    // Since we set agent: { isNot: null } above, we need to be careful with subsequent assignments
-    // We should build the agent where input object separately
     const agentWhere: Prisma.AgentWhereInput = {};
 
     if (status === 'active') {
@@ -87,15 +94,18 @@ export async function GET(req: NextRequest) {
       agentWhere.status = status;
     }
 
-    if (state) {
-      agentWhere.assignedState = { contains: state, mode: 'insensitive' };
+    if (state && state !== 'all') {
+      agentWhere.OR = [
+        { assignedState: { contains: state, mode: 'insensitive' } },
+        { state: { contains: state, mode: 'insensitive' } },
+      ];
     }
     
-    if (lga) {
+    if (lga && lga !== 'all') {
       agentWhere.assignedLGA = { contains: lga, mode: 'insensitive' };
     }
 
-    if (cluster) {
+    if (cluster && cluster !== 'all') {
       agentWhere.address = { contains: cluster, mode: 'insensitive' };
     }
 
@@ -317,6 +327,33 @@ export async function POST(req: NextRequest) {
           createdByUserId: (session.user as any).id
         }
       });
+
+      // 3. Sync household permissions if Household Agent
+      if (body.agentType === 'household' || user.role === 'household_agent') {
+        const householdPermNames = [
+          'households.create',
+          'households.read',
+          'households.update'
+        ];
+        for (const permName of householdPermNames) {
+          const perm = await tx.permission.upsert({
+            where: { name: permName },
+            update: {},
+            create: {
+              name: permName,
+              category: 'households',
+              action: permName.split('.')[1] || 'manage',
+              description: `Permission to ${permName.split('.')[1]} households`
+            }
+          });
+          await tx.userPermission.create({
+            data: {
+              userId: user.id,
+              permissionId: perm.id
+            }
+          });
+        }
+      }
 
       return { user, agent };
     });

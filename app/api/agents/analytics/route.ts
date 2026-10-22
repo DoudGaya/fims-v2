@@ -17,17 +17,20 @@ export async function GET(req: NextRequest) {
 
         const userPermissions = (session.user as any).permissions as string[];
 
+        const userRole = (session.user as any).role?.toLowerCase();
+        const isPrivileged = ['admin', 'super_admin', 'manager', 'project_manager'].includes(userRole);
+
         // Check READ permissions for agents
-        if (!userPermissions?.includes(PERMISSIONS.AGENTS_READ)) {
+        if (!isPrivileged && !userPermissions?.includes(PERMISSIONS.AGENTS_READ)) {
             return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
         }
 
         // Parallel fetch for stats
         const result = await getCached(
           'fims:v1:agents:analytics',
-          600, // 10 minutes
+          300, // 5 minutes
           async () => {
-        const AGENT_ROLES = ['agent', 'data_correction_agent', 'survey_agent'] as const;
+        const AGENT_ROLES = ['agent', 'household_agent', 'data_correction_agent', 'survey_agent', 'agri_business_agent'] as const;
         const [
             totalAgents,
             activeAgents,
@@ -35,8 +38,10 @@ export async function GET(req: NextRequest) {
             newApplications,
             interviewing,
             enrollmentCount,
+            householdCount,
             correctionCount,
             surveyCount,
+            agriBusinessCount,
             agentsByStatusRaw,
             agentsByStateRaw
         ] = await Promise.all([
@@ -46,8 +51,10 @@ export async function GET(req: NextRequest) {
             prisma.agent.count({ where: { status: 'Applied' } }),
             prisma.agent.count({ where: { status: 'CallForInterview' } }),
             prisma.user.count({ where: { role: 'agent' } }),
+            prisma.user.count({ where: { role: 'household_agent' } }),
             prisma.user.count({ where: { role: 'data_correction_agent' } }),
             prisma.user.count({ where: { role: 'survey_agent' } }),
+            prisma.user.count({ where: { role: 'agri_business_agent' } }),
             // Group by Status
             prisma.agent.groupBy({
                 by: ['status'],
@@ -79,8 +86,10 @@ export async function GET(req: NextRequest) {
               newApplications,
               interviewing,
               enrollmentCount,
+              householdCount,
               correctionCount,
               surveyCount,
+              agriBusinessCount,
               agentsByStatus,
               agentsByState,
             };

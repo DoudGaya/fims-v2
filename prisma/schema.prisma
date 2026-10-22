@@ -47,6 +47,7 @@ model User {
   sentCommunications            CommunicationLog[]     @relation("SentCommunications")
   accountDeleteRequestsReviewed AccountDeleteRequest[] @relation("AccountDeleteReviewedBy")
   createdAgriBusinesses         BusinessStakeholder[]  @relation("BusinessStakeholderCreatedBy")
+  capturedHouseholds            Household[]            @relation("HouseholdCapturedBy")
   organizationMemberships       OrganizationUser[]
 
   @@map("users")
@@ -1091,4 +1092,86 @@ model OutreachPlan {
   @@index([status, createdAt(sort: Desc)])
   @@index([stakeholderId])
   @@map("outreach_plans")
+}
+
+// ─── Household & Community Intervention ──────────────────────────────────────
+
+model Household {
+  id                        String    @id @default(cuid())
+  /// Traceable synthetic identifier: [STATE]-[LGA]-[WARD]-[PU]-H[SEQ]
+  houseNumber               String    @unique
+  
+  // Location Hierarchy
+  state                     String
+  lga                       String
+  ward                      String
+  pollingUnit               String
+  address                   String?
+  latitude                  Float?
+  longitude                 Float?
+  accuracy                  Float?
+  houseFrontPhotoUrl        String?   // House front image URL or base64
+  
+  // House Leader / Head of Household
+  headFirstName             String
+  headMiddleName            String?
+  headLastName              String
+  headPhone                 String
+  headPhoneVerified         Boolean   @default(false)
+  headGender                String    // "MALE" | "FEMALE"
+  headDateOfBirth           DateTime?
+  headMaritalStatus         String?   // "MARRIED" | "SINGLE" | "WIDOWED" | "DIVORCED"
+  headNin                   String?   // 11-digit National Identity Number
+  headPhotoUrl              String?   // Live face capture taken by the agent (current appearance)
+  headNinVerified           Boolean   @default(false) // NIN confirmed against NIMC at capture time
+  headEmploymentStatus      String?
+  headEducationLevel        String?
+  headEmail                 String?
+  headStateOfOrigin         String?   // NIMC birth state
+  headLgaOfOrigin           String?   // NIMC birth LGA
+  headResidenceAddress      String?   // Address on the NIMC record
+  gpsAddress                String?   // Reverse-geocoded address of the captured GPS point
+  locationCapturedAt        DateTime?
+  
+  // Household Members & Dependents Breakdown
+  wivesCount                Int       @default(0)
+  childrenCount             Int       @default(0)
+  otherDependentsCount      Int       @default(0)
+  totalHouseholdMembers     Int       @default(1)
+  dependentsNotes           String?
+  
+  // Telco & Network Connectivity
+  telcoProviders            String[]  @default([]) // ["MTN", "AIRTEL", "GLO", "9MOBILE"]
+  networkType               String?   // "2G" | "3G" | "4G" | "5G"
+  
+  // Economic Activity & Commercial Customers
+  commercialCustomersCount  Int       @default(0) // Number of commercial customers
+  
+  // Productive Use of Power / Energy (PUE)
+  hasPUE                    Boolean   @default(false)
+  pueType                   String?   // "Milling", "Solar Irrigation", "Cold Storage", "Welding", "Tailoring", "Barbershop", "Agro-processing", "Phone Charging", "Other", "None"
+  pueEquipment              String[]  @default([]) // Specific machinery/appliances
+  pueDailyHours             Float?    // Average productive power hours per day
+  primaryEnergySource       String?   // "Grid", "Solar Mini-Grid", "Standalone Solar", "Generator", "None"
+  
+  // Intervention Program Tracking
+  interventionStatus        String    @default("Captured") // "Captured", "Validated", "InterventionEligible", "InterventionApproved", "Disbursed"
+  interventionType          String?   // e.g. "Clean Cooking", "Solar Home System", "PUE Grant", "Agri Input Support"
+  interventionNotes         String?
+  
+  // Metadata & Agent attribution
+  agentId                   String?
+  agent                     User?     @relation("HouseholdCapturedBy", fields: [agentId], references: [id])
+  offlineId                 String?
+  syncedAt                  DateTime?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  @@index([state, lga, ward])
+  @@index([houseNumber])
+  @@index([headPhone])
+  @@index([headNin])
+  @@index([agentId, createdAt(sort: Desc)])
+  @@index([interventionStatus, createdAt(sort: Desc)])
+  @@map("households")
 }

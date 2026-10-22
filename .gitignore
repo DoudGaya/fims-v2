@@ -49,6 +49,7 @@ NUL
 *.xlsx
 *.xls
 *.ods
+scripts/
 scripts/seed-ideas2.ts
 scripts/*trainee*
 scripts/*import*

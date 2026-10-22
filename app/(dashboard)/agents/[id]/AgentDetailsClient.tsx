@@ -60,6 +60,7 @@ interface AgentDetails {
     performanceRating?: number | null;
     totalFarmersRegistered?: number;
   } | null;
+  canEnrollHouseholds?: boolean;
 }
 
 function parseAddressBlob(raw?: string | null): { plain: string; parts: Record<string, string> } {
@@ -118,10 +119,12 @@ function ApplicationStatusBadge({ status, isActive }: { status?: string | null; 
 }
 
 function AgentTypeBadge({ role }: { role: string }) {
-  if (role === 'agent')                  return <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-900/20 dark:text-blue-400 dark:ring-blue-500/30">Enrollment</span>;
+  if (role === 'agent')                  return <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-600/20 dark:bg-blue-900/20 dark:text-blue-400 dark:ring-blue-500/30">Farmer Enrollment</span>;
+  if (role === 'household_agent')        return <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-teal-50 text-teal-800 ring-1 ring-inset ring-teal-600/20 dark:bg-teal-900/20 dark:text-teal-400 dark:ring-teal-500/30">Household Enrollment</span>;
   if (role === 'data_correction_agent')  return <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-900/20 dark:text-amber-400 dark:ring-amber-500/30">Correction</span>;
   if (role === 'survey_agent')           return <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-600/20 dark:bg-purple-900/20 dark:text-purple-400 dark:ring-purple-500/30">Survey</span>;
-  return null;
+  if (role === 'agri_business_agent')    return <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-600/20 dark:bg-indigo-900/20 dark:text-indigo-400 dark:ring-indigo-500/30">Agri-Business</span>;
+  return <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700">{role}</span>;
 }
 
 export default function AgentDetailsClient({ id }: { id: string }) {
@@ -337,6 +340,15 @@ export default function AgentDetailsClient({ id }: { id: string }) {
                   <ApplicationStatusBadge status={agent.agent?.status} isActive={agent.isActive} />
                 </Field>
                 <Field label="Agent Type"><AgentTypeBadge role={agent.role} /></Field>
+                <Field label="Household Enrollment">
+                  {agent.canEnrollHouseholds || agent.role === 'household_agent' ? (
+                    <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold bg-teal-50 text-teal-800 ring-1 ring-inset ring-teal-600/20 dark:bg-teal-900/30 dark:text-teal-300">
+                      ✓ Authorized
+                    </span>
+                  ) : (
+                    <span className="text-gray-400 text-xs">Not Authorized</span>
+                  )}
+                </Field>
                 <Field label="Joined">{new Date(agent.createdAt).toLocaleDateString()}</Field>
                 <Field label="Last Login">
                   {agent.lastLogin ? new Date(agent.lastLogin).toLocaleString() : 'Never'}
@@ -378,6 +390,16 @@ export default function AgentDetailsClient({ id }: { id: string }) {
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
                 <Field label="Assigned State">{agent.agent?.assignedState || 'Not Assigned'}</Field>
                 <Field label="Assigned LGA">{agent.agent?.assignedLGA || 'Not Assigned'}</Field>
+                <Field label="Assigned Cluster">
+                  {addressParts['Cluster'] ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 px-3 py-1 text-xs font-semibold text-[#013358] dark:text-blue-300 border border-[#DCEAF3] dark:border-blue-700">
+                      <BuildingLibraryIcon className="h-3.5 w-3.5" />
+                      {addressParts['Cluster']}
+                    </span>
+                  ) : (
+                    'Not Assigned'
+                  )}
+                </Field>
                 {agent.agent?.assignedWards && agent.agent.assignedWards.length > 0 && (
                   <div className="sm:col-span-2">
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Assigned Wards</dt>

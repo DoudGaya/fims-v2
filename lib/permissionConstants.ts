@@ -72,6 +72,13 @@ export const PERMISSIONS = {
   COMMUNICATIONS_SEND: 'communications.send',
   COMMUNICATIONS_READ: 'communications.read',
 
+  // Households / Community Interventions
+  HOUSEHOLDS_CREATE: 'households.create',
+  HOUSEHOLDS_READ: 'households.read',
+  HOUSEHOLDS_UPDATE: 'households.update',
+  HOUSEHOLDS_DELETE: 'households.delete',
+  HOUSEHOLDS_EXPORT: 'households.export',
+
   // Agri-Business / Partnerships
   AGRIBUSINESS_CREATE: 'agribusiness.create',
   AGRIBUSINESS_READ: 'agribusiness.read',

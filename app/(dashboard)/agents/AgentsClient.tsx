@@ -17,6 +17,10 @@ import {
   PencilIcon,
   TrashIcon,
   UserIcon,
+  UserGroupIcon,
+  HomeIcon,
+  ClipboardDocumentCheckIcon,
+  BuildingStorefrontIcon,
   CheckCircleIcon,
   XCircleIcon,
   InboxArrowDownIcon,
@@ -110,11 +114,21 @@ interface AnalyticsData {
   newApplications: number;
   interviewing: number;
   enrollmentCount: number;
+  householdCount?: number;
   correctionCount: number;
   surveyCount: number;
+  agriBusinessCount?: number;
   agentsByStatus: Record<string, number>;
   agentsByState: { state: string; count: number }[];
 }
+
+const NIGERIAN_STATES = [
+  'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno',
+  'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT - Abuja', 'Gombe',
+  'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos',
+  'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto',
+  'Taraba', 'Yobe', 'Zamfara'
+];
 
 interface Pagination {
   page: number;
@@ -163,30 +177,32 @@ export default function AgentsClient() {
   const [filterState, setFilterState] = useState('');
   const [filterLGA, setFilterLGA] = useState('');
   const [filterCluster, setFilterCluster] = useState('all');
-  const [locations, setLocations] = useState<{ states: string[], lgas: Record<string, string[]> }>({ states: [], lgas: {} });
+  const [locations, setLocations] = useState<{ states: string[], lgas: Record<string, string[]> }>({ states: NIGERIAN_STATES, lgas: {} });
 
   // Fetch Locations
   useEffect(() => {
-    // This is a placeholder. In a real app, you'd fetch this from the API
-    // For now, we will just use a hardcoded list or empty
-    // Ideally call /api/locations/states and similar
      const fetchLocations = async () => {
         try {
           const res = await fetch('/api/locations/states');
           if (res.ok) {
             const data = await res.json();
             
-            let statesList: string[] = [];
-            
-            if (Array.isArray(data)) {
-                statesList = data.map((state: LocationOption) => getLocationName(state)).filter(Boolean);
-            } else if (data.states && Array.isArray(data.states)) {
-                statesList = data.states.map((state: LocationOption) => getLocationName(state)).filter(Boolean);
-            }
+            let rawList: any[] = [];
+            if (Array.isArray(data)) rawList = data;
+            else if (Array.isArray(data.data)) rawList = data.data;
+            else if (Array.isArray(data.states)) rawList = data.states;
 
-            setLocations(prev => ({ ...prev, states: statesList }));
+            const extracted = rawList
+              .map((state: LocationOption) => getLocationName(state).trim())
+              .filter(Boolean)
+              .map(name => name.replace(/-/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()));
+
+            const combined = Array.from(new Set([...NIGERIAN_STATES, ...extracted])).sort((a, b) => a.localeCompare(b));
+            setLocations(prev => ({ ...prev, states: combined }));
           }
-        } catch (e) { console.error(e) }
+        } catch (e) {
+          console.error('Error fetching states:', e);
+        }
      };
      fetchLocations();
   }, []);
@@ -374,11 +390,15 @@ export default function AgentsClient() {
   const getRoleTypeBadge = (role: string) => {
     switch (role) {
       case 'agent':
-        return <Badge className="border-[#DCEAF3] bg-[#F3F8FC] text-[#013358] hover:bg-[#DCEAF3]">Enrollment</Badge>;
+        return <Badge className="border-[#DCEAF3] bg-[#F3F8FC] text-[#013358] hover:bg-[#DCEAF3]">Farmer Enrollment</Badge>;
+      case 'household_agent':
+        return <Badge className="border-teal-200 bg-teal-50 text-blue-800 hover:bg-teal-100">Household</Badge>;
       case 'data_correction_agent':
-        return <Badge className="border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100">Correction</Badge>;
+        return <Badge className="border-amber-200 bg-amber-50 text-blue-900 hover:bg-amber-100">Correction</Badge>;
       case 'survey_agent':
-        return <Badge className="border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100">Survey</Badge>;
+        return <Badge className="border-blue-200 bg-blue-50 text-blue-900 hover:bg-blue-100">Survey</Badge>;
+      case 'agri_business_agent':
+        return <Badge className="border-indigo-200 bg-indigo-50 text-blue-900 hover:bg-indigo-100">Agri-Business</Badge>;
       default:
         return <Badge variant="outline">{role}</Badge>;
     }
@@ -436,102 +456,173 @@ export default function AgentsClient() {
         )}
       </div>
 
-      {/* Analytics Cards */}
-      <div className="grid gap-4 md:grid-cols-4 lg:grid-cols-8">
-        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Applications</CardTitle>
-            <InboxArrowDownIcon className="h-4 w-4 text-[#02426F]" />
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">
-              {analyticsLoading ? '...' : analytics?.newApplications || 0}
+      {/* Workforce & Lifecycle Metrics */}
+      {/* Workforce & Lifecycle Metrics */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-gray-400">
+            Workforce Status &amp; Recruitment Pipeline
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4" style={{ gap: '1rem' }}>
+          <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow transition-shadow p-4 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-gray-400">Total Workforce</span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#013358]/10 text-[#013358] dark:bg-blue-900/30 dark:text-blue-300">
+                <UserGroupIcon className="h-4 w-4" />
+              </div>
             </div>
-          </CardContent>
-        </Card>
+            <div className="mt-3">
+              <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">
+                {analyticsLoading ? '...' : analytics?.totalAgents || 0}
+              </div>
+              <p className="text-[11px] text-[#94A3B8] dark:text-gray-500 mt-0.5">Registered field agents</p>
+            </div>
+          </Card>
 
-        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Interviewing</CardTitle>
-            <PhoneIcon className="h-4 w-4 text-[#F59E0B]" />
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">
-              {analyticsLoading ? '...' : analytics?.interviewing || 0}
+          <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow transition-shadow p-4 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-gray-400">Active Deployed</span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+                <CheckCircleIcon className="h-4 w-4" />
+              </div>
             </div>
-          </CardContent>
-        </Card>
+            <div className="mt-3">
+              <div className="text-2xl font-bold text-emerald-700 dark:text-emerald-400">
+                {analyticsLoading ? '...' : analytics?.activeAgents || 0}
+              </div>
+              <p className="text-[11px] text-[#94A3B8] dark:text-gray-500 mt-0.5">Operational in field</p>
+            </div>
+          </Card>
 
-        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Active</CardTitle>
-            <CheckCircleIcon className="h-4 w-4 text-[#10B981]" />
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">
-              {analyticsLoading ? '...' : analytics?.activeAgents || 0}
+          <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow transition-shadow p-4 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-gray-400">Inactive / Paused</span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
+                <XCircleIcon className="h-4 w-4" />
+              </div>
             </div>
-          </CardContent>
-        </Card>
+            <div className="mt-3">
+              <div className="text-2xl font-bold text-rose-700 dark:text-rose-400">
+                {analyticsLoading ? '...' : analytics?.inactiveAgents || 0}
+              </div>
+              <p className="text-[11px] text-[#94A3B8] dark:text-gray-500 mt-0.5">Suspended or dormant</p>
+            </div>
+          </Card>
 
-        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Total</CardTitle>
-            <UserIcon className="h-4 w-4 text-[#013358] dark:text-blue-400" />
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">
-              {analyticsLoading ? '...' : analytics?.totalAgents || 0}
+          <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow transition-shadow p-4 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-gray-400">Applications</span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
+                <InboxArrowDownIcon className="h-4 w-4" />
+              </div>
             </div>
-          </CardContent>
-        </Card>
-        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Inactive</CardTitle>
-            <XCircleIcon className="h-4 w-4 text-[#EF4444]" />
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">
-              {analyticsLoading ? '...' : analytics?.inactiveAgents || 0}
+            <div className="mt-3">
+              <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">
+                {analyticsLoading ? '...' : analytics?.newApplications || 0}
+              </div>
+              <p className="text-[11px] text-[#94A3B8] dark:text-gray-500 mt-0.5">Awaiting vetting</p>
             </div>
-          </CardContent>
-        </Card>
+          </Card>
 
-        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Enrollment</CardTitle>
-            <UserIcon className="h-4 w-4 text-[#02426F]" />
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">
-              {analyticsLoading ? '...' : analytics?.enrollmentCount || 0}
+          <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow transition-shadow p-4 flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-gray-400">Interviewing</span>
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
+                <PhoneIcon className="h-4 w-4" />
+              </div>
             </div>
-          </CardContent>
-        </Card>
+            <div className="mt-3">
+              <div className="text-2xl font-bold text-amber-700 dark:text-amber-400">
+                {analyticsLoading ? '...' : analytics?.interviewing || 0}
+              </div>
+              <p className="text-[11px] text-[#94A3B8] dark:text-gray-500 mt-0.5">Interview stage</p>
+            </div>
+          </Card>
+        </div>
 
-        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Correction</CardTitle>
-            <PencilIcon className="h-4 w-4 text-[#F59E0B]" />
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">
-              {analyticsLoading ? '...' : analytics?.correctionCount || 0}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Deployments by Specialization */}
+        <div className="pt-3">
+          <p className="text-xs font-bold uppercase tracking-wider text-[#64748B] dark:text-gray-400 mb-3">
+            Agent Specializations &amp; Deployments
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4" style={{ gap: '1rem' }}>
+            <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow transition-shadow p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-gray-400">Farmer Enrollment</span>
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#013358]/10 text-[#013358] dark:bg-blue-900/30 dark:text-blue-300">
+                  <UserIcon className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-2xl font-bold text-[#013358] dark:text-blue-300">
+                  {analyticsLoading ? '...' : analytics?.enrollmentCount || 0}
+                </div>
+                <p className="text-[11px] text-[#94A3B8] dark:text-gray-500 mt-0.5">Farmer &amp; farm capture</p>
+              </div>
+            </Card>
 
-        <Card className="col-span-1 border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3">
-            <CardTitle className="text-xs font-bold uppercase tracking-wide text-[#475569] dark:text-gray-400">Survey</CardTitle>
-            <CheckCircleIcon className="h-4 w-4 text-[#3B82F6]" />
-          </CardHeader>
-          <CardContent className="p-3 pt-0">
-            <div className="text-2xl font-bold text-[#1E293B] dark:text-gray-100">
-              {analyticsLoading ? '...' : analytics?.surveyCount || 0}
-            </div>
-          </CardContent>
-        </Card>
+            <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow transition-shadow p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-gray-400">Household Capture</span>
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300">
+                  <HomeIcon className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-2xl font-bold text-teal-700 dark:text-teal-300">
+                  {analyticsLoading ? '...' : analytics?.householdCount || 0}
+                </div>
+                <p className="text-[11px] text-[#94A3B8] dark:text-gray-500 mt-0.5">Intervention households</p>
+              </div>
+            </Card>
+
+            <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow transition-shadow p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-gray-400">Field Survey</span>
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
+                  <ClipboardDocumentCheckIcon className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-2xl font-bold text-blue-700 dark:text-blue-400">
+                  {analyticsLoading ? '...' : analytics?.surveyCount || 0}
+                </div>
+                <p className="text-[11px] text-[#94A3B8] dark:text-gray-500 mt-0.5">Surveys &amp; questionnaires</p>
+              </div>
+            </Card>
+
+            <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow transition-shadow p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-gray-400">Data Correction</span>
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                  <PencilIcon className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-2xl font-bold text-amber-700 dark:text-amber-400">
+                  {analyticsLoading ? '...' : analytics?.correctionCount || 0}
+                </div>
+                <p className="text-[11px] text-[#94A3B8] dark:text-gray-500 mt-0.5">Audit &amp; corrections</p>
+              </div>
+            </Card>
+
+            <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm hover:shadow transition-shadow p-4 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-gray-400">Agri-Business</span>
+                <div className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
+                  <BuildingStorefrontIcon className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-2xl font-bold text-indigo-700 dark:text-indigo-300">
+                  {analyticsLoading ? '...' : analytics?.agriBusinessCount || 0}
+                </div>
+                <p className="text-[11px] text-[#94A3B8] dark:text-gray-500 mt-0.5">Commercial onboarding</p>
+              </div>
+            </Card>
+          </div>
+        </div>
       </div>
 
       {/* Charts Section */}
@@ -709,16 +800,18 @@ export default function AgentsClient() {
               </Select>
             </div>
 
-            <div className="w-full md:w-[180px]">
+            <div className="w-full md:w-[200px]">
               <Select value={filterType} onValueChange={setFilterType}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Type" />
+                  <SelectValue placeholder="Agent Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="enrollment">Enrollment</SelectItem>
-                  <SelectItem value="correction">Correction</SelectItem>
-                  <SelectItem value="survey">Survey</SelectItem>
+                  <SelectItem value="all">All Agent Types</SelectItem>
+                  <SelectItem value="enrollment">Farmer Enrollment</SelectItem>
+                  <SelectItem value="household">Household Intervention</SelectItem>
+                  <SelectItem value="survey">Field Survey</SelectItem>
+                  <SelectItem value="correction">Data Correction</SelectItem>
+                  <SelectItem value="agribusiness">Agri-Business</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -786,7 +879,7 @@ export default function AgentsClient() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={10} className="h-24 text-center">
+                  <TableCell colSpan={10} className="h-24 text-center">
                     <div className="flex justify-center items-center">
                       <ArrowPathIcon className="h-6 w-6 animate-spin text-gray-500" />
                       <span className="ml-2">Loading agents...</span>
@@ -867,6 +960,17 @@ export default function AgentsClient() {
                         )}
                       </div>
                     )}
+                    {agent.role === 'household_agent' && (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-semibold text-teal-700 dark:text-teal-400">Intervention</span>
+                          <span className="text-xs text-muted-foreground">households</span>
+                        </div>
+                        {agent.agent?.performanceRating != null && (
+                          <div className="text-[11px] text-gray-400">{agent.agent.performanceRating.toFixed(1)} / 5.0</div>
+                        )}
+                      </div>
+                    )}
                     {agent.role === 'data_correction_agent' && (
                       <div className="flex flex-col gap-0.5">
                         <div className="flex items-center gap-1.5">
@@ -883,6 +987,17 @@ export default function AgentsClient() {
                         <div className="flex items-center gap-1.5">
                           <span className="text-sm font-semibold text-[#3B82F6]">{agent.surveyCount}</span>
                           <span className="text-xs text-muted-foreground">surveys</span>
+                        </div>
+                        {agent.agent?.performanceRating != null && (
+                          <div className="text-[11px] text-gray-400">{agent.agent.performanceRating.toFixed(1)} / 5.0</div>
+                        )}
+                      </div>
+                    )}
+                    {agent.role === 'agri_business_agent' && (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-400">Commercial</span>
+                          <span className="text-xs text-muted-foreground">stakeholders</span>
                         </div>
                         {agent.agent?.performanceRating != null && (
                           <div className="text-[11px] text-gray-400">{agent.agent.performanceRating.toFixed(1)} / 5.0</div>

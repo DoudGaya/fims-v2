@@ -41,7 +41,7 @@ export default function CreateAgentPage() {
     enrollmentCode: '', cluster: '', jobHistory: '', motivation: '', bankName: '',
     accountNumber: '', accountName: '', state: '', lga: '', ward: '', pollingUnit: '',
     city: '', assignedState: '', assignedLGA: '',
-    agentType: 'enrollment' as 'enrollment' | 'correction' | 'survey' | 'agribusiness',
+    agentType: 'enrollment' as 'enrollment' | 'household' | 'correction' | 'survey' | 'agribusiness',
     status: 'Applied', photoUrl: '',
   });
 
@@ -445,6 +445,7 @@ export default function CreateAgentPage() {
                       <SelectTrigger><SelectValue placeholder="Select Type" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="enrollment">Enrollment Agent</SelectItem>
+                        <SelectItem value="household">Household Enrollment Agent</SelectItem>
                         <SelectItem value="correction">Correction Agent</SelectItem>
                         <SelectItem value="survey">Survey Agent</SelectItem>
                         <SelectItem value="agribusiness">Agri-Business Agent</SelectItem>

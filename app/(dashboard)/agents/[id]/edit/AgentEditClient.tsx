@@ -12,6 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { hierarchicalData } from '@/lib/data/hierarchical-data';
 import { Textarea } from "@/components/ui/textarea";
 
+interface ClusterOption {
+    id: string;
+    title: string;
+    clusterLeadState?: string | null;
+    clusterLeadLGA?: string | null;
+}
+
 interface AgentEditClientProps {
     id: string;
 }
@@ -21,6 +28,7 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+    const [clusters, setClusters] = useState<ClusterOption[]>([]);
 
     // Helper to format location names (remove hyphens, capitalize)
     const formatLocation = (name: string) => {
@@ -65,7 +73,7 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
         pollingUnit: '',
         assignedState: '',
         assignedLGA: '',
-        agentType: 'enrollment' as 'enrollment' | 'correction' | 'survey' | 'agribusiness',
+        agentType: 'enrollment' as 'enrollment' | 'household' | 'correction' | 'survey' | 'agribusiness',
         status: 'active',
         isActive: true,
         photoUrl: ''
@@ -77,8 +85,9 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const ROLE_TO_AGENT_TYPE: Record<string, 'enrollment' | 'correction' | 'survey' | 'agribusiness'> = {
+    const ROLE_TO_AGENT_TYPE: Record<string, 'enrollment' | 'household' | 'correction' | 'survey' | 'agribusiness'> = {
         agent: 'enrollment',
+        household_agent: 'household',
         data_correction_agent: 'correction',
         survey_agent: 'survey',
         agri_business_agent: 'agribusiness',
@@ -86,6 +95,7 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
 
     const AGENT_TYPE_TO_ROLE: Record<string, string> = {
         enrollment: 'agent',
+        household: 'household_agent',
         correction: 'data_correction_agent',
         survey: 'survey_agent',
         agribusiness: 'agri_business_agent',
@@ -94,10 +104,18 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
     useEffect(() => {
         const fetchAgent = async () => {
             try {
-                const res = await fetch(`/api/agents/${id}`);
+                const [res, clustersRes] = await Promise.all([
+                    fetch(`/api/agents/${id}`),
+                    fetch('/api/clusters?limit=200').catch(() => null)
+                ]);
+
+                if (clustersRes && clustersRes.ok) {
+                    const cData = await clustersRes.json();
+                    setClusters(cData.clusters || []);
+                }
+
                 if (!res.ok) throw new Error('Failed to fetch agent details');
                 const data = await res.json();
-
                 // Populate form
                 const agentProfile = data.agent || {};
                 const initialState = agentProfile.state || '';
@@ -165,6 +183,8 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                 if (agentProfile.photoUrl) {
                     setPhotoPreview(agentProfile.photoUrl);
                 }
+
+
 
                 // Set initial location data selection
                 if (initialState) {
@@ -373,6 +393,10 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
             }
             if (formData.agentType) {
                 updatePayload.agentType = formData.agentType;
+                updatePayload.canEnrollHouseholds = formData.agentType === 'household';
+            }
+            if (formData.cluster?.trim()) {
+                updatePayload.cluster = formData.cluster.trim();
             }
 
             const res = await fetch(`/api/agents/${id}`, {
@@ -568,10 +592,14 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                                 <CardContent className="space-y-4">
                                     <div className="space-y-2">
                                         <Label>Agent Type</Label>
-                                        <Select value={formData.agentType} onValueChange={(val) => handleChange('agentType', val)}>
+                                        <Select 
+                                            value={formData.agentType} 
+                                            onValueChange={(val: any) => handleChange('agentType', val)}
+                                        >
                                             <SelectTrigger><SelectValue placeholder="Select Type" /></SelectTrigger>
                                             <SelectContent>
                                                 <SelectItem value="enrollment">Enrollment Agent</SelectItem>
+                                                <SelectItem value="household">Household Enrollment Agent</SelectItem>
                                                 <SelectItem value="correction">Correction Agent</SelectItem>
                                                 <SelectItem value="survey">Survey Agent</SelectItem>
                                                 <SelectItem value="agribusiness">Agri-Business Agent</SelectItem>
@@ -763,6 +791,36 @@ export default function AgentEditClient({ id }: AgentEditClientProps) {
                                         <div className="space-y-2">
                                             <Label>Assigned LGA</Label>
                                             <Input placeholder="Enter assigned LGA" value={formData.assignedLGA} onChange={(e) => handleChange('assignedLGA', e.target.value)} />
+                                        </div>
+
+                                        <div className="space-y-2 pt-2 border-t border-blue-100 dark:border-blue-800/40">
+                                            <div className="flex items-center justify-between">
+                                                <Label>Assigned Cluster</Label>
+                                                {formData.cluster && (
+                                                    <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300 bg-blue-100/70 dark:bg-blue-800/50 px-2 py-0.5 rounded-full">
+                                                        Active
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <Select
+                                                value={formData.cluster || 'none'}
+                                                onValueChange={(val) => handleChange('cluster', val === 'none' ? '' : val)}
+                                            >
+                                                <SelectTrigger className="bg-white dark:bg-gray-800">
+                                                    <SelectValue placeholder="Assign Agent to a Cluster" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="none">No Cluster Assigned (Unassigned)</SelectItem>
+                                                    {clusters.map((c) => (
+                                                        <SelectItem key={c.id} value={c.title}>
+                                                            {c.title} {c.clusterLeadState ? `• ${c.clusterLeadState}` : ''}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                                Assigning an agent to a cluster associates their field enrollment and validation records.
+                                            </p>
                                         </div>
                                     </div>
                                 </CardContent>

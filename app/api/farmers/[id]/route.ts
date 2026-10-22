@@ -34,7 +34,19 @@ export async function GET(
       include: {
         cluster: true,
         farms: true,
-        // Include other relations if needed
+        certificates: {
+          orderBy: { createdAt: 'desc' }
+        },
+        referees: true,
+        agent: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            role: true
+          }
+        }
       }
     });
 
@@ -42,7 +54,19 @@ export async function GET(
       return NextResponse.json({ error: 'Farmer not found' }, { status: 404 });
     }
 
-    return NextResponse.json(farmer);
+    // Synthesize primaryCrop, farmSize, farmingExperience from farms if not explicitly on farmer
+    const primaryCrop = farmer.farms?.find(f => f.primaryCrop)?.primaryCrop || null;
+    const totalFarmSize = farmer.farms && farmer.farms.length > 0
+      ? farmer.farms.reduce((acc, f) => acc + (f.farmSize || 0), 0)
+      : null;
+    const farmingExperience = farmer.farms?.find(f => f.farmingExperience != null)?.farmingExperience ?? null;
+
+    return NextResponse.json({
+      ...farmer,
+      primaryCrop: (farmer as any).primaryCrop || primaryCrop,
+      farmSize: (farmer as any).farmSize || totalFarmSize,
+      farmingExperience: (farmer as any).farmingExperience ?? farmingExperience,
+    });
 
   } catch (error) {
     console.error('Error fetching farmer:', error);

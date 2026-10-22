@@ -14,10 +14,11 @@ const checkPermission = (permissions: string[] | undefined, permission: string) 
   return permissions?.includes(permission) || false;
 };
 
-const MOBILE_AGENT_ROLES = ['agent', 'data_correction_agent', 'survey_agent', 'agri_business_agent'] as const;
+const MOBILE_AGENT_ROLES = ['agent', 'household_agent', 'data_correction_agent', 'survey_agent', 'agri_business_agent'] as const;
 
 const AGENT_TYPE_ROLE_MAP: Record<string, string> = {
   enrollment: 'agent',
+  household: 'household_agent',
   correction: 'data_correction_agent',
   survey:     'survey_agent',
   agribusiness: 'agri_business_agent',
@@ -34,20 +35,29 @@ export async function GET(
     }
 
     const userPermissions = (session.user as any).permissions as string[];
-    if (!checkPermission(userPermissions, PERMISSIONS.AGENTS_READ)) {
+    const userRole = (session.user as any).role?.toLowerCase();
+    const isPrivileged = ['admin', 'super_admin', 'manager', 'project_manager'].includes(userRole);
+
+    if (!isPrivileged && !checkPermission(userPermissions, PERMISSIONS.AGENTS_READ)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
     const { id } = await params;
 
-    // Fetch User with Agent profile
+    // Fetch User with Agent profile and permissions
     const agent = await prisma.user.findUnique({
       where: { id },
       include: {
         agent: true,
+        userPermissions: {
+          include: {
+            permission: true
+          }
+        },
         _count: {
           select: {
-            farmers: true
+            farmers: true,
+            capturedHouseholds: true
           }
         }
       }
@@ -57,7 +67,16 @@ export async function GET(
       return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
     }
 
-    return NextResponse.json(agent);
+    const canEnrollHouseholds =
+      agent.role === 'household_agent' ||
+      (agent.userPermissions?.some(up =>
+        up.permission?.name === 'households.create' || up.permission?.name === 'households.read'
+      ) ?? false);
+
+    return NextResponse.json({
+      ...agent,
+      canEnrollHouseholds,
+    });
 
   } catch (error) {
     console.error('Error fetching agent:', error);
@@ -76,7 +95,10 @@ export async function PUT(
     }
 
     const userPermissions = (session.user as any).permissions as string[];
-    if (!checkPermission(userPermissions, PERMISSIONS.AGENTS_UPDATE)) {
+    const userRole = (session.user as any).role?.toLowerCase();
+    const isPrivileged = ['admin', 'super_admin', 'manager', 'project_manager'].includes(userRole);
+
+    if (!isPrivileged && !checkPermission(userPermissions, PERMISSIONS.AGENTS_UPDATE)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
@@ -176,6 +198,60 @@ export async function PUT(
     if (body.assignedLGA !== undefined) agentUpdateData.assignedLGA = body.assignedLGA;
     if (body.status !== undefined) agentUpdateData.status = body.status;
 
+    // Sync Household Enrollment Permission if specified or if agentType changed
+    const shouldSyncHousehold = body.agentType !== undefined
+      ? body.agentType === 'household'
+      : (typeof body.canEnrollHouseholds === 'boolean' ? body.canEnrollHouseholds : undefined);
+
+    if (shouldSyncHousehold !== undefined) {
+      const householdPermNames = [
+        'households.create',
+        'households.read',
+        'households.update'
+      ];
+
+      if (shouldSyncHousehold) {
+        for (const permName of householdPermNames) {
+          const perm = await prisma.permission.upsert({
+            where: { name: permName },
+            update: {},
+            create: {
+              name: permName,
+              category: 'households',
+              action: permName.split('.')[1] || 'manage',
+              description: `Permission to ${permName.split('.')[1]} households`
+            }
+          });
+          await prisma.userPermission.upsert({
+            where: {
+              userId_permissionId: {
+                userId: id,
+                permissionId: perm.id
+              }
+            },
+            create: {
+              userId: id,
+              permissionId: perm.id
+            },
+            update: {}
+          });
+        }
+      } else {
+        // Remove permissions
+        const permsToRemove = await prisma.permission.findMany({
+          where: { name: { in: householdPermNames } }
+        });
+        if (permsToRemove.length > 0) {
+          await prisma.userPermission.deleteMany({
+            where: {
+              userId: id,
+              permissionId: { in: permsToRemove.map(p => p.id) }
+            }
+          });
+        }
+      }
+    }
+
     // Update User and Agent profile
     const result = await prisma.$transaction(async (tx) => {
       // Update User
@@ -228,6 +304,9 @@ export async function PUT(
       }
 
       return { user, agentProfile };
+    }, {
+      timeout: 20000,
+      maxWait: 10000
     });
 
     // Send Email Notification if status changed
@@ -274,9 +353,9 @@ export async function PUT(
 
     return NextResponse.json(result);
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating agent:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: error?.message || 'Failed to update agent' }, { status: 500 });
   }
 }
 
@@ -449,7 +528,10 @@ export async function DELETE(
     }
 
     const userPermissions = (session.user as any).permissions as string[];
-    if (!checkPermission(userPermissions, PERMISSIONS.AGENTS_DELETE)) {
+    const userRole = (session.user as any).role?.toLowerCase();
+    const isPrivileged = ['admin', 'super_admin', 'manager', 'project_manager'].includes(userRole);
+
+    if (!isPrivileged && !checkPermission(userPermissions, PERMISSIONS.AGENTS_DELETE)) {
       return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
     }
 
@@ -460,12 +542,12 @@ export async function DELETE(
       where: { id },
       include: {
         _count: {
-          select: { farmers: true }
+          select: { farmers: true, capturedHouseholds: true }
         }
       }
     });
 
-    if (!existingAgent || existingAgent.role !== 'agent') {
+    if (!existingAgent || !MOBILE_AGENT_ROLES.includes(existingAgent.role as any)) {
       return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
     }
 

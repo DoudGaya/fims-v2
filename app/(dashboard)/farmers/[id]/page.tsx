@@ -8,6 +8,8 @@ import { usePermissions } from '@/components/PermissionProvider';
 import { PERMISSIONS } from '@/lib/permissions';
 import Link from 'next/link';
 import * as React from 'react';
+import { SendMessageDialog } from '@/components/communications/SendMessageDialog';
+import { AnalysisModal } from '@/components/analysis/AnalysisModal';
 
 // Heroicons
 import {
@@ -61,9 +63,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import dynamic from 'next/dynamic';
-import { AnalysisModal } from '@/components/analysis/AnalysisModal';
-import { ChevronDownIcon, Trash2Icon } from 'lucide-react';
-import { SendMessageDialog } from '@/components/communications/SendMessageDialog';
+import { 
+  ChevronDownIcon, 
+  Trash2Icon, 
+  Eye, 
+  Download, 
+  ExternalLink, 
+  Check, 
+  Copy, 
+  ShieldCheck, 
+  Award, 
+  RotateCcw,
+  Sparkles
+} from 'lucide-react';
 
 const FarmPolygonMapLibre = dynamic(() => import('@/components/maps/FarmPolygonMapLibre'), { ssr: false });
 
@@ -92,6 +104,91 @@ export default function FarmerDetailsPage() {
   const [deleteReason, setDeleteReason] = useState('');
   const [deletingRequest, setDeletingRequest] = useState(false);
   const [deleteSuccessMsg, setDeleteSuccessMsg] = useState<string | null>(null);
+
+  // Certificate generation & preview state
+  const [generatingCert, setGeneratingCert] = useState(false);
+  const [certSuccessMsg, setCertSuccessMsg] = useState<string | null>(null);
+  const [certError, setCertError] = useState<string | null>(null);
+  const [certPreviewOpen, setCertPreviewOpen] = useState(false);
+  const [certPreviewLoading, setCertPreviewLoading] = useState(false);
+  const [certBlobUrl, setCertBlobUrl] = useState<string>('');
+  const [copiedCertId, setCopiedCertId] = useState<string | null>(null);
+
+  const handlePreviewCertificate = async () => {
+    if (!farmer?.id) return;
+    setCertPreviewOpen(true);
+    setCertPreviewLoading(true);
+    setCertError(null);
+    try {
+      const res = await fetch(`/api/certificates/preview?farmerId=${farmer.id}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || err.details || 'Failed to generate preview');
+      }
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      setCertBlobUrl(url);
+    } catch (e: any) {
+      console.error('Certificate preview failed:', e);
+      setCertError(e.message || 'Failed to load certificate preview');
+    } finally {
+      setCertPreviewLoading(false);
+    }
+  };
+
+  const handleClosePreview = () => {
+    setCertPreviewOpen(false);
+    if (certBlobUrl) {
+      window.URL.revokeObjectURL(certBlobUrl);
+      setCertBlobUrl('');
+    }
+  };
+
+  const handleCopyCertId = (certId: string) => {
+    navigator.clipboard.writeText(certId);
+    setCopiedCertId(certId);
+    setTimeout(() => setCopiedCertId(null), 2500);
+  };
+
+  const handleGenerateCertificate = async () => {
+    if (!farmer?.id) return;
+    setGeneratingCert(true);
+    setCertError(null);
+    try {
+      const res = await fetch('/api/certificates/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ farmerId: farmer.id })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || err.details || 'Failed to generate certificate');
+      }
+
+      // Download the returned PDF
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `CCSA-Certificate-${farmer.firstName || 'Farmer'}-${farmer.lastName || ''}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      setCertSuccessMsg('Certificate generated and downloaded successfully!');
+      setTimeout(() => setCertSuccessMsg(null), 5000);
+
+      // Refresh farmer to populate the new certificate in the list
+      await fetchFarmerDetails();
+    } catch (e: any) {
+      console.error('Certificate generation failed:', e);
+      setCertError(e.message || 'Certificate generation failed');
+    } finally {
+      setGeneratingCert(false);
+    }
+  };
 
   useEffect(() => {
     if (status === 'loading' || permissionsLoading) return;
@@ -367,11 +464,38 @@ export default function FarmerDetailsPage() {
             >
               <DetailRow label="Farmer ID" value={farmer.id} />
               <DetailRow label="NIN" value={farmer.nin} />
-              <DetailRow label="Primary Crop" value={farmer.primaryCrop} />
-              <DetailRow label="Total Farm Size" value={farmer.farmSize ? `${farmer.farmSize} Ha` : null} />
-              <DetailRow label="Experience" value={farmer.farmingExperience ? `${farmer.farmingExperience} Years` : null} />
-              <DetailRow label="Registration Date" value={new Date(farmer.createdAt).toLocaleDateString()} />
-              <DetailRow label="Agent/Enroller" value={farmer.agent ? `${farmer.agent.firstName} ${farmer.agent.lastName}` : 'N/A'} />
+              <DetailRow 
+                label="Primary Crop" 
+                value={
+                  farmer.primaryCrop || 
+                  farmer.farms?.[0]?.primaryCrop || 
+                  (farmer.farms?.length ? farmer.farms.map((f: any) => f.primaryCrop).filter(Boolean).join(', ') : null)
+                } 
+              />
+              <DetailRow 
+                label="Total Farm Size" 
+                value={
+                  farmer.farmSize 
+                    ? `${farmer.farmSize} Ha` 
+                    : (Number(getTotalFarmArea()) > 0 ? `${getTotalFarmArea()} Ha` : null)
+                } 
+              />
+              <DetailRow 
+                label="Experience" 
+                value={
+                  farmer.farmingExperience 
+                    ? `${farmer.farmingExperience} Years` 
+                    : (farmer.farms?.[0]?.farmingExperience ? `${farmer.farms[0].farmingExperience} Years` : null)
+                } 
+              />
+              <DetailRow 
+                label="Registration Date" 
+                value={farmer.createdAt || farmer.registrationDate ? new Date(farmer.createdAt || farmer.registrationDate).toLocaleDateString() : null} 
+              />
+              <DetailRow 
+                label="Agent/Enroller" 
+                value={farmer.agent ? `${farmer.agent.firstName || ''} ${farmer.agent.lastName || ''}`.trim() : (farmer.agentId || 'N/A')} 
+              />
             </Section>
 
           </div>
@@ -512,35 +636,254 @@ export default function FarmerDetailsPage() {
               <DetailRow label="BVN" value={farmer.bvn} />
             </Section>
 
-            <Section title="Certificates & Documents">
-              <div className="space-y-4">
+            <Section 
+              title="Certificates & Documents"
+              action={
+                farmer.certificates?.length > 0 ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleGenerateCertificate}
+                    disabled={generatingCert}
+                    className="border-slate-300 hover:bg-slate-50 text-slate-700 gap-1.5 text-xs shadow-sm font-medium"
+                    title="Re-issue certificate with updated farmer credentials"
+                  >
+                    {generatingCert ? (
+                      <>
+                        <span className="animate-spin mr-1">⏳</span> Updating…
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw className="size-3.5 text-slate-500" /> Re-issue
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={handleGenerateCertificate}
+                    disabled={generatingCert}
+                    className="bg-[#081B33] hover:bg-[#0E2C52] text-white gap-1.5 text-xs shadow-sm font-medium"
+                  >
+                    {generatingCert ? (
+                      <>
+                        <span className="animate-spin mr-1">⏳</span> Generating…
+                      </>
+                    ) : (
+                      <>
+                        <Award className="size-4 text-amber-300" /> Generate Certificate
+                      </>
+                    )}
+                  </Button>
+                )
+              }
+            >
+              <div className="col-span-1 md:col-span-2 space-y-4">
+                {certSuccessMsg && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg text-xs font-medium flex items-center gap-2">
+                    <Check className="size-4 text-emerald-600 shrink-0" />
+                    <span>{certSuccessMsg}</span>
+                  </div>
+                )}
+                {certError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-xs font-medium flex items-center gap-2">
+                    <span className="text-rose-500 font-bold shrink-0">✕</span>
+                    <span>{certError}</span>
+                  </div>
+                )}
                 {farmer.certificates?.length > 0 ? (
                   farmer.certificates.map((cert: any) => (
-                    <Card key={cert.id} className="border-l-4 border-l-blue-600 shadow-sm">
-                      <CardContent className="pt-6">
-                        <div className="flex gap-4">
-                          <div className="h-16 w-16 bg-gray-50 border rounded-lg flex items-center justify-center shrink-0">
-                            <DocumentTextIcon className="h-8 w-8 text-gray-400" />
+                    <div 
+                      key={cert.id} 
+                      className="rounded-xl border border-slate-200/90 bg-white shadow-sm hover:shadow-md transition-all overflow-hidden"
+                    >
+                      {/* Official Verification Header Bar */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+                        <div className="flex items-center gap-2">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                          </span>
+                          <span className="text-[11px] font-bold text-emerald-700 tracking-wider uppercase font-mono">
+                            Verified Credential
+                          </span>
+                          <span className="text-slate-300">•</span>
+                          <span className="text-[11px] text-slate-500 font-medium">
+                            2026/2027 Season
+                          </span>
+                        </div>
+                        <Link 
+                          href={`/verify-certificate/${cert.certificateId}`} 
+                          target="_blank"
+                          className="text-[11px] text-blue-600 hover:text-blue-800 font-medium inline-flex items-center gap-1 hover:underline"
+                        >
+                          Verify Online <ExternalLink className="size-3" />
+                        </Link>
+                      </div>
+
+                      {/* Card Body */}
+                      <div className="p-4 flex flex-col sm:flex-row gap-4 items-stretch">
+                        {/* Miniature Certificate Preview Thumbnail */}
+                        <div 
+                          onClick={() => handlePreviewCertificate()}
+                          className="group relative cursor-pointer shrink-0 w-full sm:w-44 h-36 rounded-lg bg-gradient-to-br from-[#081B33] via-[#0E284A] to-[#081B33] p-2.5 text-white border border-amber-400/40 shadow-sm flex flex-col justify-between overflow-hidden transition-all hover:scale-[1.02]"
+                          title="Click to preview official certificate"
+                        >
+                          {/* Corner Ornaments */}
+                          <div className="absolute top-1 left-1 w-2 h-2 border-t border-l border-amber-300/80"></div>
+                          <div className="absolute top-1 right-1 w-2 h-2 border-t border-r border-amber-300/80"></div>
+                          <div className="absolute bottom-1 left-1 w-2 h-2 border-b border-l border-amber-300/80"></div>
+                          <div className="absolute bottom-1 right-1 w-2 h-2 border-b border-r border-amber-300/80"></div>
+
+                          {/* Mini Header */}
+                          <div className="text-center pt-0.5">
+                            <p className="text-[6.5px] font-serif uppercase tracking-widest text-amber-200/90 font-bold leading-tight">
+                              Cosmopolitan University Abuja
+                            </p>
+                            <p className="text-[5.5px] text-emerald-400 font-medium tracking-wide">
+                              Centre for Climate-Smart Agriculture
+                            </p>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
+
+                          {/* Mini Body */}
+                          <div className="text-center my-auto py-0.5">
+                            <p className="text-[6px] text-amber-300/80 uppercase tracking-wider font-semibold">
                               Certificate of Registration
                             </p>
-                            <p className="text-xs text-gray-500">
-                              ID: {cert.certificateId}
+                            <p className="text-[9px] font-serif font-bold text-white tracking-wide truncate mt-0.5">
+                              {farmer.firstName} {farmer.lastName}
                             </p>
-                            <p className="text-xs text-gray-500">
-                              Issued: {new Date(cert.issuedDate).toLocaleDateString()}
+                            <p className="text-[6.5px] text-slate-300 font-mono mt-0.5">
+                              {cert.certificateId}
                             </p>
                           </div>
+
+                          {/* Mini Footer */}
+                          <div className="flex items-center justify-between border-t border-amber-400/20 pt-1 text-[6px] text-slate-300">
+                            <div className="flex items-center gap-0.5 text-amber-300 font-bold">
+                              <Award className="size-2.5 text-amber-400" />
+                              <span>OFFICIAL SEAL</span>
+                            </div>
+                            <span className="font-mono text-slate-400">
+                              {new Date(cert.issuedDate).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                            </span>
+                          </div>
+
+                          {/* Hover Overlay */}
+                          <div className="absolute inset-0 bg-[#081B33]/85 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-xs font-semibold text-white backdrop-blur-[1px]">
+                            <Eye className="size-4 text-amber-300" />
+                            <span>Preview</span>
+                          </div>
                         </div>
-                        <Button className="w-full mt-4 bg-blue-600 hover:bg-blue-700" size="sm">
-                          Download PDF
-                        </Button>
-                      </CardContent>
-                    </Card>
+
+                        {/* Right: Credential Information & Actions */}
+                        <div className="flex-1 flex flex-col justify-between min-w-0">
+                          <div>
+                            <div className="flex items-start justify-between gap-1">
+                              <div>
+                                <h4 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                                  Certificate of Registration
+                                  <ShieldCheck className="size-4 text-emerald-600 inline shrink-0" />
+                                </h4>
+                                <p className="text-[11px] text-slate-500 font-medium">
+                                  Centre for Climate-Smart Agriculture (CCSA)
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Metadata */}
+                            <div className="grid grid-cols-2 gap-2 mt-2.5 p-2.5 bg-slate-50/80 border border-slate-100 rounded-lg text-xs">
+                              <div>
+                                <span className="text-[9.5px] uppercase font-semibold text-slate-400 block tracking-wider">
+                                  Certificate ID
+                                </span>
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <span className="font-mono font-bold text-slate-800 text-[11px]">
+                                    {cert.certificateId}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyCertId(cert.certificateId)}
+                                    className="text-slate-400 hover:text-slate-700 transition p-0.5 rounded"
+                                    title="Copy Certificate ID"
+                                  >
+                                    {copiedCertId === cert.certificateId ? (
+                                      <Check className="size-3 text-emerald-600" />
+                                    ) : (
+                                      <Copy className="size-3" />
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div>
+                                <span className="text-[9.5px] uppercase font-semibold text-slate-400 block tracking-wider">
+                                  Issued Date
+                                </span>
+                                <span className="font-semibold text-slate-800 mt-0.5 block text-[11px]">
+                                  {new Date(cert.issuedDate).toLocaleDateString(undefined, {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex flex-wrap items-center gap-2 mt-3 pt-2.5 border-t border-slate-100">
+                            <Button
+                              size="sm"
+                              onClick={() => handlePreviewCertificate()}
+                              className="bg-slate-900 hover:bg-slate-800 text-white text-xs gap-1.5 shadow-sm font-medium h-8"
+                            >
+                              <Eye className="size-3.5 text-amber-300" />
+                              View Preview
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={generatingCert}
+                              onClick={() => handleGenerateCertificate()}
+                              className="border-slate-300 hover:bg-slate-50 text-slate-700 text-xs gap-1.5 font-medium h-8"
+                            >
+                              <Download className="size-3.5 text-slate-600" />
+                              Download PDF
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   ))
-                ) : <p className="text-sm text-gray-500 italic">No certificates available.</p>}
+                ) : (
+                  <div className="p-6 text-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50">
+                    <div className="h-12 w-12 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto mb-2.5 shadow-sm">
+                      <Award className="size-6 text-amber-600" />
+                    </div>
+                    <p className="text-sm font-bold text-slate-800">No Certificate Issued Yet</p>
+                    <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-3">
+                      Generate an official CCSA certificate to issue a verifiable registration credential and PDF document for this farmer.
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={handleGenerateCertificate}
+                      disabled={generatingCert}
+                      className="bg-[#081B33] hover:bg-[#0E2C52] text-white text-xs gap-1.5 px-4 h-8 font-medium shadow-sm"
+                    >
+                      {generatingCert ? (
+                        <>
+                          <span className="animate-spin mr-1">⏳</span> Generating…
+                        </>
+                      ) : (
+                        <>
+                          <Award className="size-3.5 text-amber-300" /> Generate Official Certificate
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
               </div>
             </Section>
 
@@ -722,6 +1065,75 @@ export default function FarmerDetailsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Official Certificate Full Preview Modal */}
+      <Dialog 
+        open={certPreviewOpen} 
+        onOpenChange={(open) => {
+          if (!open) handleClosePreview();
+          else setCertPreviewOpen(true);
+        }}
+      >
+        <DialogContent className="max-w-4xl max-h-[92vh] flex flex-col p-0 overflow-hidden bg-slate-950 border-slate-800 text-white shadow-2xl">
+          <div className="px-5 py-3.5 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center">
+                <Award className="size-5 text-amber-400" />
+              </div>
+              <div>
+                <DialogTitle className="text-sm font-bold text-white flex items-center gap-2">
+                  Official Farmer Registration Certificate
+                  <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-[10px] py-0 px-1.5">
+                    Verified
+                  </Badge>
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-400">
+                  Centre for Climate-Smart Agriculture · Cosmopolitan University Abuja
+                </DialogDescription>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => handleGenerateCertificate()}
+                disabled={generatingCert}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-xs gap-1.5 h-8 font-medium shadow-sm"
+              >
+                <Download className="size-3.5" />
+                Download PDF
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex-1 bg-slate-900 p-3 min-h-[500px] flex items-center justify-center">
+            {certPreviewLoading ? (
+              <div className="text-center py-16">
+                <div className="animate-spin h-9 w-9 border-2 border-amber-400 border-t-transparent rounded-full mx-auto mb-3"></div>
+                <p className="text-sm font-semibold text-slate-200">Rendering High-Resolution Certificate…</p>
+                <p className="text-xs text-slate-400 mt-1">Generating cryptographic seal, vector borders, and geospatial maps</p>
+              </div>
+            ) : certBlobUrl ? (
+              <iframe
+                src={certBlobUrl}
+                className="w-full h-[72vh] rounded-lg border border-slate-800 bg-white shadow-2xl"
+                title="Official Certificate Document"
+              />
+            ) : (
+              <div className="text-center py-16 text-slate-400">
+                <p className="text-sm">Failed to render certificate preview.</p>
+                <Button 
+                  size="sm" 
+                  onClick={() => handlePreviewCertificate()} 
+                  className="mt-3 bg-blue-600 hover:bg-blue-700 text-xs text-white"
+                >
+                  Retry Preview
+                </Button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
@@ -730,16 +1142,31 @@ export default function FarmerDetailsPage() {
 // Reusable Sub-Components
 // ----------------------------------------------------
 
-function Section({ title, children, onEdit, hasPermission = false }: { title: string, children: React.ReactNode, onEdit?: () => void, hasPermission?: boolean }) {
+function Section({ 
+  title, 
+  children, 
+  onEdit, 
+  hasPermission = false,
+  action
+}: { 
+  title: string, 
+  children: React.ReactNode, 
+  onEdit?: () => void, 
+  hasPermission?: boolean,
+  action?: React.ReactNode
+}) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
         <CardTitle className="text-lg font-semibold">{title}</CardTitle>
-        {onEdit && hasPermission && (
-          <Button variant="ghost" size="sm" onClick={onEdit} className="h-8 px-2 text-muted-foreground hover:text-primary">
-            <PencilIcon className="size-4 mr-1" /> Edit
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {action}
+          {onEdit && hasPermission && (
+            <Button variant="ghost" size="sm" onClick={onEdit} className="h-8 px-2 text-muted-foreground hover:text-primary">
+              <PencilIcon className="size-4 mr-1" /> Edit
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <Separator className="mb-4" />
       <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">

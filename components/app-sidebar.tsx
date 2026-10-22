@@ -67,6 +67,12 @@ const navigationConfig = [
     requiredPermission: PERMISSIONS.FARMERS_READ
   },
   {
+    title: 'Households',
+    url: '/households',
+    icon: Home,
+    requiredPermission: PERMISSIONS.HOUSEHOLDS_READ
+  },
+  {
     title: 'Agents',
     url: '/agents',
     icon: BriefcaseBusiness, // UserGroup equivalent
