@@ -53,7 +53,7 @@ export default async function VerifyDwellingPage({ params }: Props) {
 
   if (!household) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-linear-to-br from-slate-50 via-slate-100 to-slate-200 flex flex-col items-center justify-center p-4">
         <div className="bg-white p-8 sm:p-10 rounded-2xl shadow-2xl max-w-lg w-full text-center border-t-4 border-rose-500">
           <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-rose-100">
             <XCircle className="w-10 h-10 text-rose-500" />
@@ -93,7 +93,7 @@ export default async function VerifyDwellingPage({ params }: Props) {
         {/* ── Institutional Brand Banner ── */}
         <div className="bg-[#081B33] text-white px-6 sm:px-10 py-8 relative overflow-hidden">
           {/* Subtle gold accent top bar */}
-          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#C5A059] via-[#E8D4A8] to-[#C5A059]" />
+          <div className="absolute top-0 left-0 right-0 h-1.5 bg-linear-to-r from-[#C5A059] via-[#E8D4A8] to-[#C5A059]" />
 
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
             <div className="relative w-20 h-20 sm:w-24 sm:h-24 shrink-0 rounded-full bg-white/10 p-1.5 backdrop-blur border border-white/20 shadow-xl">
@@ -126,7 +126,7 @@ export default async function VerifyDwellingPage({ params }: Props) {
         </div>
 
         {/* ── Verification Status Pill Bar ── */}
-        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 px-6 sm:px-10 py-4 text-white flex flex-col sm:flex-row items-center justify-between gap-3 shadow-inner">
+        <div className="bg-linear-to-r from-emerald-600 to-emerald-700 px-6 sm:px-10 py-4 text-white flex flex-col sm:flex-row items-center justify-between gap-3 shadow-inner">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center shrink-0 border border-white/30">
               <CheckCircle className="w-6 h-6 text-white" />

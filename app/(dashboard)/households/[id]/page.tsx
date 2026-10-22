@@ -188,16 +188,16 @@ export default function HouseholdDetailPage() {
   return (
     <div className="w-full min-w-0 space-y-8 animate-in fade-in duration-300">
       {/* 1. Header Bar */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" asChild className="p-2">
+      <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 border-b pb-4">
+        <div className="flex items-start sm:items-center gap-3 min-w-0">
+          <Button variant="ghost" size="sm" asChild className="p-2 shrink-0">
             <Link href="/households">
               <ArrowLeftIcon className="size-5 text-gray-600" />
             </Link>
           </Button>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold font-mono text-gray-900 tracking-tight">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-xl sm:text-2xl font-bold font-mono text-gray-900 tracking-tight whitespace-nowrap">
                 {household.houseNumber}
               </h1>
               <Badge
@@ -219,7 +219,7 @@ export default function HouseholdDetailPage() {
         </div>
 
         {/* Status Switcher & Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           {hasPermission(PERMISSIONS.HOUSEHOLDS_UPDATE) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
