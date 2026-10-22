@@ -48,6 +48,8 @@ model User {
   accountDeleteRequestsReviewed AccountDeleteRequest[] @relation("AccountDeleteReviewedBy")
   createdAgriBusinesses         BusinessStakeholder[]  @relation("BusinessStakeholderCreatedBy")
   capturedHouseholds            Household[]            @relation("HouseholdCapturedBy")
+  householdDeleteRequestsAsRequester HouseholdDeleteRequest[] @relation("HouseholdDeleteRequestedBy")
+  householdDeleteRequestsAsReviewer  HouseholdDeleteRequest[] @relation("HouseholdDeleteReviewedBy")
   organizationMemberships       OrganizationUser[]
 
   @@map("users")
@@ -1162,6 +1164,7 @@ model Household {
   // Metadata & Agent attribution
   agentId                   String?
   agent                     User?     @relation("HouseholdCapturedBy", fields: [agentId], references: [id])
+  deleteRequests            HouseholdDeleteRequest[]
   offlineId                 String?
   syncedAt                  DateTime?
   createdAt                 DateTime  @default(now())
@@ -1174,4 +1177,29 @@ model Household {
   @@index([agentId, createdAt(sort: Desc)])
   @@index([interventionStatus, createdAt(sort: Desc)])
   @@map("households")
+}
+
+/// Request to delete a household, pending admin approval.
+model HouseholdDeleteRequest {
+  id                  String              @id @default(cuid())
+  householdId         String?             // nullable — set null when household is actually deleted
+  houseNumber         String              // denormalized for reference after deletion
+  headFullName        String              // denormalized: headFirstName + headLastName
+  headPhone           String              // denormalized
+  householdSnapshot   Json                // location, head of house, members, pue captured at request time
+  requestedByUserId   String
+  reason              String
+  status              AccessRequestStatus @default(PENDING)
+  reviewedByUserId    String?
+  reviewedAt          DateTime?
+  adminNotes          String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  household           Household?          @relation(fields: [householdId], references: [id], onDelete: SetNull)
+  requestedBy         User                @relation("HouseholdDeleteRequestedBy", fields: [requestedByUserId], references: [id])
+  reviewedBy          User?               @relation("HouseholdDeleteReviewedBy", fields: [reviewedByUserId], references: [id])
+
+  @@index([status, createdAt(sort: Desc)])
+  @@index([householdId])
+  @@map("household_delete_requests")
 }

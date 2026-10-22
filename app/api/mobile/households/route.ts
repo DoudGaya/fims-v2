@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { getMobileUser, requireRole } from '@/lib/mobileAuth';
+import { formatPollingUnit } from '@/lib/textUtils';
 
 // Helper to synthesize traceable house number
 function generateSyntheticHouseNumber(state: string, lga: string, ward: string, pu: string, seq: number): string {
@@ -217,7 +218,7 @@ export async function POST(req: NextRequest) {
           state: data.state,
           lga: data.lga,
           ward: data.ward,
-          pollingUnit: data.pollingUnit,
+          pollingUnit: formatPollingUnit(data.pollingUnit),
           address: data.address || null,
           latitude: data.latitude ?? null,
           longitude: data.longitude ?? null,

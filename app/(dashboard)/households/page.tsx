@@ -22,6 +22,17 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { formatPollingUnit } from '@/lib/textUtils';
 
 // Icons
 import {
@@ -35,6 +46,7 @@ import {
   BuildingOffice2Icon,
   ArrowPathIcon,
   PlusIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 
 export default function HouseholdsDirectoryPage() {
@@ -60,6 +72,39 @@ export default function HouseholdsDirectoryPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+
+  // Deletion request state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [targetHousehold, setTargetHousehold] = useState<any | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
+
+  const handleDeleteRequest = async () => {
+    if (!targetHousehold || !deleteReason.trim()) return;
+    setIsSubmittingDelete(true);
+    try {
+      const res = await fetch('/api/households/delete-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          householdId: targetHousehold.id,
+          reason: deleteReason.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to submit delete request');
+      }
+      setDeleteDialogOpen(false);
+      setTargetHousehold(null);
+      setDeleteReason('');
+      alert('Deletion request submitted successfully. It will be reviewed by an administrator.');
+    } catch (err: any) {
+      alert(err.message || 'Failed to submit delete request');
+    } finally {
+      setIsSubmittingDelete(false);
+    }
+  };
 
   const fetchHouseholds = useCallback(async () => {
     try {
@@ -388,7 +433,6 @@ export default function HouseholdsDirectoryPage() {
                         </Badge>
                       </Link>
                     </TableCell>
-
                     {/* House Leader */}
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -429,7 +473,7 @@ export default function HouseholdsDirectoryPage() {
                     {/* Location */}
                     <TableCell>
                       <p className="text-sm text-gray-800 font-medium">{h.ward}, {h.lga}</p>
-                      <p className="text-xs text-muted-foreground">{h.state} • PU: {h.pollingUnit}</p>
+                      <p className="text-xs text-muted-foreground">{h.state} • PU: {formatPollingUnit(h.pollingUnit)}</p>
                     </TableCell>
 
                     {/* Dependents */}
@@ -509,11 +553,26 @@ export default function HouseholdsDirectoryPage() {
 
                     {/* Action */}
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" asChild className="h-8 px-2 text-[#013358] hover:text-[#02426F] hover:bg-[#F3F8FC]">
-                        <Link href={`/households/${h.id}`}>
-                          <EyeIcon className="size-4 mr-1" /> View
-                        </Link>
-                      </Button>
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button variant="ghost" size="sm" asChild className="h-8 px-2 text-[#013358] hover:text-[#02426F] hover:bg-[#F3F8FC]">
+                          <Link href={`/households/${h.id}`}>
+                            <EyeIcon className="size-4 mr-1" /> View
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2 text-amber-700 hover:text-amber-800 hover:bg-amber-50"
+                          onClick={() => {
+                            setTargetHousehold(h);
+                            setDeleteReason('');
+                            setDeleteDialogOpen(true);
+                          }}
+                          title="Request Deletion"
+                        >
+                          <TrashIcon className="size-4 mr-1" /> Request Delete
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -550,6 +609,67 @@ export default function HouseholdsDirectoryPage() {
           </div>
         </div>
       )}
+
+      {/* Request Deletion Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Request Household Deletion</DialogTitle>
+            <DialogDescription>
+              Submit a formal request to delete this household record. An administrator must approve this request before the record is permanently removed.
+            </DialogDescription>
+          </DialogHeader>
+          {targetHousehold && (
+            <div className="space-y-3 py-2 text-sm">
+              <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border space-y-1">
+                <p className="font-semibold text-gray-900 dark:text-gray-100">
+                  {targetHousehold.headFirstName} {targetHousehold.headLastName}
+                </p>
+                <p className="text-xs font-mono text-muted-foreground">
+                  Code: {targetHousehold.houseNumber} • Phone: {targetHousehold.headPhone}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Location: {targetHousehold.ward}, {targetHousehold.lga}, {targetHousehold.state} (PU: {formatPollingUnit(targetHousehold.pollingUnit)})
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="del-reason" className="text-xs font-medium">
+                  Reason for deletion <span className="text-red-500">*</span>
+                </Label>
+                <Textarea
+                  id="del-reason"
+                  placeholder="Explain why this household should be deleted (e.g. duplicate record, data entry error, demolition)..."
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  rows={3}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              disabled={isSubmittingDelete}
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setTargetHousehold(null);
+                setDeleteReason('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+              disabled={isSubmittingDelete || !deleteReason.trim()}
+              onClick={handleDeleteRequest}
+            >
+              {isSubmittingDelete ? 'Submitting…' : 'Submit Deletion Request'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+

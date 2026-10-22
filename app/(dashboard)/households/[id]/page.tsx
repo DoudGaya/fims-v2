@@ -21,6 +21,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { formatPollingUnit } from '@/lib/textUtils';
 
 // Icons
 import {
@@ -38,6 +49,7 @@ import {
   CheckCircleIcon,
   GlobeAltIcon,
   PhotoIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 
 export default function HouseholdDetailPage() {
@@ -52,6 +64,39 @@ export default function HouseholdDetailPage() {
   const [error, setError] = useState('');
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
+
+  // Deletion request state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
+  const [isSubmittingDelete, setIsSubmittingDelete] = useState(false);
+  const [deleteRequestSuccess, setDeleteRequestSuccess] = useState(false);
+
+  const handleDeleteRequest = async () => {
+    if (!id || !deleteReason.trim()) return;
+    setIsSubmittingDelete(true);
+    try {
+      const res = await fetch('/api/households/delete-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          householdId: id,
+          reason: deleteReason.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to submit delete request');
+      }
+      setDeleteRequestSuccess(true);
+      setDeleteDialogOpen(false);
+      setDeleteReason('');
+      alert('Household deletion request submitted successfully. It will be reviewed by an administrator.');
+    } catch (err: any) {
+      alert(err.message || 'Failed to submit delete request');
+    } finally {
+      setIsSubmittingDelete(false);
+    }
+  };
 
   const fetchHouseholdDetails = useCallback(async () => {
     if (!id) return;
@@ -166,12 +211,12 @@ export default function HouseholdDetailPage() {
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {household.ward}, {household.lga}, {household.state} • Polling Unit: {household.pollingUnit}
+              {household.ward}, {household.lga}, {household.state} • Polling Unit: {formatPollingUnit(household.pollingUnit)}
             </p>
           </div>
         </div>
 
-        {/* Status Switcher */}
+        {/* Status Switcher & Actions */}
         <div className="flex items-center gap-3">
           {hasPermission(PERMISSIONS.HOUSEHOLDS_UPDATE) && (
             <DropdownMenu>
@@ -197,6 +242,19 @@ export default function HouseholdDetailPage() {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-amber-300 text-amber-700 hover:bg-amber-50"
+            disabled={deleteRequestSuccess}
+            onClick={() => {
+              setDeleteReason('');
+              setDeleteDialogOpen(true);
+            }}
+          >
+            <TrashIcon className="mr-1.5 size-4" /> Request Deletion
+          </Button>
 
           <Button variant="outline" size="sm" asChild>
             <Link href="/households">
@@ -355,7 +413,7 @@ export default function HouseholdDetailPage() {
                 <span className="bg-white dark:bg-gray-800 px-2 py-0.5 rounded border border-[#DCEAF3] dark:border-gray-700">State: {household.state}</span>
                 <span className="bg-white dark:bg-gray-800 px-2 py-0.5 rounded border border-[#DCEAF3] dark:border-gray-700">LGA: {household.lga}</span>
                 <span className="bg-white dark:bg-gray-800 px-2 py-0.5 rounded border border-[#DCEAF3] dark:border-gray-700">Ward: {household.ward}</span>
-                <span className="bg-white dark:bg-gray-800 px-2 py-0.5 rounded border border-[#DCEAF3] dark:border-gray-700">PU: {household.pollingUnit}</span>
+                <span className="bg-white dark:bg-gray-800 px-2 py-0.5 rounded border border-[#DCEAF3] dark:border-gray-700">PU: {formatPollingUnit(household.pollingUnit)}</span>
               </div>
             </div>
 
@@ -548,6 +606,63 @@ export default function HouseholdDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Request Deletion Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Request Household Deletion</DialogTitle>
+            <DialogDescription>
+              This will submit a deletion request for review. An administrator must approve it before the household is permanently removed.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2 text-sm">
+            <div className="bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border space-y-1">
+              <p className="font-semibold text-gray-900 dark:text-gray-100">
+                {household.headFirstName} {household.headLastName}
+              </p>
+              <p className="text-xs font-mono text-muted-foreground">
+                Code: {household.houseNumber} • Phone: {household.headPhone}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Location: {household.ward}, {household.lga}, {household.state} (PU: {formatPollingUnit(household.pollingUnit)})
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="del-reason" className="text-xs font-medium">
+                Reason for deletion <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="del-reason"
+                placeholder="Describe why this household record should be deleted..."
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              disabled={isSubmittingDelete}
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setDeleteReason('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+              disabled={isSubmittingDelete || !deleteReason.trim()}
+              onClick={handleDeleteRequest}
+            >
+              {isSubmittingDelete ? 'Submitting…' : 'Submit Deletion Request'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
