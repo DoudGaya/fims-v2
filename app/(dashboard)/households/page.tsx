@@ -133,7 +133,7 @@ export default function HouseholdsDirectoryPage() {
   };
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full min-w-0 space-y-6">
       {/* 1. Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -357,6 +357,7 @@ export default function HouseholdsDirectoryPage() {
                 <TableHead className="text-right font-semibold">Action</TableHead>
               </TableRow>
             </TableHeader>
+            <TableBody>
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">

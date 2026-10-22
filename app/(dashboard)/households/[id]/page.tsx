@@ -139,7 +139,7 @@ export default function HouseholdDetailPage() {
   const codeParts = household.houseNumber.split('-');
 
   return (
-    <div className="w-full space-y-8 animate-in fade-in duration-300">
+    <div className="w-full min-w-0 space-y-8 animate-in fade-in duration-300">
       {/* 1. Header Bar */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
