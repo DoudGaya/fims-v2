@@ -4,6 +4,7 @@ This project is a migration of the legacy `ccsa-mobile-api` to a modern stack us
 
 ## 📚 Documentation
 
+- [NIN Validation API Documentation](./NIN_API_README.md) - API guide for NIN verification integration across office departments.
 - [Migration Plan](./MIGRATION_PLAN.md) - Detailed step-by-step guide for the migration.
 - [Legacy Project](../ccsa-mobile-api/README.md) - Reference to the original project.
 
