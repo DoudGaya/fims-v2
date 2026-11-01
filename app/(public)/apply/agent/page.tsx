@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
     Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter,
@@ -92,6 +92,35 @@ export default function AgentApplicationPage() {
     const [confirmBvn,           setConfirmBvn]           = useState('');
     const [confirmAccountNumber, setConfirmAccountNumber] = useState('');
     const [courseOfStudyOther, setCourseOfStudyOther]     = useState('');
+
+    // ── Clusters state (fetched from DB) ─────────────────────────────────────────
+    const [clusters, setClusters]               = useState<{ id: string; title: string }[]>([]);
+    const [loadingClusters, setLoadingClusters] = useState(true);
+
+    useEffect(() => {
+        let isMounted = true;
+        async function fetchClusters() {
+            try {
+                const res = await fetch('/api/public/clusters');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (isMounted && Array.isArray(data.clusters)) {
+                        setClusters(data.clusters);
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to load clusters:', err);
+            } finally {
+                if (isMounted) {
+                    setLoadingClusters(false);
+                }
+            }
+        }
+        fetchClusters();
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     // ── Photo state ──────────────────────────────────────────────────────────────
     const [photoPreview,   setPhotoPreview]   = useState('');
@@ -536,21 +565,26 @@ export default function AgentApplicationPage() {
 
                         <div className="space-y-2">
                             <Label htmlFor="cluster">Cluster / Institution</Label>
-                            <Select onValueChange={(val) => handleChange('cluster', val)} value={formData.cluster}>
-                                <SelectTrigger id="cluster"><SelectValue placeholder="Select your cluster" /></SelectTrigger>
+                            <Select
+                                onValueChange={(val) => handleChange('cluster', val)}
+                                value={formData.cluster}
+                                disabled={loadingClusters && clusters.length === 0}
+                            >
+                                <SelectTrigger id="cluster">
+                                    <SelectValue placeholder={loadingClusters ? "Loading clusters..." : "Select your cluster"} />
+                                </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Audu Bako College of Agriculture, Danbatta, Kano State">
-                                        Audu Bako College of Agriculture, Danbatta, Kano State
-                                    </SelectItem>
-                                    <SelectItem value="Oyo State College of Agriculture and Technology (OYSCATECH)">
-                                        Oyo State College of Agriculture and Technology (OYSCATECH)
-                                    </SelectItem>
-                                    <SelectItem value="Adamawa State College of Education, Hong">
-                                        Adamawa State College of Education, Hong
-                                    </SelectItem>
-                                    <SelectItem value="College of Agriculture, Science and Technology, Lafia">
-                                        College of Agriculture, Science and Technology, Lafia
-                                    </SelectItem>
+                                    {clusters.length > 0 ? (
+                                        clusters.map((c) => (
+                                            <SelectItem key={c.id} value={c.title}>
+                                                {c.title}
+                                            </SelectItem>
+                                        ))
+                                    ) : (
+                                        <SelectItem value="__none__" disabled>
+                                            {loadingClusters ? "Loading clusters..." : "No clusters available"}
+                                        </SelectItem>
+                                    )}
                                 </SelectContent>
                             </Select>
                         </div>
