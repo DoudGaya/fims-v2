@@ -21,6 +21,9 @@ import {
   DocumentMagnifyingGlassIcon,
   CheckCircleIcon,
   ArrowPathIcon,
+  BuildingStorefrontIcon,
+  ClipboardDocumentIcon,
+  CheckIcon,
 } from '@heroicons/react/24/outline';
 import { SendMessageDialog } from '@/components/communications/SendMessageDialog';
 import { hierarchicalData } from '@/lib/data/hierarchical-data';
@@ -36,7 +39,7 @@ interface AgentDetails {
   isActive: boolean;
   lastLogin: string | null;
   createdAt: string;
-  _count: { farmers: number; capturedHouseholds?: number };
+  _count: { farmers: number; capturedHouseholds?: number; createdAgriBusinesses?: number };
   agent: {
     id?: string;
     nin?: string;
@@ -73,6 +76,7 @@ interface AgentDetails {
     householdsCount: number;
     surveyResponsesCount: number;
     correctionsCount: number;
+    agriBusinessesCount: number;
   };
 }
 
@@ -160,6 +164,21 @@ export default function AgentDetailsClient({ id }: { id: string }) {
 
   // Operational Assignment Quick-Edit state
   const [editAssignmentOpen, setEditAssignmentOpen] = useState(false);
+  const [copiedUpdateLink, setCopiedUpdateLink] = useState(false);
+
+  const handleCopyUpdateLink = async () => {
+    if (!agent) return;
+    try {
+      const url = typeof window !== 'undefined'
+        ? `${window.location.origin}/update/agent/${agent.id}`
+        : `https://fims.cosmopolitan.edu.ng/update/agent/${agent.id}`;
+      await navigator.clipboard.writeText(url);
+      setCopiedUpdateLink(true);
+      setTimeout(() => setCopiedUpdateLink(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy update link:', err);
+    }
+  };
   const [assignedRole, setAssignedRole] = useState('agent');
   const [assignedState, setAssignedState] = useState('');
   const [assignedLGA, setAssignedLGA] = useState('');
@@ -287,6 +306,7 @@ export default function AgentDetailsClient({ id }: { id: string }) {
   const householdsCount = agent.stats?.householdsCount ?? agent._count?.capturedHouseholds ?? 0;
   const surveyCount = agent.stats?.surveyResponsesCount ?? 0;
   const correctionsCount = agent.stats?.correctionsCount ?? 0;
+  const agriBusinessesCount = agent.stats?.agriBusinessesCount ?? agent._count?.createdAgriBusinesses ?? 0;
 
   return (
     <div className="space-y-6">
@@ -408,6 +428,24 @@ export default function AgentDetailsClient({ id }: { id: string }) {
                     </Button>
                   }
                 />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCopyUpdateLink}
+                  className="gap-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  {copiedUpdateLink ? (
+                    <>
+                      <CheckIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      <span className="text-green-600 dark:text-green-400">Update Link Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <ClipboardDocumentIcon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                      <span>Copy Update Link</span>
+                    </>
+                  )}
+                </Button>
               </>
             )}
           </div>
@@ -815,16 +853,16 @@ export default function AgentDetailsClient({ id }: { id: string }) {
               ) : isAgriBusinessAgent ? (
                 <div className="flex items-center">
                   <div className="shrink-0 bg-indigo-600 rounded-md p-3">
-                    <BriefcaseIcon className="h-6 w-6 text-white" />
+                    <BuildingStorefrontIcon className="h-6 w-6 text-white" />
                   </div>
                   <div className="ml-4 w-0 flex-1">
                     <dl>
                       <dt className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Agri-Business Stakeholders
+                        Agri-Businesses Registered
                       </dt>
                       <dd>
                         <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                          Active
+                          {agriBusinessesCount}
                         </div>
                       </dd>
                     </dl>
@@ -850,8 +888,8 @@ export default function AgentDetailsClient({ id }: { id: string }) {
                 </div>
               )}
 
-              {/* Multi-Metric Breakdown (if agent has activity in multiple categories) */}
-              <div className="pt-3 border-t border-gray-100 dark:border-gray-700/60 grid grid-cols-2 gap-3 text-xs">
+              {/* Multi-Metric Breakdown (all categories including Agri-Business) */}
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-700/60 grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
                 <div className="bg-gray-50 dark:bg-gray-700/40 p-2 rounded">
                   <span className="text-gray-500 dark:text-gray-400 block">Farmers</span>
                   <span className="font-semibold text-gray-900 dark:text-gray-100">{farmersCount}</span>
@@ -867,6 +905,10 @@ export default function AgentDetailsClient({ id }: { id: string }) {
                 <div className="bg-gray-50 dark:bg-gray-700/40 p-2 rounded">
                   <span className="text-gray-500 dark:text-gray-400 block">Corrections</span>
                   <span className="font-semibold text-gray-900 dark:text-gray-100">{correctionsCount}</span>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-700/40 p-2 rounded col-span-2 sm:col-span-1">
+                  <span className="text-gray-500 dark:text-gray-400 block">Agri-Business</span>
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">{agriBusinessesCount}</span>
                 </div>
               </div>
             </div>

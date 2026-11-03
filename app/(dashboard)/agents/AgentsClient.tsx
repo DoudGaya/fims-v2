@@ -25,7 +25,9 @@ import {
   XCircleIcon,
   InboxArrowDownIcon,
   PhoneIcon,
-  ArrowDownTrayIcon
+  ArrowDownTrayIcon,
+  ClipboardDocumentIcon,
+  CheckIcon
 } from '@heroicons/react/24/outline';
 
 import {
@@ -157,6 +159,20 @@ export default function AgentsClient() {
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [copiedApplyLink, setCopiedApplyLink] = useState(false);
+
+  const handleCopyApplicationLink = async () => {
+    try {
+      const url = typeof window !== 'undefined'
+        ? `${window.location.origin}/apply/agent`
+        : 'https://fims.cosmopolitan.edu.ng/apply/agent';
+      await navigator.clipboard.writeText(url);
+      setCopiedApplyLink(true);
+      setTimeout(() => setCopiedApplyLink(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy application link:', err);
+    }
+  };
   const [error, setError] = useState<string | null>(null);
 
   // Batch selection
@@ -436,24 +452,43 @@ export default function AgentsClient() {
             Recruit, onboard, and manage field agents.
           </p>
         </div>
-        {hasPermission(PERMISSIONS.AGENTS_CREATE) && (
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={handleExport}
-              disabled={downloading}
-            >
-              <ArrowDownTrayIcon className={`mr-2 h-4 w-4 ${downloading ? 'animate-bounce' : ''}`} />
-              {downloading ? 'Generating...' : 'Generate Report'}
-            </Button>
-            <Button asChild>
-              <Link href="/agents/create">
-                <PlusIcon className="mr-2 h-4 w-4" />
-                Add Agent
-              </Link>
-            </Button>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleCopyApplicationLink}
+            className="gap-2 border-[#DCEAF3] dark:border-gray-600 text-[#013358] dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+          >
+            {copiedApplyLink ? (
+              <>
+                <CheckIcon className="h-4 w-4 text-green-600 dark:text-green-400" />
+                <span className="text-green-600 dark:text-green-400 font-medium">Link Copied!</span>
+              </>
+            ) : (
+              <>
+                <ClipboardDocumentIcon className="h-4 w-4 text-[#013358] dark:text-blue-300" />
+                <span>Copy Application Form URL</span>
+              </>
+            )}
+          </Button>
+          {hasPermission(PERMISSIONS.AGENTS_CREATE) && (
+            <>
+              <Button
+                variant="outline"
+                onClick={handleExport}
+                disabled={downloading}
+              >
+                <ArrowDownTrayIcon className={`mr-2 h-4 w-4 ${downloading ? 'animate-bounce' : ''}`} />
+                {downloading ? 'Generating...' : 'Generate Report'}
+              </Button>
+              <Button asChild className="bg-[#013358] hover:bg-blue-800 text-white">
+                <Link href="/agents/create">
+                  <PlusIcon className="mr-2 h-4 w-4" />
+                  Add Agent
+                </Link>
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Workforce & Lifecycle Metrics */}

@@ -57,7 +57,8 @@ export async function GET(
         _count: {
           select: {
             farmers: true,
-            capturedHouseholds: true
+            capturedHouseholds: true,
+            createdAgriBusinesses: true
           }
         }
       }
@@ -86,6 +87,7 @@ export async function GET(
         householdsCount: agent._count?.capturedHouseholds || 0,
         surveyResponsesCount,
         correctionsCount,
+        agriBusinessesCount: agent._count?.createdAgriBusinesses || 0,
       }
     });
 
