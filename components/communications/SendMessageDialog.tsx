@@ -123,7 +123,7 @@ export function SendMessageDialog({
         )}
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg w-full min-w-0 max-w-full overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageSquareIcon className="h-5 w-5 text-ccsa-blue dark:text-blue-400" />
@@ -153,10 +153,10 @@ export function SendMessageDialog({
         ) : (
           <>
             {/* ── Contact info strip ── */}
-            <div className="flex flex-wrap gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-md text-xs text-gray-600 dark:text-gray-400">
+            <div className="flex flex-wrap gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-md text-xs text-gray-600 dark:text-gray-400 w-full min-w-0 max-w-full overflow-hidden">
               {hasEmail ? (
-                <span className="flex items-center gap-1.5">
-                  <MailIcon className="h-3.5 w-3.5" /> {recipientEmail}
+                <span className="flex items-center gap-1.5 truncate max-w-full">
+                  <MailIcon className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">{recipientEmail}</span>
                 </span>
               ) : (
                 <span className="flex items-center gap-1.5 line-through opacity-50">
@@ -175,9 +175,9 @@ export function SendMessageDialog({
             </div>
 
             {/* ── Channel selector ── */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 w-full min-w-0 max-w-full">
               <Label>Channel</Label>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {([
                   { value: 'email', label: 'Email', disabled: !hasEmail },
                   { value: 'sms', label: 'SMS', disabled: !hasPhone },
@@ -205,7 +205,7 @@ export function SendMessageDialog({
 
             {/* ── Subject (email only) ── */}
             {(channel === 'email' || channel === 'both') && (
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 w-full min-w-0 max-w-full">
                 <Label htmlFor="msg-subject">Subject</Label>
                 <Input
                   id="msg-subject"
@@ -213,12 +213,13 @@ export function SendMessageDialog({
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   disabled={sendState.status === 'sending'}
+                  className="w-full min-w-0 max-w-full"
                 />
               </div>
             )}
 
             {/* ── Message body ── */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 w-full min-w-0 max-w-full">
               <div className="flex items-center justify-between">
                 <Label htmlFor="msg-body">Message</Label>
                 {(channel === 'sms' || channel === 'both') && (
@@ -234,7 +235,7 @@ export function SendMessageDialog({
                 onChange={(e) => setBody(e.target.value)}
                 rows={5}
                 disabled={sendState.status === 'sending'}
-                className="resize-none"
+                className="resize-none w-full min-w-0 max-w-full break-all"
               />
             </div>
 

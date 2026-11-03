@@ -9,4 +9,4 @@ export const metadata: Metadata = {
 export default async function AgentDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   return <AgentDetailsClient id={id} />;
-} 
+}
