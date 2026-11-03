@@ -3,6 +3,9 @@ import { Prisma } from '@prisma/client';
 import prisma from '@/lib/prisma';
 import { getMobileUser, requireRole } from '@/lib/mobileAuth';
 import { farmerSchema } from '@/lib/validation';
+import TermiiService from '@/lib/termiiService';
+
+const termiiService = new TermiiService();
 
 /**
  * GET /api/mobile/farmers
@@ -190,6 +193,13 @@ export async function POST(req: NextRequest) {
       } : {})
     },
   });
+
+  if (newFarmer.phone) {
+    const smsText = `Dear ${newFarmer.firstName}, your farmer enrollment with CCSA has been successfully recorded. NIN: ${nin}. Status: Registered.`;
+    termiiService.sendMessage(newFarmer.phone, smsText).catch((err) => {
+      console.error('Failed to send farmer enrollment SMS notification:', err);
+    });
+  }
 
   return NextResponse.json(newFarmer, { status: 201 });
 }

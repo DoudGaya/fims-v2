@@ -73,9 +73,20 @@ export async function GET(
         up.permission?.name === 'households.create' || up.permission?.name === 'households.read'
       ) ?? false);
 
+    const [surveyResponsesCount, correctionsCount] = await Promise.all([
+      prisma.surveyResponse.count({ where: { submittedByUserId: id } }).catch(() => 0),
+      prisma.dataCorrection.count({ where: { submittedBy: id } }).catch(() => 0),
+    ]);
+
     return NextResponse.json({
       ...agent,
       canEnrollHouseholds,
+      stats: {
+        farmersCount: agent._count?.farmers || 0,
+        householdsCount: agent._count?.capturedHouseholds || 0,
+        surveyResponsesCount,
+        correctionsCount,
+      }
     });
 
   } catch (error) {
@@ -415,10 +426,43 @@ export async function PATCH(
       }
     }
 
+    const agentPatchData: any = {};
+    // Helper to update Cluster in address blob
+    if (body.cluster !== undefined) {
+      const rawAddress = body.address !== undefined ? body.address : (existingAgent.agent?.address || '');
+      const clusterVal = String(body.cluster).trim();
+      let updatedAddress = rawAddress;
+      if (clusterVal && clusterVal !== 'none' && clusterVal !== 'unassigned') {
+        if (/Cluster:\s*([^\n]*)/i.test(updatedAddress)) {
+          updatedAddress = updatedAddress.replace(/Cluster:\s*([^\n]*)/i, `Cluster: ${clusterVal}`);
+        } else {
+          updatedAddress = updatedAddress ? `${updatedAddress}\n\nCluster: ${clusterVal}` : `Cluster: ${clusterVal}`;
+        }
+      } else {
+        updatedAddress = updatedAddress.replace(/(^|\n\n?)Cluster:\s*[^\n]*/i, '').trim();
+      }
+      agentPatchData.address = updatedAddress;
+    }
+
+    // Role & Agent Type mapping
+    let resolvedRole: string | undefined = undefined;
+    if (body.agentType && AGENT_TYPE_ROLE_MAP[body.agentType]) {
+      resolvedRole = AGENT_TYPE_ROLE_MAP[body.agentType];
+    } else if (body.role && MOBILE_AGENT_ROLES.includes(body.role as any)) {
+      resolvedRole = body.role;
+    }
+
+    const userPatchData: any = {};
+    if (resolvedRole) {
+      userPatchData.role = resolvedRole;
+    }
+    if (body.status !== undefined) {
+      userPatchData.isActive = body.status === 'active' || body.status === 'Enrolled';
+    }
+
     // Quick update for status or simple fields.
     // Agent model has no isActive — that field lives on User.
     // Build a whitelist of valid Agent fields only.
-    const agentPatchData: any = {};
     if (body.status !== undefined)               agentPatchData.status               = body.status;
     if (body.phone !== undefined)                agentPatchData.phone                = body.phone;
     if (body.nin !== undefined)                  agentPatchData.nin                  = body.nin;
@@ -427,38 +471,85 @@ export async function PATCH(
     if (body.maritalStatus !== undefined)        agentPatchData.maritalStatus        = body.maritalStatus;
     if (body.assignedState !== undefined)        agentPatchData.assignedState        = body.assignedState;
     if (body.assignedLGA !== undefined)          agentPatchData.assignedLGA          = body.assignedLGA;
-    if (body.address !== undefined)              agentPatchData.address              = body.address;
+    if (body.address !== undefined && body.cluster === undefined) agentPatchData.address = body.address;
     if (body.state !== undefined)                agentPatchData.state                = body.state;
     if (body.localGovernment !== undefined)      agentPatchData.localGovernment      = body.localGovernment;
     if (body.performanceRating !== undefined)    agentPatchData.performanceRating    = body.performanceRating;
     if (body.totalFarmersRegistered !== undefined) agentPatchData.totalFarmersRegistered = body.totalFarmersRegistered;
 
-    if (Object.keys(agentPatchData).length === 0) {
+    if (Object.keys(agentPatchData).length === 0 && Object.keys(userPatchData).length === 0) {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
+    }
+
+    // Household permission sync if agentType or role changed
+    const shouldSyncHousehold = body.agentType !== undefined
+      ? body.agentType === 'household'
+      : (resolvedRole !== undefined ? resolvedRole === 'household_agent' : undefined);
+
+    if (shouldSyncHousehold !== undefined) {
+      const householdPermNames = ['households.create', 'households.read', 'households.update'];
+      if (shouldSyncHousehold) {
+        for (const permName of householdPermNames) {
+          const perm = await prisma.permission.upsert({
+            where: { name: permName },
+            update: {},
+            create: {
+              name: permName,
+              category: 'households',
+              action: permName.split('.')[1] || 'manage',
+              description: `Permission to ${permName.split('.')[1]} households`
+            }
+          });
+          await prisma.userPermission.upsert({
+            where: {
+              userId_permissionId: {
+                userId: id,
+                permissionId: perm.id
+              }
+            },
+            create: {
+              userId: id,
+              permissionId: perm.id
+            },
+            update: {}
+          });
+        }
+      } else {
+        const permsToRemove = await prisma.permission.findMany({
+          where: { name: { in: householdPermNames } }
+        });
+        if (permsToRemove.length > 0) {
+          await prisma.userPermission.deleteMany({
+            where: {
+              userId: id,
+              permissionId: { in: permsToRemove.map(p => p.id) }
+            }
+          });
+        }
+      }
     }
 
     const result = await prisma.$transaction(async (tx) => {
       // Update Agent profile if it exists
-      if (existingAgent.agent) {
-        const agentProfile = await tx.agent.update({
+      let agentProfile = null;
+      if (existingAgent.agent && Object.keys(agentPatchData).length > 0) {
+        agentProfile = await tx.agent.update({
           where: { userId: id },
-          data: agentPatchData        // safe — no User fields present
+          data: agentPatchData
         });
-
-        // isActive lives on User, not Agent — update separately
-        if (body.status !== undefined) {
-          await tx.user.update({
-            where: { id },
-            data: {
-              isActive: body.status === 'active' || body.status === 'Enrolled'
-            }
-          });
-        }
-
-        return agentProfile;
       } else {
-        return null;
+        agentProfile = existingAgent.agent;
       }
+
+      // Update User if needed
+      if (Object.keys(userPatchData).length > 0) {
+        await tx.user.update({
+          where: { id },
+          data: userPatchData
+        });
+      }
+
+      return agentProfile;
     });
 
     if (!result) {

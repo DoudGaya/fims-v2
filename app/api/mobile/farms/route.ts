@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getMobileUser, requireRole } from '@/lib/mobileAuth';
 import { z } from 'zod';
+import TermiiService from '@/lib/termiiService';
+
+const termiiService = new TermiiService();
 
 const parseFloatOrUndefined = (val: any) => {
   if (val === '' || val === null || val === undefined) return undefined;
@@ -83,7 +86,7 @@ export async function POST(req: NextRequest) {
   // Verify farmer exists and belongs to the agent
   const farmer = await prisma.farmer.findUnique({
     where: { id: farmerId },
-    select: { id: true, agentId: true },
+    select: { id: true, agentId: true, firstName: true, phone: true },
   });
   if (!farmer) {
     return NextResponse.json({ error: 'Farmer not found' }, { status: 404 });
@@ -96,6 +99,16 @@ export async function POST(req: NextRequest) {
   const farm = await prisma.farm.create({
     data: { ...farmData, farmerId },
   });
+
+  // Send SMS notification to farmer
+  if (farmer.phone) {
+    const cropText = farmData.primaryCrop ? ` for ${farmData.primaryCrop}` : '';
+    const sizeText = farmData.farmSize ? ` (${farmData.farmSize} ha)` : '';
+    const smsText = `Dear ${farmer.firstName}, your farm plot${cropText}${sizeText} has been successfully recorded in CCSA FIMS. Thank you.`;
+    termiiService.sendMessage(farmer.phone, smsText).catch((err) => {
+      console.error('Failed to send farm capture SMS notification:', err);
+    });
+  }
 
   return NextResponse.json(farm, { status: 201 });
 }

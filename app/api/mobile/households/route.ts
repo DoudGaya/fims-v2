@@ -4,6 +4,9 @@ import { z } from 'zod';
 import prisma from '@/lib/prisma';
 import { getMobileUser, requireRole } from '@/lib/mobileAuth';
 import { formatPollingUnit } from '@/lib/textUtils';
+import TermiiService from '@/lib/termiiService';
+
+const termiiService = new TermiiService();
 
 // Helper to synthesize traceable house number
 function generateSyntheticHouseNumber(state: string, lga: string, ward: string, pu: string, seq: number): string {
@@ -274,6 +277,14 @@ export async function POST(req: NextRequest) {
           record = await prisma.household.create({
             data: payload,
           });
+
+          // Send SMS notification to household head if phone provided
+          if (record.headPhone) {
+            const smsText = `Dear ${record.headFirstName}, your household has been successfully enrolled in CCSA with House Number: ${record.houseNumber}. Thank you.`;
+            termiiService.sendMessage(record.headPhone, smsText).catch((err) => {
+              console.error('Failed to send household SMS notification:', err);
+            });
+          }
         }
 
         results.push(record);

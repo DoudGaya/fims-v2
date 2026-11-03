@@ -16,8 +16,14 @@ import {
   BriefcaseIcon,
   AcademicCapIcon,
   BuildingLibraryIcon,
+  HomeIcon,
+  ClipboardDocumentCheckIcon,
+  DocumentMagnifyingGlassIcon,
+  CheckCircleIcon,
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { SendMessageDialog } from '@/components/communications/SendMessageDialog';
+import { hierarchicalData } from '@/lib/data/hierarchical-data';
 
 interface AgentDetails {
   id: string;
@@ -30,8 +36,9 @@ interface AgentDetails {
   isActive: boolean;
   lastLogin: string | null;
   createdAt: string;
-  _count: { farmers: number };
+  _count: { farmers: number; capturedHouseholds?: number };
   agent: {
+    id?: string;
     nin?: string;
     middleName?: string | null;
     dateOfBirth?: string | null;
@@ -61,15 +68,28 @@ interface AgentDetails {
     totalFarmersRegistered?: number;
   } | null;
   canEnrollHouseholds?: boolean;
+  stats?: {
+    farmersCount: number;
+    householdsCount: number;
+    surveyResponsesCount: number;
+    correctionsCount: number;
+  };
 }
+
+const formatLocation = (name: string) => {
+  if (!name) return '';
+  return name.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+};
+
+const states = hierarchicalData.map((d: any) => formatLocation(d.state));
 
 function parseAddressBlob(raw?: string | null): { plain: string; parts: Record<string, string> } {
   if (!raw) return { plain: '', parts: {} };
-  const labels = ['Enrollment Code', 'Cluster', 'Course of Study', 'Job History', 'Cover Note'];
+  const labels = ['Enrollment Code', 'Cluster', 'Course of Study', 'Job History', 'Cover Note', 'Residential Address'];
   const parts: Record<string, string> = {};
   let plain = raw;
   for (const label of labels) {
-    const regex = new RegExp(`${label}:\n?([\\s\\S]*?)(?=\n\n(?:${labels.join('|')}):)`, 'i');
+    const regex = new RegExp(`${label}:\n?([\\s\\S]*?)(?=\n\n(?:${labels.join('|')}):|$)`, 'i');
     const m = raw.match(regex);
     if (m) { parts[label] = m[1].trim(); plain = plain.replace(m[0], '').trim(); }
     else {
@@ -78,7 +98,7 @@ function parseAddressBlob(raw?: string | null): { plain: string; parts: Record<s
       if (m2) { parts[label] = m2[1].trim(); plain = plain.replace(m2[0], '').trim(); }
     }
   }
-  return { plain: plain.replace(/\n{3,}/g, '\n\n').trim(), parts };
+  return { plain: parts['Residential Address'] || plain.replace(/\n{3,}/g, '\n\n').trim(), parts };
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -132,20 +152,54 @@ export default function AgentDetailsClient({ id }: { id: string }) {
   const [agent, setAgent] = useState<AgentDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Status state
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [newStatus, setNewStatus] = useState('');
   const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Operational Assignment Quick-Edit state
+  const [editAssignmentOpen, setEditAssignmentOpen] = useState(false);
+  const [assignedRole, setAssignedRole] = useState('agent');
+  const [assignedState, setAssignedState] = useState('');
+  const [assignedLGA, setAssignedLGA] = useState('');
+  const [assignedCluster, setAssignedCluster] = useState('');
+  const [clustersList, setClustersList] = useState<{ id: string; title: string }[]>([]);
+  const [assignmentUpdating, setAssignmentUpdating] = useState(false);
+  const [assignmentMsg, setAssignmentMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   useEffect(() => {
     fetchAgentDetails();
+    fetchClusters();
   }, [id]);
+
+  const fetchClusters = async () => {
+    try {
+      const res = await fetch('/api/public/clusters');
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.clusters)) {
+          setClustersList(data.clusters);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load clusters:', err);
+    }
+  };
 
   const fetchAgentDetails = async () => {
     try {
       setLoading(true);
       const res = await fetch(`/api/agents/${id}`);
       if (!res.ok) throw new Error('Failed to fetch agent details');
-      setAgent(await res.json());
+      const data: AgentDetails = await res.json();
+      setAgent(data);
+
+      const { parts } = parseAddressBlob(data.agent?.address);
+      setAssignedRole(data.role || 'agent');
+      setAssignedState(data.agent?.assignedState || '');
+      setAssignedLGA(data.agent?.assignedLGA || '');
+      setAssignedCluster(parts['Cluster'] || '');
     } catch (err) {
       setError('Error loading agent details');
       console.error(err);
@@ -178,6 +232,38 @@ export default function AgentDetailsClient({ id }: { id: string }) {
     }
   };
 
+  const handleAssignmentSave = async () => {
+    setAssignmentUpdating(true);
+    setAssignmentMsg(null);
+    try {
+      const payload: any = {
+        role: assignedRole,
+        assignedState,
+        assignedLGA,
+        cluster: assignedCluster === 'none' ? '' : assignedCluster,
+      };
+
+      const res = await fetch(`/api/agents/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to update operational assignment');
+      }
+
+      setAssignmentMsg({ type: 'success', text: 'Operational assignment & role updated successfully' });
+      await fetchAgentDetails();
+      setTimeout(() => setAssignmentMsg(null), 4000);
+    } catch (err: any) {
+      setAssignmentMsg({ type: 'error', text: err.message || 'Failed to update assignment' });
+    } finally {
+      setAssignmentUpdating(false);
+    }
+  };
+
   if (loading) return <div className="p-6 text-center text-gray-500 dark:text-gray-400">Loading agent details…</div>;
   if (error) return <div className="p-6 text-center text-red-500">{error}</div>;
   if (!agent) return <div className="p-6 text-center text-gray-500 dark:text-gray-400">Agent not found</div>;
@@ -185,6 +271,22 @@ export default function AgentDetailsClient({ id }: { id: string }) {
   const initials = `${agent.firstName?.[0] ?? ''}${agent.lastName?.[0] ?? ''}`.toUpperCase() || '?';
   const photoUrl = agent.agent?.photoUrl;
   const { plain: plainAddress, parts: addressParts } = parseAddressBlob(agent.agent?.address);
+
+  // Selected state node for LGA options
+  const selectedStateNode = hierarchicalData.find(
+    (s: any) => formatLocation(s.state) === assignedState
+  );
+
+  // Performance metrics based on agent role
+  const isHouseholdAgent = agent.role === 'household_agent';
+  const isSurveyAgent = agent.role === 'survey_agent';
+  const isCorrectionAgent = agent.role === 'data_correction_agent';
+  const isAgriBusinessAgent = agent.role === 'agri_business_agent';
+
+  const farmersCount = agent.stats?.farmersCount ?? agent._count?.farmers ?? 0;
+  const householdsCount = agent.stats?.householdsCount ?? agent._count?.capturedHouseholds ?? 0;
+  const surveyCount = agent.stats?.surveyResponsesCount ?? 0;
+  const correctionsCount = agent.stats?.correctionsCount ?? 0;
 
   return (
     <div className="space-y-6">
@@ -201,7 +303,7 @@ export default function AgentDetailsClient({ id }: { id: string }) {
       {/* Profile Banner */}
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
         <div className="px-6 py-6 flex flex-col sm:flex-row gap-6 items-start">
-          {/* Passport Photo — single instance */}
+          {/* Passport Photo */}
           <div className="shrink-0 flex flex-col items-center gap-3">
             {photoUrl ? (
               <>
@@ -254,18 +356,27 @@ export default function AgentDetailsClient({ id }: { id: string }) {
                 <p className="text-gray-800 dark:text-gray-200">{new Date(agent.createdAt).toLocaleDateString()}</p>
               </div>
             </div>
-            {agent._count.farmers > 0 && (
+
+            {/* Role-specific summary quicklink */}
+            {isHouseholdAgent && householdsCount > 0 && (
+              <div className="mt-3">
+                <Link href={`/households?agentId=${agent.id}`} className="text-sm text-teal-600 dark:text-teal-400 hover:underline">
+                  {householdsCount} household{householdsCount !== 1 ? 's' : ''} captured &rarr;
+                </Link>
+              </div>
+            )}
+            {!isHouseholdAgent && farmersCount > 0 && (
               <div className="mt-3">
                 <Link href={`/farmers?agentId=${agent.id}`} className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
-                  {agent._count.farmers} farmer{agent._count.farmers !== 1 ? 's' : ''} registered &rarr;
+                  {farmersCount} farmer{farmersCount !== 1 ? 's' : ''} registered &rarr;
                 </Link>
               </div>
             )}
           </div>
 
-          {/* Edit action */}
-          {hasPermission(PERMISSIONS.AGENTS_UPDATE) && (
-            <div className="shrink-0 self-start">
+          {/* Edit actions & request update */}
+          <div className="shrink-0 self-start flex flex-wrap gap-2">
+            {hasPermission(PERMISSIONS.AGENTS_UPDATE) && (
               <Link
                 href={`/agents/${id}/edit`}
                 className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -273,40 +384,212 @@ export default function AgentDetailsClient({ id }: { id: string }) {
                 <PencilIcon className="-ml-1 mr-2 h-4 w-4 text-gray-500 dark:text-gray-400" />
                 Edit Profile
               </Link>
-            </div>
-          )}
-          {hasPermission(PERMISSIONS.COMMUNICATIONS_SEND) && (
-            <div className="shrink-0 self-start flex gap-2">
-              <SendMessageDialog
-                recipientType="agent"
-                recipientId={agent.id}
-                recipientName={agent.displayName}
-                recipientEmail={agent.email}
-                recipientPhone={agent.agent?.phone || agent.phoneNumber}
-              />
-              <SendMessageDialog
-                recipientType="agent"
-                recipientId={agent.id}
-                recipientName={agent.displayName}
-                recipientEmail={agent.email}
-                recipientPhone={agent.agent?.phone || agent.phoneNumber}
-                defaultSubject="Please Update Your CCSA Profile"
-                defaultBody={`Hello ${agent.firstName},\n\nPlease use the secure link below to update your agent profile records (including NIN, bank details, and operational address).\n\nUpdate link:\n${window.location.origin}/update/agent/${agent.id}\n\nThank you,\nCCSA Admin`}
-                trigger={
-                  <Button size="sm" variant="outline" className="gap-2 border-ccsa-blue text-ccsa-blue hover:bg-blue-50 dark:hover:bg-blue-900/20">
-                    Request Update
-                  </Button>
-                }
-              />
-            </div>
-          )}
+            )}
+            {hasPermission(PERMISSIONS.COMMUNICATIONS_SEND) && (
+              <>
+                <SendMessageDialog
+                  recipientType="agent"
+                  recipientId={agent.id}
+                  recipientName={agent.displayName}
+                  recipientEmail={agent.email}
+                  recipientPhone={agent.agent?.phone || agent.phoneNumber}
+                />
+                <SendMessageDialog
+                  recipientType="agent"
+                  recipientId={agent.id}
+                  recipientName={agent.displayName}
+                  recipientEmail={agent.email}
+                  recipientPhone={agent.agent?.phone || agent.phoneNumber}
+                  defaultSubject="Please Update Your CCSA Profile"
+                  defaultBody={`Hello ${agent.firstName},\n\nPlease use the secure link below to update your agent profile records (including NIN, bank details, and operational address).\n\nUpdate link:\n${window.location.origin}/update/agent/${agent.id}\n\nThank you,\nCCSA Admin`}
+                  trigger={
+                    <Button size="sm" variant="outline" className="gap-2 border-[#013358] text-[#013358] hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                      Request Update
+                    </Button>
+                  }
+                />
+              </>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Content Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Info */}
-        <div className="md:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6">
+
+          {/* ── Operational Assignment (With In-Place Editor) ── */}
+          <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden border border-blue-100 dark:border-blue-900/50">
+            <div className="px-5 py-4 bg-blue-50/50 dark:bg-blue-950/20 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BriefcaseIcon className="h-5 w-5 text-[#013358] dark:text-blue-400" />
+                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+                  Operational Assignment &amp; Role
+                </h3>
+              </div>
+              {hasPermission(PERMISSIONS.AGENTS_UPDATE) && (
+                <Button
+                  size="sm"
+                  variant={editAssignmentOpen ? 'secondary' : 'outline'}
+                  onClick={() => setEditAssignmentOpen(!editAssignmentOpen)}
+                  className="text-xs h-8"
+                >
+                  {editAssignmentOpen ? 'Cancel' : 'Change Assignment'}
+                </Button>
+              )}
+            </div>
+
+            <div className="px-5 py-5 space-y-5">
+              {/* Quick Assignment Form */}
+              {editAssignmentOpen && hasPermission(PERMISSIONS.AGENTS_UPDATE) ? (
+                <div className="bg-blue-50/40 dark:bg-blue-900/10 p-4 rounded-lg border border-blue-200 dark:border-blue-800 space-y-4">
+                  <p className="text-xs text-muted-foreground">
+                    Update the agent&apos;s operational type, geographical deployment, and cluster directly without navigating away.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Agent Role / Type */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Agent Type / Role</label>
+                      <Select value={assignedRole} onValueChange={setAssignedRole}>
+                        <SelectTrigger className="bg-white dark:bg-gray-800">
+                          <SelectValue placeholder="Select Agent Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="agent">Enrollment Agent (Farmers)</SelectItem>
+                          <SelectItem value="household_agent">Household Enrollment Agent</SelectItem>
+                          <SelectItem value="data_correction_agent">Correction Agent</SelectItem>
+                          <SelectItem value="survey_agent">Survey Agent</SelectItem>
+                          <SelectItem value="agri_business_agent">Agri-Business Agent</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Assigned State */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Assigned State</label>
+                      <Select
+                        value={assignedState}
+                        onValueChange={(val) => {
+                          setAssignedState(val);
+                          setAssignedLGA('');
+                        }}
+                      >
+                        <SelectTrigger className="bg-white dark:bg-gray-800">
+                          <SelectValue placeholder="Select Assigned State" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {states.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Assigned LGA */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Assigned LGA</label>
+                      <Select
+                        value={assignedLGA}
+                        onValueChange={setAssignedLGA}
+                        disabled={!assignedState}
+                      >
+                        <SelectTrigger className="bg-white dark:bg-gray-800">
+                          <SelectValue placeholder={assignedState ? "Select Assigned LGA" : "Choose state first"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {selectedStateNode?.lgas.map((l: any) => {
+                            const n = formatLocation(l.lga);
+                            return <SelectItem key={n} value={n}>{n}</SelectItem>;
+                          })}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Assigned Cluster */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">Assigned Cluster</label>
+                      <Select
+                        value={assignedCluster || 'none'}
+                        onValueChange={(val) => setAssignedCluster(val === 'none' ? '' : val)}
+                      >
+                        <SelectTrigger className="bg-white dark:bg-gray-800">
+                          <SelectValue placeholder="Assign Cluster" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No Cluster (Unassigned)</SelectItem>
+                          {clustersList.map((c) => (
+                            <SelectItem key={c.id} value={c.title}>
+                              {c.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <Button
+                      size="sm"
+                      onClick={handleAssignmentSave}
+                      disabled={assignmentUpdating}
+                      className="bg-[#013358] hover:bg-blue-800"
+                    >
+                      {assignmentUpdating && <ArrowPathIcon className="h-4 w-4 mr-2 animate-spin" />}
+                      {assignmentUpdating ? 'Saving...' : 'Save Assignment'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditAssignmentOpen(false)}
+                      disabled={assignmentUpdating}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              {assignmentMsg && (
+                <div className={`p-3 rounded-md text-sm flex items-center gap-2 ${
+                  assignmentMsg.type === 'success'
+                    ? 'bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-300 border border-green-200'
+                    : 'bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300 border border-red-200'
+                }`}>
+                  <CheckCircleIcon className="h-4 w-4 shrink-0" />
+                  {assignmentMsg.text}
+                </div>
+              )}
+
+              {/* View current assignment */}
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
+                <Field label="Current Role / Agent Type">
+                  <AgentTypeBadge role={agent.role} />
+                </Field>
+                <Field label="Assigned Cluster">
+                  {addressParts['Cluster'] ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 px-3 py-1 text-xs font-semibold text-[#013358] dark:text-blue-300 border border-[#DCEAF3] dark:border-blue-700">
+                      <BuildingLibraryIcon className="h-3.5 w-3.5" />
+                      {addressParts['Cluster']}
+                    </span>
+                  ) : (
+                    'Not Assigned'
+                  )}
+                </Field>
+                <Field label="Assigned State">{agent.agent?.assignedState || 'Not Assigned'}</Field>
+                <Field label="Assigned LGA">{agent.agent?.assignedLGA || 'Not Assigned'}</Field>
+                {agent.agent?.assignedWards && agent.agent.assignedWards.length > 0 && (
+                  <div className="sm:col-span-2">
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Assigned Wards</dt>
+                    <dd className="mt-2 flex flex-wrap gap-1">
+                      {agent.agent.assignedWards.map(w => (
+                        <span key={w} className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 text-xs text-blue-700 dark:text-blue-300">{w}</span>
+                      ))}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          </div>
 
           {/* ── Personal Information ── */}
           <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
@@ -319,36 +602,29 @@ export default function AgentDetailsClient({ id }: { id: string }) {
                 <Field label="Full Name">
                   {agent.firstName} {agent.agent?.middleName ? `${agent.agent.middleName} ` : ''}{agent.lastName}
                 </Field>
-                <Field label="Email"><span className="break-all">{agent.email}</span></Field>
-                <Field label="Phone">{agent.agent?.phone || agent.phoneNumber || '—'}</Field>
+                <Field label="Email">{agent.email}</Field>
+                <Field label="Phone">{agent.agent?.phone || agent.phoneNumber}</Field>
                 <Field label="WhatsApp">{agent.agent?.whatsAppNumber || '—'}</Field>
                 <Field label="Alternative Phone">{agent.agent?.alternativePhone || '—'}</Field>
-                <Field label="Gender">{agent.agent?.gender || '—'}</Field>
+                <Field label="NIN">
+                  {agent.agent?.nin ? (
+                    <span className="font-mono">{agent.agent.nin}</span>
+                  ) : (
+                    '—'
+                  )}
+                </Field>
+                <Field label="BVN">
+                  {agent.agent?.bvn ? (
+                    <span className="font-mono">{agent.agent.bvn}</span>
+                  ) : (
+                    '—'
+                  )}
+                </Field>
                 <Field label="Date of Birth">
                   {agent.agent?.dateOfBirth ? new Date(agent.agent.dateOfBirth).toLocaleDateString() : '—'}
                 </Field>
+                <Field label="Gender">{agent.agent?.gender || '—'}</Field>
                 <Field label="Marital Status">{agent.agent?.maritalStatus || '—'}</Field>
-                <Field label="NIN">
-                  <span className="font-mono">
-                    {agent.agent?.nin?.startsWith('APP-') ? 'Pending verification' : (agent.agent?.nin || 'N/A')}
-                  </span>
-                </Field>
-                <Field label="BVN">
-                  <span className="font-mono">{agent.agent?.bvn ? `****${agent.agent.bvn.slice(-4)}` : '—'}</span>
-                </Field>
-                <Field label="Application Status">
-                  <ApplicationStatusBadge status={agent.agent?.status} isActive={agent.isActive} />
-                </Field>
-                <Field label="Agent Type"><AgentTypeBadge role={agent.role} /></Field>
-                <Field label="Household Enrollment">
-                  {agent.canEnrollHouseholds || agent.role === 'household_agent' ? (
-                    <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold bg-teal-50 text-teal-800 ring-1 ring-inset ring-teal-600/20 dark:bg-teal-900/30 dark:text-teal-300">
-                      ✓ Authorized
-                    </span>
-                  ) : (
-                    <span className="text-gray-400 text-xs">Not Authorized</span>
-                  )}
-                </Field>
                 <Field label="Joined">{new Date(agent.createdAt).toLocaleDateString()}</Field>
                 <Field label="Last Login">
                   {agent.lastLogin ? new Date(agent.lastLogin).toLocaleString() : 'Never'}
@@ -372,42 +648,8 @@ export default function AgentDetailsClient({ id }: { id: string }) {
                 <Field label="City">{agent.agent?.city || '—'}</Field>
                 {plainAddress && (
                   <div className="sm:col-span-2">
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Motivation</dt>
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Residential Address / Note</dt>
                     <dd className="mt-1 text-sm text-gray-900 dark:text-gray-100 whitespace-pre-line">{plainAddress}</dd>
-                  </div>
-                )}
-              </dl>
-            </div>
-          </div>
-
-          {/* ── Operational Assignment ── */}
-          <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
-            <div className="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700 flex items-center gap-2">
-              <BriefcaseIcon className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-              <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Operational Assignment</h3>
-            </div>
-            <div className="px-4 py-5 sm:p-6">
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
-                <Field label="Assigned State">{agent.agent?.assignedState || 'Not Assigned'}</Field>
-                <Field label="Assigned LGA">{agent.agent?.assignedLGA || 'Not Assigned'}</Field>
-                <Field label="Assigned Cluster">
-                  {addressParts['Cluster'] ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 px-3 py-1 text-xs font-semibold text-[#013358] dark:text-blue-300 border border-[#DCEAF3] dark:border-blue-700">
-                      <BuildingLibraryIcon className="h-3.5 w-3.5" />
-                      {addressParts['Cluster']}
-                    </span>
-                  ) : (
-                    'Not Assigned'
-                  )}
-                </Field>
-                {agent.agent?.assignedWards && agent.agent.assignedWards.length > 0 && (
-                  <div className="sm:col-span-2">
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Assigned Wards</dt>
-                    <dd className="mt-2 flex flex-wrap gap-1">
-                      {agent.agent.assignedWards.map(w => (
-                        <span key={w} className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 text-xs text-blue-700 dark:text-blue-300">{w}</span>
-                      ))}
-                    </dd>
                   </div>
                 )}
               </dl>
@@ -423,7 +665,7 @@ export default function AgentDetailsClient({ id }: { id: string }) {
             <div className="px-4 py-5 sm:p-6 space-y-5">
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
                 <Field label="Education Level">{agent.agent?.employmentStatus || '—'}</Field>
-                <Field label="Course of Study">{agent.agent?.employmentType || '—'}</Field>
+                <Field label="Course of Study">{agent.agent?.employmentType || addressParts['Course of Study'] || '—'}</Field>
                 {addressParts['Enrollment Code'] && (
                   <Field label="Enrollment Code"><span className="font-mono">{addressParts['Enrollment Code']}</span></Field>
                 )}
@@ -467,6 +709,7 @@ export default function AgentDetailsClient({ id }: { id: string }) {
 
         {/* Sidebar */}
         <div className="space-y-6">
+
           {/* Application Status update */}
           {hasPermission(PERMISSIONS.AGENTS_UPDATE) && (
             <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
@@ -491,7 +734,7 @@ export default function AgentDetailsClient({ id }: { id: string }) {
                   </SelectContent>
                 </Select>
                 <Button
-                  className="w-full"
+                  className="w-full bg-[#013358] hover:bg-blue-800"
                   onClick={handleStatusUpdate}
                   disabled={!newStatus || statusUpdating}
                 >
@@ -506,34 +749,154 @@ export default function AgentDetailsClient({ id }: { id: string }) {
             </div>
           )}
 
-          {/* Performance */}
+          {/* Performance Card — Tailored by Agent Type */}
           <div className="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100">Performance</h3>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Agent Performance</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Based on agent enrollment assignment</p>
             </div>
-            <div className="px-4 py-5 sm:p-6">
-              <div className="flex items-center">
-                <div className="shrink-0 bg-indigo-500 rounded-md p-3">
-                  <BriefcaseIcon className="h-6 w-6 text-white" />
+
+            <div className="px-4 py-5 sm:p-6 space-y-4">
+              {/* Primary Role Metric */}
+              {isHouseholdAgent ? (
+                <div className="flex items-center">
+                  <div className="shrink-0 bg-teal-600 rounded-md p-3">
+                    <HomeIcon className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="ml-4 w-0 flex-1">
+                    <dl>
+                      <dt className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Households Enrolled
+                      </dt>
+                      <dd>
+                        <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                          {householdsCount}
+                        </div>
+                      </dd>
+                    </dl>
+                  </div>
                 </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">Total Farmers Registered</dt>
-                    <dd>
-                      <div className="text-lg font-medium text-gray-900 dark:text-gray-100">{agent._count.farmers}</div>
-                    </dd>
-                  </dl>
+              ) : isSurveyAgent ? (
+                <div className="flex items-center">
+                  <div className="shrink-0 bg-purple-600 rounded-md p-3">
+                    <ClipboardDocumentCheckIcon className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="ml-4 w-0 flex-1">
+                    <dl>
+                      <dt className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Surveys Completed
+                      </dt>
+                      <dd>
+                        <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                          {surveyCount}
+                        </div>
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
+              ) : isCorrectionAgent ? (
+                <div className="flex items-center">
+                  <div className="shrink-0 bg-amber-600 rounded-md p-3">
+                    <DocumentMagnifyingGlassIcon className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="ml-4 w-0 flex-1">
+                    <dl>
+                      <dt className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Corrections Handled
+                      </dt>
+                      <dd>
+                        <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                          {correctionsCount}
+                        </div>
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
+              ) : isAgriBusinessAgent ? (
+                <div className="flex items-center">
+                  <div className="shrink-0 bg-indigo-600 rounded-md p-3">
+                    <BriefcaseIcon className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="ml-4 w-0 flex-1">
+                    <dl>
+                      <dt className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Agri-Business Stakeholders
+                      </dt>
+                      <dd>
+                        <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                          Active
+                        </div>
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center">
+                  <div className="shrink-0 bg-blue-600 rounded-md p-3">
+                    <BriefcaseIcon className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="ml-4 w-0 flex-1">
+                    <dl>
+                      <dt className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Farmers Registered
+                      </dt>
+                      <dd>
+                        <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                          {farmersCount}
+                        </div>
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
+              )}
+
+              {/* Multi-Metric Breakdown (if agent has activity in multiple categories) */}
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-700/60 grid grid-cols-2 gap-3 text-xs">
+                <div className="bg-gray-50 dark:bg-gray-700/40 p-2 rounded">
+                  <span className="text-gray-500 dark:text-gray-400 block">Farmers</span>
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">{farmersCount}</span>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-700/40 p-2 rounded">
+                  <span className="text-gray-500 dark:text-gray-400 block">Households</span>
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">{householdsCount}</span>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-700/40 p-2 rounded">
+                  <span className="text-gray-500 dark:text-gray-400 block">Surveys</span>
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">{surveyCount}</span>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-700/40 p-2 rounded">
+                  <span className="text-gray-500 dark:text-gray-400 block">Corrections</span>
+                  <span className="font-semibold text-gray-900 dark:text-gray-100">{correctionsCount}</span>
                 </div>
               </div>
             </div>
-            <div className="bg-gray-50 dark:bg-gray-700/50 px-4 py-4 sm:px-6">
-              <div className="text-sm">
-                <Link href={`/farmers?agentId=${agent.id}`} className="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300">
-                  View all registered farmers
+
+            {/* Quick-links based on role */}
+            <div className="bg-gray-50 dark:bg-gray-700/50 px-4 py-3 sm:px-6 text-xs">
+              {isHouseholdAgent ? (
+                <Link href={`/households?agentId=${agent.id}`} className="font-medium text-teal-600 dark:text-teal-400 hover:underline">
+                  View all enrolled households &rarr;
                 </Link>
-              </div>
+              ) : isSurveyAgent ? (
+                <Link href="/surveys" className="font-medium text-purple-600 dark:text-purple-400 hover:underline">
+                  View survey responses &rarr;
+                </Link>
+              ) : isCorrectionAgent ? (
+                <Link href="/corrections" className="font-medium text-amber-600 dark:text-amber-400 hover:underline">
+                  View data corrections &rarr;
+                </Link>
+              ) : isAgriBusinessAgent ? (
+                <Link href="/agribusiness" className="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
+                  View agribusiness leads &rarr;
+                </Link>
+              ) : (
+                <Link href={`/farmers?agentId=${agent.id}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                  View all registered farmers &rarr;
+                </Link>
+              )}
             </div>
           </div>
+
         </div>
       </div>
     </div>

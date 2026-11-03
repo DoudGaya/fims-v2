@@ -13,77 +13,48 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Verification code is required' }, { status: 400 });
     }
 
-    if (!phoneNumber) {
-      return NextResponse.json({ error: 'Phone number is required for verification' }, { status: 400 });
+    if (!phoneNumber && !verificationId) {
+      return NextResponse.json({ error: 'Phone number or verification ID is required' }, { status: 400 });
     }
 
-    ProductionLogger.debug('Verifying SMS code', { 
-      phoneNumber: phoneNumber.slice(-4),
+    ProductionLogger.debug('Verifying SMS code', {
+      phoneNumber: phoneNumber ? phoneNumber.slice(-4) : 'none',
       verificationId: verificationId?.slice(0, 10) + '...'
     });
 
-    let verificationResult: any = null;
-    let provider = 'unknown';
+    try {
+      const isValid = await termiiService.verifyCode(verificationId || '', code, phoneNumber);
 
-    // Determine provider based on verificationId format
-    if (verificationId && verificationId.startsWith('termii_')) {
-      // Verify using Termii
-      try {
-        ProductionLogger.debug('Verifying code via Termii');
-        const isValid = await termiiService.verifyCode(verificationId, code);
-        provider = 'termii';
-
-        verificationResult = {
+      if (isValid) {
+        return NextResponse.json({
           success: true,
-          verified: isValid,
-          status: isValid ? 'approved' : 'failed'
-        };
-
-        ProductionLogger.debug('Termii verification result', { 
-          verified: isValid,
-          status: verificationResult.status 
+          verified: true,
+          status: 'approved',
+          provider: 'termii',
+          message: 'Phone number verified successfully'
         });
-
-      } catch (error: any) {
-        ProductionLogger.error('Termii verification error:', error.message);
-        return NextResponse.json({ 
-          error: 'Verification service error',
-          details: error.message 
-        }, { status: 500 });
+      } else {
+        return NextResponse.json({
+          success: false,
+          verified: false,
+          status: 'failed',
+          provider: 'termii',
+          error: 'Invalid or expired verification code. Please check and try again.'
+        }, { status: 400 });
       }
-    } else {
-      // Twilio fallback (not implemented as Twilio is not installed)
-      // If we had Twilio, we would check it here.
-      // Since we don't, we return an error if it's not a Termii ID.
-      
-      return NextResponse.json({ 
-        error: 'Invalid verification ID or provider not supported',
-        details: 'Only Termii verification is currently supported'
-      }, { status: 400 });
-    }
 
-    if (verificationResult.verified) {
+    } catch (error: any) {
+      ProductionLogger.error('Verification error:', error.message);
       return NextResponse.json({
-        success: true,
-        verified: true,
-        status: 'approved',
-        provider,
-        message: 'Phone number verified successfully'
-      });
-    } else {
-      return NextResponse.json({
-        success: false,
-        verified: false,
-        status: 'pending', // or failed
-        provider,
-        error: 'Invalid code or code expired'
-      }, { status: 400 });
+        error: 'Verification service error',
+        details: error.message
+      }, { status: 500 });
     }
 
   } catch (error: any) {
     ProductionLogger.error('Verification error:', error.message);
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       error: 'Failed to verify code',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     }, { status: 500 });
