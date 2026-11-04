@@ -418,6 +418,17 @@ export default function HouseholdDetailPage() {
                 </dd>
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <dt className="text-xs text-muted-foreground uppercase font-medium">Employment Status</dt>
+                <dd className="text-sm font-medium text-gray-900 mt-0.5">{household.headEmploymentStatus || 'Self-employed'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground uppercase font-medium">Major Occupation</dt>
+                <dd className="text-sm font-semibold text-[#013358] dark:text-blue-300 mt-0.5">{household.headOccupation || 'Not specified'}</dd>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -469,14 +480,27 @@ export default function HouseholdDetailPage() {
                 </dd>
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-4 pt-1">
+              <div>
+                <dt className="text-xs text-muted-foreground uppercase font-medium">Dwelling / House Type</dt>
+                <dd className="text-sm font-semibold text-[#013358] dark:text-blue-300 mt-0.5">
+                  {household.houseType || 'Standard Residential'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground uppercase font-medium">Street / Landmark</dt>
+                <dd className="text-sm font-medium text-gray-900 mt-0.5">{household.address || 'Not specified'}</dd>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Dependents & Family Composition */}
+        {/* Dependents & Family Composition & Livestock */}
         <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold flex items-center gap-2 text-[#1E293B] dark:text-gray-100">
-              <UserGroupIcon className="size-5 text-[#013358] dark:text-blue-300" /> Dependents & Household Composition
+              <UserGroupIcon className="size-5 text-[#013358] dark:text-blue-300" /> Dependents & Livestock
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -501,6 +525,68 @@ export default function HouseholdDetailPage() {
                 {household.totalHouseholdMembers || (1 + (household.wivesCount || 0) + (household.childrenCount || 0) + (household.otherDependentsCount || 0))} Persons
               </Badge>
             </div>
+
+            {/* Livestock Breakdown */}
+            <div className="pt-2 border-t border-[#DCEAF3] dark:border-gray-700 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-[#475569] dark:text-gray-400 uppercase tracking-wider">
+                  Domestic Animals & Livestock
+                </span>
+                <Badge variant={household.hasLivestock ? 'default' : 'secondary'} className={household.hasLivestock ? 'bg-emerald-600 text-white' : ''}>
+                  {household.hasLivestock ? `${household.totalAnimalsCount || 0} Animals` : 'No Animals'}
+                </Badge>
+              </div>
+
+              {household.hasLivestock ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
+                  {household.cattleCount > 0 && (
+                    <div className="p-2 bg-[#F8FAFC] dark:bg-gray-800 rounded border border-[#DCEAF3] dark:border-gray-700">
+                      <span className="text-muted-foreground block">Cattle</span>
+                      <span className="font-bold text-gray-900 dark:text-gray-100">{household.cattleCount}</span>
+                    </div>
+                  )}
+                  {household.horsesCount > 0 && (
+                    <div className="p-2 bg-[#F8FAFC] dark:bg-gray-800 rounded border border-[#DCEAF3] dark:border-gray-700">
+                      <span className="text-muted-foreground block">Horses</span>
+                      <span className="font-bold text-gray-900 dark:text-gray-100">{household.horsesCount}</span>
+                    </div>
+                  )}
+                  {household.sheepCount > 0 && (
+                    <div className="p-2 bg-[#F8FAFC] dark:bg-gray-800 rounded border border-[#DCEAF3] dark:border-gray-700">
+                      <span className="text-muted-foreground block">Sheep</span>
+                      <span className="font-bold text-gray-900 dark:text-gray-100">{household.sheepCount}</span>
+                    </div>
+                  )}
+                  {household.goatsCount > 0 && (
+                    <div className="p-2 bg-[#F8FAFC] dark:bg-gray-800 rounded border border-[#DCEAF3] dark:border-gray-700">
+                      <span className="text-muted-foreground block">Goats</span>
+                      <span className="font-bold text-gray-900 dark:text-gray-100">{household.goatsCount}</span>
+                    </div>
+                  )}
+                  {household.poultryCount > 0 && (
+                    <div className="p-2 bg-[#F8FAFC] dark:bg-gray-800 rounded border border-[#DCEAF3] dark:border-gray-700">
+                      <span className="text-muted-foreground block">Poultry</span>
+                      <span className="font-bold text-gray-900 dark:text-gray-100">{household.poultryCount}</span>
+                    </div>
+                  )}
+                  {household.donkeysCount > 0 && (
+                    <div className="p-2 bg-[#F8FAFC] dark:bg-gray-800 rounded border border-[#DCEAF3] dark:border-gray-700">
+                      <span className="text-muted-foreground block">Donkeys/Camels</span>
+                      <span className="font-bold text-gray-900 dark:text-gray-100">{household.donkeysCount}</span>
+                    </div>
+                  )}
+                  {household.otherAnimalsCount > 0 && (
+                    <div className="p-2 bg-[#F8FAFC] dark:bg-gray-800 rounded border border-[#DCEAF3] dark:border-gray-700">
+                      <span className="text-muted-foreground block">Other</span>
+                      <span className="font-bold text-gray-900 dark:text-gray-100">{household.otherAnimalsCount}</span>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+              {household.livestockNotes && (
+                <p className="text-xs text-muted-foreground italic">Details: {household.livestockNotes}</p>
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -508,7 +594,7 @@ export default function HouseholdDetailPage() {
         <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold flex items-center gap-2 text-[#1E293B] dark:text-gray-100">
-              <BoltIcon className="size-5 text-[#013358] dark:text-blue-300" /> Connectivity & Productive Energy (PUE)
+              <BoltIcon className="size-5 text-[#013358] dark:text-blue-300" /> Utilities & Connectivity
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -544,8 +630,8 @@ export default function HouseholdDetailPage() {
               </div>
             </div>
 
-            {/* Commercial customers */}
-            <div className="grid grid-cols-2 gap-4 pt-1">
+            {/* Commercial customers & Utilities */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
               <div>
                 <dt className="text-xs text-muted-foreground uppercase font-medium">Commercial Customers</dt>
                 <dd className="text-sm font-bold text-indigo-700 mt-0.5">
@@ -553,9 +639,15 @@ export default function HouseholdDetailPage() {
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-muted-foreground uppercase font-medium">Primary Energy</dt>
+                <dt className="text-xs text-muted-foreground uppercase font-medium">Primary Electricity</dt>
                 <dd className="text-sm font-semibold text-gray-900 mt-0.5">
                   {household.primaryEnergySource || 'None / Off-grid'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground uppercase font-medium">Primary Water Source</dt>
+                <dd className="text-sm font-semibold text-[#013358] dark:text-blue-300 mt-0.5">
+                  {household.waterSource || 'Borehole / Well'}
                 </dd>
               </div>
             </div>

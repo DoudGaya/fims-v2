@@ -34,6 +34,7 @@ const householdSchema = z.object({
   longitude: z.number().optional().nullable(),
   accuracy: z.number().optional().nullable(),
   houseFrontPhotoUrl: z.string().optional().nullable(),
+  houseType: z.string().optional().nullable(),
 
   // Head details
   headFirstName: z.string().min(1, 'Head First Name is required'),
@@ -48,6 +49,7 @@ const householdSchema = z.object({
   headPhotoUrl: z.string().optional().nullable(),
   headNinVerified: z.boolean().optional().default(false),
   headEmploymentStatus: z.string().optional().nullable(),
+  headOccupation: z.string().optional().nullable(),
   headEducationLevel: z.string().optional().nullable(),
   headEmail: z.string().optional().nullable(),
   headStateOfOrigin: z.string().optional().nullable(),
@@ -63,6 +65,18 @@ const householdSchema = z.object({
   totalHouseholdMembers: z.number().int().min(1).default(1),
   dependentsNotes: z.string().optional().nullable(),
 
+  // Livestock & Domestic Animals
+  hasLivestock: z.boolean().optional().default(false),
+  cattleCount: z.number().int().min(0).default(0),
+  horsesCount: z.number().int().min(0).default(0),
+  sheepCount: z.number().int().min(0).default(0),
+  goatsCount: z.number().int().min(0).default(0),
+  poultryCount: z.number().int().min(0).default(0),
+  donkeysCount: z.number().int().min(0).default(0),
+  otherAnimalsCount: z.number().int().min(0).default(0),
+  livestockNotes: z.string().optional().nullable(),
+  totalAnimalsCount: z.number().int().min(0).default(0),
+
   // Telco & Connectivity
   telcoProviders: z.array(z.string()).default([]),
   networkType: z.string().optional().nullable(),
@@ -70,12 +84,13 @@ const householdSchema = z.object({
   // Economic Activity
   commercialCustomersCount: z.number().int().min(0).default(0),
 
-  // Productive Use of Power (PUE)
+  // Productive Use of Power (PUE) & Utilities
   hasPUE: z.boolean().default(false),
   pueType: z.string().optional().nullable(),
   pueEquipment: z.array(z.string()).default([]),
   pueDailyHours: z.number().optional().nullable(),
   primaryEnergySource: z.string().optional().nullable(),
+  waterSource: z.string().optional().nullable(),
 
   // Intervention
   interventionStatus: z.string().default('Captured'),
@@ -227,6 +242,7 @@ export async function POST(req: NextRequest) {
           longitude: data.longitude ?? null,
           accuracy: data.accuracy ?? null,
           houseFrontPhotoUrl: data.houseFrontPhotoUrl || null,
+          houseType: data.houseType || null,
           headFirstName: data.headFirstName,
           headMiddleName: data.headMiddleName || null,
           headLastName: data.headLastName,
@@ -239,6 +255,7 @@ export async function POST(req: NextRequest) {
           headPhotoUrl: data.headPhotoUrl || null,
           headNinVerified: data.headNinVerified ?? false,
           headEmploymentStatus: data.headEmploymentStatus || null,
+          headOccupation: data.headOccupation || null,
           headEducationLevel: data.headEducationLevel || null,
           headEmail: data.headEmail || null,
           headStateOfOrigin: data.headStateOfOrigin || null,
@@ -251,6 +268,24 @@ export async function POST(req: NextRequest) {
           otherDependentsCount: data.otherDependentsCount,
           totalHouseholdMembers: data.totalHouseholdMembers || (1 + data.wivesCount + data.childrenCount + data.otherDependentsCount),
           dependentsNotes: data.dependentsNotes || null,
+          hasLivestock: data.hasLivestock ?? false,
+          cattleCount: data.cattleCount ?? 0,
+          horsesCount: data.horsesCount ?? 0,
+          sheepCount: data.sheepCount ?? 0,
+          goatsCount: data.goatsCount ?? 0,
+          poultryCount: data.poultryCount ?? 0,
+          donkeysCount: data.donkeysCount ?? 0,
+          otherAnimalsCount: data.otherAnimalsCount ?? 0,
+          livestockNotes: data.livestockNotes || null,
+          totalAnimalsCount: data.totalAnimalsCount || (
+            (data.cattleCount || 0) +
+            (data.horsesCount || 0) +
+            (data.sheepCount || 0) +
+            (data.goatsCount || 0) +
+            (data.poultryCount || 0) +
+            (data.donkeysCount || 0) +
+            (data.otherAnimalsCount || 0)
+          ),
           telcoProviders: data.telcoProviders,
           networkType: data.networkType || null,
           commercialCustomersCount: data.commercialCustomersCount,
@@ -259,6 +294,7 @@ export async function POST(req: NextRequest) {
           pueEquipment: data.pueEquipment,
           pueDailyHours: data.pueDailyHours ?? null,
           primaryEnergySource: data.primaryEnergySource || null,
+          waterSource: data.waterSource || null,
           interventionStatus: data.interventionStatus || 'Captured',
           interventionType: data.interventionType || null,
           interventionNotes: data.interventionNotes || null,

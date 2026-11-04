@@ -213,11 +213,16 @@ export default async function VerifyDwellingPage({ params }: Props) {
                     Gender: {household.headGender || 'MALE'}
                     {household.headMaritalStatus ? ` • ${household.headMaritalStatus}` : ''}
                   </div>
-                  {household.headEmploymentStatus && (
-                    <div className="text-xs text-slate-500">
-                      Occupation: {household.headEmploymentStatus}
+                  {household.headOccupation ? (
+                    <div className="text-xs font-semibold text-slate-800">
+                      Occupation: {household.headOccupation}
+                      {household.headEmploymentStatus ? ` (${household.headEmploymentStatus})` : ''}
                     </div>
-                  )}
+                  ) : household.headEmploymentStatus ? (
+                    <div className="text-xs text-slate-500">
+                      Status: {household.headEmploymentStatus}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -300,6 +305,11 @@ export default async function VerifyDwellingPage({ params }: Props) {
                   <div className="text-sm font-bold text-slate-900 mt-0.5">
                     {household.address || 'Address registered on file'}
                   </div>
+                  {household.houseType && (
+                    <div className="text-xs font-semibold text-blue-900 bg-blue-50/70 border border-blue-100 rounded px-2 py-0.5 mt-1 inline-block">
+                      Type: {household.houseType}
+                    </div>
+                  )}
                 </div>
 
                 {/* Administrative Boundary */}
@@ -363,10 +373,10 @@ export default async function VerifyDwellingPage({ params }: Props) {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-xs">
               <div className="bg-white p-3.5 rounded-xl border border-slate-200">
                 <span className="text-slate-400 font-semibold uppercase text-[10px] block">
-                  Primary Energy Source
+                  Primary Electricity
                 </span>
                 <span className="text-sm font-bold text-slate-900 mt-1 block">
                   {household.primaryEnergySource || 'Grid / Standalone Solar / None'}
@@ -375,34 +385,49 @@ export default async function VerifyDwellingPage({ params }: Props) {
 
               <div className="bg-white p-3.5 rounded-xl border border-slate-200">
                 <span className="text-slate-400 font-semibold uppercase text-[10px] block">
-                  PUE Business Status
+                  Water Source
+                </span>
+                <span className="text-sm font-bold text-blue-900 mt-1 block">
+                  {household.waterSource || 'Borehole / Well'}
+                </span>
+              </div>
+
+              <div className="bg-white p-3.5 rounded-xl border border-slate-200">
+                <span className="text-slate-400 font-semibold uppercase text-[10px] block">
+                  Domestic Animals
                 </span>
                 <span className="text-sm font-bold text-slate-900 mt-1 block">
-                  {household.hasPUE ? (
-                    <span className="text-emerald-700">Active Productive Activity</span>
-                  ) : (
-                    <span className="text-slate-600">Residential Dwelling</span>
-                  )}
+                  {household.hasLivestock
+                    ? `${household.totalAnimalsCount || 0} Recorded`
+                    : 'None Kept'}
                 </span>
-                {household.pueType && (
-                  <span className="text-[11px] text-slate-500 block mt-0.5 font-medium">
-                    Type: {household.pueType}
+                {household.hasLivestock && (
+                  <span className="text-[10px] text-slate-500 block mt-0.5 truncate">
+                    {[
+                      household.cattleCount ? `${household.cattleCount} Cattle` : '',
+                      household.horsesCount ? `${household.horsesCount} Horses` : '',
+                      household.sheepCount ? `${household.sheepCount} Sheep` : '',
+                      household.goatsCount ? `${household.goatsCount} Goats` : '',
+                      household.poultryCount ? `${household.poultryCount} Poultry` : '',
+                    ].filter(Boolean).join(', ')}
                   </span>
                 )}
               </div>
 
               <div className="bg-white p-3.5 rounded-xl border border-slate-200">
                 <span className="text-slate-400 font-semibold uppercase text-[10px] block">
-                  Telco & Connectivity
+                  PUE Status
                 </span>
                 <span className="text-sm font-bold text-slate-900 mt-1 block">
-                  {household.telcoProviders?.length > 0
-                    ? household.telcoProviders.join(', ')
-                    : 'GSM Active'}
+                  {household.hasPUE ? (
+                    <span className="text-emerald-700">Active PUE</span>
+                  ) : (
+                    <span className="text-slate-600">Residential</span>
+                  )}
                 </span>
-                {household.networkType && (
+                {household.pueType && (
                   <span className="text-[11px] text-slate-500 block mt-0.5 font-medium">
-                    Network: {household.networkType}
+                    Type: {household.pueType}
                   </span>
                 )}
               </div>

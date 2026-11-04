@@ -1113,6 +1113,7 @@ model Household {
   longitude                 Float?
   accuracy                  Float?
   houseFrontPhotoUrl        String?   // House front image URL or base64
+  houseType                 String?   // e.g. "Duplex", "Bungalow", "Two Bedroom Flat", "Terrace", "Traditional Mud", "Single Room", "Compound"
   
   // House Leader / Head of Household
   headFirstName             String
@@ -1127,6 +1128,7 @@ model Household {
   headPhotoUrl              String?   // Live face capture taken by the agent (current appearance)
   headNinVerified           Boolean   @default(false) // NIN confirmed against NIMC at capture time
   headEmploymentStatus      String?
+  headOccupation            String?   // Major occupation of the household head
   headEducationLevel        String?
   headEmail                 String?
   headStateOfOrigin         String?   // NIMC birth state
@@ -1142,6 +1144,18 @@ model Household {
   totalHouseholdMembers     Int       @default(1)
   dependentsNotes           String?
   
+  // Livestock & Domestic Animals
+  hasLivestock              Boolean   @default(false)
+  cattleCount               Int       @default(0)
+  horsesCount               Int       @default(0)
+  sheepCount                Int       @default(0)
+  goatsCount                Int       @default(0)
+  poultryCount              Int       @default(0)
+  donkeysCount              Int       @default(0)
+  otherAnimalsCount         Int       @default(0)
+  livestockNotes            String?
+  totalAnimalsCount         Int       @default(0)
+  
   // Telco & Network Connectivity
   telcoProviders            String[]  @default([]) // ["MTN", "AIRTEL", "GLO", "9MOBILE"]
   networkType               String?   // "2G" | "3G" | "4G" | "5G"
@@ -1149,12 +1163,13 @@ model Household {
   // Economic Activity & Commercial Customers
   commercialCustomersCount  Int       @default(0) // Number of commercial customers
   
-  // Productive Use of Power / Energy (PUE)
+  // Productive Use of Power / Energy (PUE) & Utilities
   hasPUE                    Boolean   @default(false)
   pueType                   String?   // "Milling", "Solar Irrigation", "Cold Storage", "Welding", "Tailoring", "Barbershop", "Agro-processing", "Phone Charging", "Other", "None"
   pueEquipment              String[]  @default([]) // Specific machinery/appliances
   pueDailyHours             Float?    // Average productive power hours per day
   primaryEnergySource       String?   // "Grid", "Solar Mini-Grid", "Standalone Solar", "Generator", "None"
+  waterSource               String?   // "Borehole", "Hand Pump", "Well", "Public Tap", "Water Vendor", "Surface Water", "None"
   
   // Intervention Program Tracking
   interventionStatus        String    @default("Captured") // "Captured", "Validated", "InterventionEligible", "InterventionApproved", "Disbursed"
