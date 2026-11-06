@@ -6,6 +6,7 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { invalidateByPrefix } from '@/lib/cache';
 import { auth as firebaseAuth } from '@/lib/firebase-admin';
 import bcrypt from 'bcryptjs';
+import { provisionAgentAccount } from '@/lib/agentAccountService';
 
 export const dynamic = 'force-dynamic';
 
@@ -322,44 +323,29 @@ export async function PUT(
       maxWait: 10000
     });
 
-    // Send Email Notification if status changed
+    // Send Notification & provision credentials if status changed
     if (statusChanged) {
-      let tempPassword = undefined;
-      if (newStatus === 'active') {
-        try {
-          // Check if user already exists in Firebase
-          await firebaseAuth.getUserByEmail(existingAgent.email);
-        } catch (error: any) {
-          if (error.code === 'auth/user-not-found') {
-            tempPassword = 'CCSA' + Math.random().toString(36).substring(2, 6) + '!';
-            try {
-              const firebaseUser = await firebaseAuth.createUser({
-                email: existingAgent.email,
-                password: tempPassword,
-                displayName: existingAgent.firstName || 'Agent',
-                emailVerified: true
-              });
-              
-              const hashedPassword = await bcrypt.hash(tempPassword, 10);
-              await prisma.user.update({
-                where: { id },
-                data: { password: hashedPassword, firebaseUid: firebaseUser.uid }
-              });
-            } catch (createError) {
-              console.error('Error provisioning Firebase user in PUT:', createError);
-            }
-          }
-        }
+      const isActivating = newStatus === 'active' || newStatus === 'Enrolled';
+      if (isActivating) {
+        await provisionAgentAccount({
+          userId: id,
+          email: existingAgent.email,
+          phone: body.phone || existingAgent.phoneNumber || existingAgent.agent?.phone,
+          displayName: body.firstName && body.lastName
+            ? `${body.firstName} ${body.lastName}`
+            : existingAgent.displayName || `${existingAgent.firstName || ''} ${existingAgent.lastName || ''}`.trim(),
+          password: '1234567890',
+          statusLabel: newStatus,
+          sendNotifications: true,
+        });
+      } else {
+        const { sendAgentStatusEmail } = await import('@/lib/emailService');
+        await sendAgentStatusEmail(
+          existingAgent.email,
+          existingAgent.firstName || 'Agent',
+          newStatus
+        );
       }
-
-      // Dynamic import to avoid circular dep issues if any, though standard import is fine
-      const { sendAgentStatusEmail } = await import('@/lib/emailService');
-      await sendAgentStatusEmail(
-        existingAgent.email,
-        existingAgent.firstName || 'Agent',
-        newStatus,
-        tempPassword
-      );
     }
 
     await invalidateByPrefix('fims:v1:agents');
@@ -558,43 +544,30 @@ export async function PATCH(
       return NextResponse.json({ error: 'Agent profile not found' }, { status: 404 });
     }
 
-    // Send email if status changed
-    if (body.status && body.status !== existingAgent.agent?.status) {
-      let tempPassword = undefined;
-      if (body.status === 'active') {
-        try {
-          // Check if user already exists in Firebase
-          await firebaseAuth.getUserByEmail(existingAgent.email);
-        } catch (error: any) {
-          if (error.code === 'auth/user-not-found') {
-            tempPassword = 'CCSA' + Math.random().toString(36).substring(2, 6) + '!';
-            try {
-              const firebaseUser = await firebaseAuth.createUser({
-                email: existingAgent.email,
-                password: tempPassword,
-                displayName: existingAgent.firstName || 'Agent',
-                emailVerified: true
-              });
-              
-              const hashedPassword = await bcrypt.hash(tempPassword, 10);
-              await prisma.user.update({
-                where: { id },
-                data: { password: hashedPassword, firebaseUid: firebaseUser.uid }
-              });
-            } catch (createError) {
-              console.error('Error provisioning Firebase user in PATCH:', createError);
-            }
-          }
-        }
-      }
+    // Handle status change or direct activation
+    const statusChanged = body.status && body.status !== existingAgent.agent?.status;
+    const isActivating = (body.status === 'active' || body.status === 'Enrolled' || body.isActive === true);
 
-      const { sendAgentStatusEmail } = await import('@/lib/emailService');
-      await sendAgentStatusEmail(
-        existingAgent.email,
-        existingAgent.firstName || 'Agent',
-        body.status,
-        tempPassword
-      );
+    if (statusChanged || (body.isActive === true && !existingAgent.isActive)) {
+      const targetStatus = body.status || (body.isActive ? 'Enrolled' : (existingAgent.agent?.status || 'Applied'));
+      if (isActivating) {
+        await provisionAgentAccount({
+          userId: id,
+          email: existingAgent.email,
+          phone: body.phone || existingAgent.phoneNumber || existingAgent.agent?.phone,
+          displayName: existingAgent.displayName || `${existingAgent.firstName || ''} ${existingAgent.lastName || ''}`.trim(),
+          password: '1234567890',
+          statusLabel: targetStatus,
+          sendNotifications: true,
+        });
+      } else {
+        const { sendAgentStatusEmail } = await import('@/lib/emailService');
+        await sendAgentStatusEmail(
+          existingAgent.email,
+          existingAgent.firstName || 'Agent',
+          targetStatus
+        );
+      }
     }
 
     await invalidateByPrefix('fims:v1:agents');
