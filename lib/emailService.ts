@@ -813,3 +813,150 @@ export async function sendZoraCredentialsEmail(params: {
   }
 }
 
+export async function sendApiPortalCredentialsEmail(params: {
+  recipientEmail: string;
+  recipientName: string;
+  organizationName: string;
+  temporaryPassword: string;
+  loginUrl: string;
+  apiKeyToken: string;
+  apiKeyPrefix: string;
+  approvedScopes: string[];
+  rateLimit?: number;
+}) {
+  const resend = getResendClient();
+  if (!resend) {
+    console.warn('Email service not configured - skipping API portal credentials email');
+    return null;
+  }
+
+  const fromAddress = getFromAddress();
+  const subject = `Your CCSA FIMS API & Client Portal Access Credentials (${params.organizationName})`;
+  const scopeBadges = (params.approvedScopes || [])
+    .map(
+      (s) =>
+        `<span style="display:inline-block;background:#e0f2fe;color:#0369a1;padding:3px 8px;border-radius:4px;font-size:12px;font-family:monospace;margin-right:6px;margin-bottom:6px;">${s}</span>`
+    )
+    .join(' ');
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>CCSA FIMS API Credentials</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; color: #1e293b; margin: 0; padding: 20px; background-color: #f8fafc; }
+          .card { max-width: 640px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+          .header { background: #013358; color: #ffffff; padding: 28px 32px; }
+          .header h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+          .header p { margin: 6px 0 0; opacity: 0.9; font-size: 13px; }
+          .content { padding: 32px; }
+          .section-title { font-size: 14px; font-weight: 700; color: #013358; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 24px; margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
+          .cred-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 18px; margin: 16px 0; }
+          .cred-item { margin-bottom: 12px; }
+          .cred-label { font-size: 11px; text-transform: uppercase; font-weight: 700; color: #475569; }
+          .cred-value { font-size: 14px; font-family: ui-monospace, monospace; color: #0f172a; font-weight: 600; margin-top: 3px; word-break: break-all; }
+          .key-highlight { background: #071320; color: #38bdf8; padding: 10px 14px; border-radius: 6px; font-size: 13px; font-family: ui-monospace, monospace; word-break: break-all; margin-top: 4px; display: block; border: 1px solid #1e293b; }
+          .btn { display: inline-block; background: #013358; color: #ffffff !important; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; margin: 18px 0; }
+          .code-box { background: #0f172a; color: #f8fafc; padding: 14px; border-radius: 8px; font-family: ui-monospace, monospace; font-size: 12px; overflow-x: auto; }
+          .footer { padding: 18px 32px; background: #f8fafc; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8; text-align: center; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="header">
+            <h1>CCSA FIMS API & Partner Portal</h1>
+            <p>Centre for Climate-Smart Agriculture · Cosmopolitan University Abuja</p>
+          </div>
+          <div class="content">
+            <p style="margin-top: 0; font-size: 15px; color: #334155;">
+              Dear <strong>${params.recipientName}</strong>,
+            </p>
+            <p style="font-size: 14px; color: #334155;">
+              We are pleased to inform you that your institutional API access application for <strong>${params.organizationName}</strong> has been reviewed and <strong>approved</strong>.
+            </p>
+            <p style="font-size: 14px; color: #334155;">
+              Your corporate account and live programmatic API gateway credentials are now active.
+            </p>
+
+            <div class="section-title">1. Client Portal Sign-In Credentials</div>
+            <div class="cred-box">
+              <div class="cred-item">
+                <div class="cred-label">Login Email Address</div>
+                <div class="cred-value">${params.recipientEmail}</div>
+              </div>
+              <div class="cred-item" style="margin-bottom: 0;">
+                <div class="cred-label">Temporary Password</div>
+                <div class="cred-value" style="background: #ffffff; padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; display: inline-block;">
+                  ${params.temporaryPassword}
+                </div>
+              </div>
+            </div>
+
+            <div style="text-align: center;">
+              <a href="${params.loginUrl}" class="btn">Sign In to Client Portal</a>
+            </div>
+
+            <div class="section-title">2. Live API Key Credentials</div>
+            <div class="cred-box">
+              <div class="cred-item">
+                <div class="cred-label">Primary API Key (Keep Secret)</div>
+                <span class="key-highlight">${params.apiKeyToken}</span>
+              </div>
+              <div class="cred-item">
+                <div class="cred-label">Key Prefix</div>
+                <div class="cred-value">${params.apiKeyPrefix}</div>
+              </div>
+              <div class="cred-item">
+                <div class="cred-label">Rate Limit</div>
+                <div class="cred-value">${params.rateLimit || 120} requests / minute</div>
+              </div>
+              <div class="cred-item" style="margin-bottom: 0;">
+                <div class="cred-label" style="margin-bottom: 6px;">Approved Data Scopes</div>
+                <div>${scopeBadges}</div>
+              </div>
+            </div>
+
+            <div class="section-title">3. Quick-Start Example</div>
+            <p style="font-size: 13px; color: #64748b;">
+              Authenticate requests using the <code style="color:#013358;background:#f1f5f9;padding:2px 4px;border-radius:3px;">X-API-Key</code> header:
+            </p>
+            <div class="code-box">
+curl -X GET "https://fims.cosmopolitan.edu.ng/api/nin/lookup?nin=12345678901" \\<br/>
+&nbsp;&nbsp;-H "X-API-Key: ${params.apiKeyToken}"
+            </div>
+
+            <p style="font-size: 12px; color: #64748b; margin-top: 20px;">
+              For security, please sign in to the Client Portal and update your password upon your first session. If you have any technical questions, please reply directly or contact support.
+            </p>
+          </div>
+          <div class="footer">
+            Centre for Climate-Smart Agriculture (CCSA) · Cosmopolitan University Abuja<br/>
+            This is an automated notification containing confidential security credentials.
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  try {
+    const { data, error } = await resend.emails.send({
+      from: fromAddress,
+      to: [params.recipientEmail],
+      subject,
+      html,
+      text: `Hello ${params.recipientName},\n\nYour institutional API access for ${params.organizationName} has been approved!\n\nClient Portal: ${params.loginUrl}\nEmail: ${params.recipientEmail}\nTemporary Password: ${params.temporaryPassword}\n\nPrimary API Key: ${params.apiKeyToken}\nPrefix: ${params.apiKeyPrefix}\nRate Limit: ${params.rateLimit || 120} req/min\nApproved Scopes: ${(params.approvedScopes || []).join(', ')}\n\nCentre for Climate-Smart Agriculture (CCSA) · Cosmopolitan University Abuja`,
+    });
+    if (error) {
+      console.error('Error sending API portal credentials email:', error);
+      return null;
+    }
+    return data;
+  } catch (err) {
+    console.error('Error sending API portal credentials email:', err);
+    return null;
+  }
+}
+
+

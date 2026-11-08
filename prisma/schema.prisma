@@ -266,18 +266,30 @@ enum OutreachPlanStatus {
 
 /// Submitted by external organisations requesting programmatic API access.
 model ApiAccessRequest {
-  id               String              @id @default(cuid())
-  organizationName String
-  contactName      String
-  email            String
-  phone            String?
-  intendedUse      String
-  requestedScopes  String[]
-  expectedVolume   String?
-  status           AccessRequestStatus @default(PENDING)
-  adminNotes       String?
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
+  id                  String              @id @default(cuid())
+  organizationName    String
+  contactName         String
+  email               String
+  phone               String?
+  intendedUse         String
+  requestedScopes     String[]
+  expectedVolume      String?
+  // KYB & Institutional Details
+  rcNumber            String?
+  taxId               String?
+  organizationType    String?
+  website             String?
+  designation         String?
+  address             String?
+  integrationTimeline String?
+  complianceAgreed    Boolean             @default(true)
+  status              AccessRequestStatus @default(PENDING)
+  adminNotes          String?
+  reviewedByUserId    String?
+  reviewedAt          DateTime?
+  credentialsSentAt   DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 
   @@map("api_access_requests")
 }

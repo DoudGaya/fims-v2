@@ -7,7 +7,7 @@ import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
-const VALID_SCOPES = ['farmers:read', 'farms:read', 'clusters:read', 'analytics:read'] as const;
+const VALID_SCOPES = ['farmers:read', 'farms:read', 'clusters:read', 'analytics:read', 'nin:verify'] as const;
 
 const updateKeySchema = z.object({
   name: z.string().min(1).max(120).optional(),
@@ -69,7 +69,12 @@ export async function GET(
     return NextResponse.json({ error: 'Not Found' }, { status: 404 });
   }
 
-  return NextResponse.json({ data: apiKey });
+  return NextResponse.json({
+    data: {
+      ...apiKey,
+      requestCount: Number(apiKey.requestCount),
+    },
+  });
 }
 
 // ── PATCH /api/admin/api-keys/:id ─────────────────────────────────────────────

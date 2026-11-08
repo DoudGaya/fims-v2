@@ -15,6 +15,8 @@ import {
   ArrowPathIcon,
   ExclamationTriangleIcon,
   InboxIcon,
+  UserPlusIcon,
+  BuildingOffice2Icon,
 } from '@heroicons/react/24/outline';
 import {
   Card,
@@ -50,6 +52,7 @@ const VALID_SCOPES = [
   { id: 'farms:read', label: 'Farms', description: 'Read farm records' },
   { id: 'clusters:read', label: 'Clusters', description: 'Read cluster/group data' },
   { id: 'analytics:read', label: 'Analytics', description: 'Read aggregate statistics' },
+  { id: 'nin:verify', label: 'NIN Verification', description: 'Verify Nigerian National Identification Numbers' },
 ];
 
 interface ApiKey {
@@ -89,6 +92,24 @@ export default function ApiKeysPage() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [createdKey, setCreatedKey] = useState<CreatedKey | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Direct Client Account Dialog
+  const [showDirectAccount, setShowDirectAccount] = useState(false);
+  const [creatingAccount, setCreatingAccount] = useState(false);
+  const [accountError, setAccountError] = useState<string | null>(null);
+  const [createdAccountResult, setCreatedAccountResult] = useState<any | null>(null);
+  const [accountForm, setAccountForm] = useState({
+    organizationName: '',
+    rcNumber: '',
+    contactName: '',
+    email: '',
+    phone: '',
+    scopes: ['nin:verify', 'farmers:read', 'farms:read'] as string[],
+    rateLimit: 120,
+    monthlyQuota: 50000,
+    allowSensitiveFields: false,
+    sendEmail: true,
+  });
 
   // Form state
   const [form, setForm] = useState({
@@ -196,6 +217,50 @@ export default function ApiKeysPage() {
     setTimeout(() => setCopied(false), 2500);
   }
 
+  async function handleCreateDirectAccount(e: React.FormEvent) {
+    e.preventDefault();
+    if (accountForm.scopes.length === 0) {
+      setAccountError('Please select at least one permission / scope.');
+      return;
+    }
+
+    setCreatingAccount(true);
+    setAccountError(null);
+
+    try {
+      const res = await fetch('/api/admin/client-accounts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(accountForm),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create client account');
+
+      setShowDirectAccount(false);
+      setCreatedAccountResult({
+        email: data.account.email,
+        temporaryPassword: data.account.temporaryPassword,
+        apiKey: data.account.apiKey,
+        organization: { name: data.account.organizationName },
+      });
+      await fetchKeys();
+    } catch (e: any) {
+      setAccountError(e.message);
+    } finally {
+      setCreatingAccount(false);
+    }
+  }
+
+  function toggleAccountScope(scopeId: string) {
+    setAccountForm(prev => ({
+      ...prev,
+      scopes: prev.scopes.includes(scopeId)
+        ? prev.scopes.filter(s => s !== scopeId)
+        : [...prev.scopes, scopeId],
+    }));
+  }
+
   function closeCreateDialog() {
     setShowCreate(false);
     setCreatedKey(null);
@@ -225,13 +290,25 @@ export default function ApiKeysPage() {
             Manage API keys for external access to the FIMS data platform.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <Link href="/api-keys/access-requests">
+        <div className="flex items-center gap-2">
+          <Link href="/requests/api-access-requests">
             <Button variant="outline" size="sm" className="gap-2">
               <InboxIcon className="h-4 w-4" />
               Access Requests
             </Button>
           </Link>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-2 border-[#013358] text-[#013358] hover:bg-[#013358]/5 dark:border-blue-400 dark:text-blue-400"
+            onClick={() => {
+              setAccountError(null);
+              setShowDirectAccount(true);
+            }}
+          >
+            <UserPlusIcon className="h-4 w-4" />
+            Create Client Account
+          </Button>
           <Button
             size="sm"
             className="gap-2 bg-[#013358] hover:bg-[#01254a] text-white"
@@ -556,6 +633,193 @@ export default function ApiKeysPage() {
               </DialogFooter>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Direct Admin Account Creation Dialog ────────────────────────────── */}
+      <Dialog open={showDirectAccount} onOpenChange={setShowDirectAccount}>
+        <DialogContent className="max-w-lg dark:bg-gray-800">
+          <form onSubmit={handleCreateDirectAccount} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <BuildingOffice2Icon className="h-6 w-6 text-[#013358] dark:text-blue-400" />
+                Directly Create Partner Access Account
+              </DialogTitle>
+              <DialogDescription>
+                Provision an institutional Client Portal account and live API key for a partner organization directly.
+              </DialogDescription>
+            </DialogHeader>
+
+            {accountError && (
+              <div className="p-3 rounded-lg bg-red-50 text-xs text-red-700">
+                {accountError}
+              </div>
+            )}
+
+            <div className="space-y-3 text-xs max-h-[60vh] overflow-y-auto pr-1">
+              <div className="space-y-1">
+                <Label className="text-xs">Organization Name *</Label>
+                <Input
+                  required
+                  placeholder="e.g. Sterling Agricultural Investments Ltd"
+                  value={accountForm.organizationName}
+                  onChange={(e) => setAccountForm({ ...accountForm, organizationName: e.target.value })}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">RC / CAC Number</Label>
+                  <Input
+                    placeholder="e.g. RC 1234567"
+                    value={accountForm.rcNumber}
+                    onChange={(e) => setAccountForm({ ...accountForm, rcNumber: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Contact Person Name *</Label>
+                  <Input
+                    required
+                    placeholder="e.g. Fatima Bello"
+                    value={accountForm.contactName}
+                    onChange={(e) => setAccountForm({ ...accountForm, contactName: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Corporate Email *</Label>
+                  <Input
+                    required
+                    type="email"
+                    placeholder="partner@org.ng"
+                    value={accountForm.email}
+                    onChange={(e) => setAccountForm({ ...accountForm, email: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Phone Number</Label>
+                  <Input
+                    placeholder="+234..."
+                    value={accountForm.phone}
+                    onChange={(e) => setAccountForm({ ...accountForm, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Scopes */}
+              <div className="space-y-1.5 pt-1">
+                <Label className="text-xs font-semibold">Granted Permissions / Scopes *</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {VALID_SCOPES.map((sc) => {
+                    const checked = accountForm.scopes.includes(sc.id);
+                    return (
+                      <div
+                        key={sc.id}
+                        onClick={() => toggleAccountScope(sc.id)}
+                        className={`p-2 rounded-lg border cursor-pointer flex items-center gap-2 select-none ${
+                          checked
+                            ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700'
+                            : 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600'
+                        }`}
+                      >
+                        <input type="checkbox" checked={checked} onChange={() => {}} />
+                        <span className="font-semibold text-gray-900 dark:text-white">{sc.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="space-y-1">
+                  <Label className="text-xs">Rate Limit (req/min)</Label>
+                  <Input
+                    type="number"
+                    value={accountForm.rateLimit}
+                    onChange={(e) => setAccountForm({ ...accountForm, rateLimit: parseInt(e.target.value) || 120 })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Monthly Quota</Label>
+                  <Input
+                    type="number"
+                    value={accountForm.monthlyQuota}
+                    onChange={(e) => setAccountForm({ ...accountForm, monthlyQuota: parseInt(e.target.value) || 50000 })}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="directSensMain"
+                  checked={accountForm.allowSensitiveFields}
+                  onChange={(e) => setAccountForm({ ...accountForm, allowSensitiveFields: e.target.checked })}
+                />
+                <label htmlFor="directSensMain" className="text-xs cursor-pointer">
+                  Allow unmasked sensitive fields
+                </label>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="sendMailMain"
+                  checked={accountForm.sendEmail}
+                  onChange={(e) => setAccountForm({ ...accountForm, sendEmail: e.target.checked })}
+                />
+                <label htmlFor="sendMailMain" className="text-xs cursor-pointer font-medium text-[#013358] dark:text-blue-400">
+                  Send welcome email with credentials & API key automatically
+                </label>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowDirectAccount(false)} disabled={creatingAccount}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-[#013358] hover:bg-[#01254a] text-white" disabled={creatingAccount}>
+                {creatingAccount ? 'Provisioning...' : 'Provision Access Account'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Generated Account Result Modal ──────────────────────────────────── */}
+      <Dialog open={!!createdAccountResult} onOpenChange={() => setCreatedAccountResult(null)}>
+        <DialogContent className="max-w-md dark:bg-gray-800">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-600">
+              <CheckCircleIcon className="h-6 w-6" />
+              Account Created & Credentials Sent
+            </DialogTitle>
+            <DialogDescription>
+              Client portal account and API key have been generated for <strong>{createdAccountResult?.email}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2 text-xs">
+            <div className="p-3 bg-slate-50 dark:bg-gray-900 rounded-lg space-y-1.5">
+              <div><span className="text-gray-500">Email:</span> <strong className="font-mono text-gray-900 dark:text-white">{createdAccountResult?.email}</strong></div>
+              <div><span className="text-gray-500">Temporary Password:</span> <strong className="font-mono text-emerald-600">{createdAccountResult?.temporaryPassword}</strong></div>
+              <div><span className="text-gray-500">Live API Key:</span></div>
+              <div className="p-2 bg-gray-900 text-emerald-400 font-mono rounded text-[11px] break-all">
+                {createdAccountResult?.apiKey?.token}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              className="bg-[#013358] hover:bg-[#01254a] text-white"
+              onClick={() => setCreatedAccountResult(null)}
+            >
+              Done
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

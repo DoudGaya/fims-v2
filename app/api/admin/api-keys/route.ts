@@ -8,7 +8,7 @@ import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
 
-const VALID_SCOPES = ['farmers:read', 'farms:read', 'clusters:read', 'analytics:read'] as const;
+const VALID_SCOPES = ['farmers:read', 'farms:read', 'clusters:read', 'analytics:read', 'nin:verify'] as const;
 
 const createKeySchema = z.object({
   name: z.string().min(1, 'Name is required').max(120),
@@ -71,8 +71,13 @@ export async function GET(req: NextRequest) {
     prisma.apiKey.count(),
   ]);
 
+  const serializedKeys = keys.map((key) => ({
+    ...key,
+    requestCount: Number(key.requestCount),
+  }));
+
   return NextResponse.json({
-    data: keys,
+    data: serializedKeys,
     pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     rateLimitRecommendations: {
       standard: 100,

@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import ProductionLogger from '@/lib/productionLogger';
 import { hasNINConfig, lookupNINFromProvider, toNINErrorPayload } from '@/lib/ninProvider';
+import { authorizeNINRequest } from '@/lib/ninAuth';
 
-async function handleLookup(nin: string | null) {
+async function handleLookup(req: NextRequest, nin: string | null) {
+  const authResult = await authorizeNINRequest(req);
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   try {
     if (!nin) {
       return NextResponse.json({ error: 'NIN is required' }, { status: 400 });
@@ -38,7 +44,7 @@ async function handleLookup(nin: string | null) {
 }
 
 export async function GET(req: NextRequest) {
-  return handleLookup(req.nextUrl.searchParams.get('nin'));
+  return handleLookup(req, req.nextUrl.searchParams.get('nin'));
 }
 
 export async function POST(req: NextRequest) {
@@ -50,5 +56,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  return handleLookup(body.nin ?? null);
+  return handleLookup(req, body.nin ?? null);
 }

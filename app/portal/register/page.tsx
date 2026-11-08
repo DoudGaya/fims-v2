@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   Building2,
   CheckCircle2,
@@ -11,398 +10,590 @@ import {
   ArrowRight,
   Loader2,
   AlertCircle,
-  CreditCard,
-  Lock,
+  FileText,
+  Mail,
+  User,
+  Phone,
+  Globe,
+  Briefcase,
+  MapPin,
+  Layers,
+  Fingerprint,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PortalNavHeader } from '@/components/portal/portal-nav-header';
 import { PortalBrandFooter } from '@/components/portal/portal-brand-footer';
 
-const PLANS = [
+const DATA_SCOPES = [
   {
-    id: 'DEVELOPER',
-    name: 'Developer / Pilot',
-    price: '₦250,000',
-    period: '/ month',
-    usd: '($200 / mo)',
-    quota: '1,500 queries / mo',
-    rateLimit: '10 req / min',
-    highlight: false,
-    features: ['Anonymized farmer statistics', 'State & LGA cluster aggregations', 'Standard Email Support'],
+    id: 'nin:verify',
+    title: 'NIN Verification',
+    desc: 'Verify Nigerian National Identification Numbers against official national identity databases.',
   },
   {
-    id: 'BUSINESS',
-    name: 'Business Commercial',
-    price: '₦1,800,000',
-    period: '/ month',
-    usd: '($1,400 / mo)',
-    quota: '25,000 queries / mo',
-    rateLimit: '120 req / min',
-    highlight: true,
-    features: [
-      'GIS Farm boundary polygons',
-      'Crop yield predictions & cluster metrics',
-      'Webhooks & real-time sync',
-      'Priority Technical Support',
-    ],
+    id: 'farmers:read',
+    title: 'Farmer Profiles',
+    desc: 'Query verified farmer demographic records, household data, and cooperative memberships.',
   },
   {
-    id: 'ENTERPRISE_KYC',
-    name: 'Enterprise Financial & KYC',
-    price: '₦6,500,000',
-    period: '/ month',
-    usd: '($5,000 / mo)',
-    quota: '100,000 queries / mo',
-    rateLimit: '300 req / min',
-    highlight: false,
-    features: [
-      'Consent-backed Farmer KYC verification',
-      'Direct credit risk & farm size telemetry',
-      'Custom spatial data feeds',
-      'Dedicated Account Manager & 99.9% SLA',
-    ],
+    id: 'farms:read',
+    title: 'Farm GIS & Polygons',
+    desc: 'Access verified GPS boundary coordinates, calculated acreage, and crop mappings.',
+  },
+  {
+    id: 'clusters:read',
+    title: 'Agricultural Clusters',
+    desc: 'Inspect State, LGA, and ward agricultural cluster groupings and aggregator networks.',
+  },
+  {
+    id: 'analytics:read',
+    title: 'Aggregated Analytics',
+    desc: 'Programmatic crop yield projections, regional agricultural metrics, and census summaries.',
   },
 ];
 
+const ORG_TYPES = [
+  'Commercial Agribusiness / Off-taker',
+  'Commercial Bank / Financial Institution',
+  'FinTech & Digital Lending',
+  'Academic / Research Institution',
+  'NGO / International Development Agency',
+  'Government Ministry / Parastatal',
+  'Other Corporate Entity',
+];
+
+const VOLUMES = [
+  'Pilot (< 5,000 queries / month)',
+  'Standard (5,000 – 25,000 queries / month)',
+  'Enterprise (25,000 – 100,000 queries / month)',
+  'High-Volume (100,000+ queries / month)',
+];
+
+const TIMELINES = [
+  'Immediate (Within 14 days)',
+  'Within 1 month',
+  'Within 3 months',
+  'Exploring for future roadmap',
+];
+
 export default function PortalRegisterPage() {
-  const router = useRouter();
-  const [selectedTier, setSelectedTier] = useState('BUSINESS');
   const [formData, setFormData] = useState({
+    // KYB Details
     organizationName: '',
     rcNumber: '',
     taxId: '',
+    organizationType: ORG_TYPES[0],
+    website: '',
+    address: '',
+    // Contact Person
     contactName: '',
-    contactEmail: '',
-    contactPhone: '',
-    password: '',
+    designation: '',
+    email: '',
+    phone: '',
+    // Requirements & Justification
     intendedUse: '',
+    requestedScopes: ['nin:verify', 'farmers:read', 'farms:read'] as string[],
+    expectedVolume: VOLUMES[1],
+    integrationTimeline: TIMELINES[0],
+    complianceAgreed: false,
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successResult, setSuccessResult] = useState<any | null>(null);
 
+  const toggleScope = (scopeId: string) => {
+    setFormData((prev) => {
+      const exists = prev.requestedScopes.includes(scopeId);
+      if (exists) {
+        if (prev.requestedScopes.length === 1) return prev; // Keep at least one
+        return { ...prev, requestedScopes: prev.requestedScopes.filter((s) => s !== scopeId) };
+      } else {
+        return { ...prev, requestedScopes: [...prev.requestedScopes, scopeId] };
+      }
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.complianceAgreed) {
+      setError('Please acknowledge compliance with NDPR data privacy and responsible usage regulations.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
     try {
-      const res = await fetch('/api/portal/register', {
+      const res = await fetch('/api/public/api-access-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          tier: selectedTier,
-        }),
+        body: JSON.stringify(formData),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to complete registration');
+        const errorMsg = data.details
+          ? Object.values(data.details).flat().join(', ')
+          : data.error || 'Failed to submit request';
+        throw new Error(errorMsg);
       }
 
-      setSuccessResult(data);
+      setSuccessResult({
+        id: data.id,
+        organizationName: formData.organizationName,
+        email: formData.email,
+        contactName: formData.contactName,
+      });
     } catch (err: any) {
-      setError(err?.message || 'Registration failed. Please try again.');
+      setError(err?.message || 'Submission failed. Please check your inputs and try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const selectedPlanDetails = PLANS.find((p) => p.id === selectedTier) || PLANS[1];
-
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#060F1A] text-slate-800 dark:text-slate-100 transition-colors">
-      {/* Brand Header */}
       <PortalNavHeader />
 
-      {/* Main Registration Content */}
       <main className="flex-1 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto space-y-8">
           {/* Header */}
-          <div className="text-center space-y-2.5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/80 text-xs font-bold text-emerald-800 dark:text-emerald-400">
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>CCSA FIMS B2B Commercial Data Access</span>
+          <div className="text-center space-y-3">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200/80 dark:border-emerald-800/80 text-xs font-bold text-emerald-800 dark:text-emerald-400">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              <span>CCSA FIMS Institutional & Partner Access</span>
             </div>
             <h1 className="text-3xl font-black text-[#013358] dark:text-white tracking-tight sm:text-4xl">
-              Commercial Data Portal Registration
+              Request API & Partner Portal Access
             </h1>
-            <p className="mt-2 text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-xl mx-auto">
-              Access programmatic API feeds for over 64,000 verified Nigerian farmers, 43,000 mapped GIS farm polygons, and crop yields.
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
+              Submit your institutional Know Your Business (KYB) information and integration requirements. Upon administrative review and approval, your access credentials and API keys will be dispatched directly to your corporate email.
             </p>
           </div>
 
-          {/* Modal on Success - Live Key Withheld until Payment Confirmation */}
+          {/* Submission Success Dialog */}
           {successResult && (
             <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
               <div className="bg-white dark:bg-[#0B1728] rounded-2xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-5 animate-in fade-in zoom-in-95 duration-200">
-                <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 mx-auto">
-                  <CheckCircle2 className="w-6 h-6" />
+                <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400 mx-auto">
+                  <CheckCircle2 className="w-7 h-7" />
                 </div>
-                <div className="text-center space-y-1">
+                <div className="text-center space-y-1.5">
                   <h3 className="text-xl font-black text-slate-900 dark:text-white">
-                    Organization Account Provisioned
+                    Access Request Received
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Your corporate account has been created. Live API keys are provisioned upon payment confirmation.
+                    Your institutional KYB application is currently queued for administrative verification.
                   </p>
                 </div>
 
-                <div className="bg-slate-50 dark:bg-[#071320] p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-500 dark:text-slate-400">Company</span>
-                    <span className="font-bold text-slate-900 dark:text-white">{successResult.organization.name}</span>
+                <div className="bg-slate-50 dark:bg-[#071320] p-4 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 dark:text-slate-400">Application Reference</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-white">{successResult.id}</span>
                   </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-500 dark:text-slate-400">Subscription Tier</span>
-                    <span className="font-bold text-[#013358] dark:text-emerald-400">{selectedPlanDetails.name}</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 dark:text-slate-400">Organization</span>
+                    <span className="font-bold text-slate-900 dark:text-white">{successResult.organizationName}</span>
                   </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-500 dark:text-slate-400">Query Quota</span>
-                    <span className="font-mono text-slate-700 dark:text-slate-300">{selectedPlanDetails.quota}</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 dark:text-slate-400">Designated Contact</span>
+                    <span className="text-slate-700 dark:text-slate-300">{successResult.contactName}</span>
                   </div>
-                  <div className="flex justify-between items-baseline pt-2 border-t border-slate-200 dark:border-slate-800 text-xs">
-                    <span className="font-semibold text-slate-700 dark:text-slate-300">Amount Due</span>
-                    <span className="text-base font-black text-[#013358] dark:text-emerald-400">
-                      ₦{Number(successResult.invoice?.amount || 0).toLocaleString()}
-                    </span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500 dark:text-slate-400">Credentials Delivery Email</span>
+                    <span className="font-mono text-emerald-600 dark:text-emerald-400">{successResult.email}</span>
                   </div>
                 </div>
 
-                {/* Privacy & Key Security Guidance */}
-                <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-xl border border-amber-200 dark:border-amber-900/60 text-xs text-amber-800 dark:text-amber-300 flex gap-2.5 items-start">
-                  <Lock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-                  <span>
-                    <strong>Security Notice:</strong> In accordance with our commercial policy and NDPR data governance, your production API key will be unlocked immediately upon settlement of this invoice.
-                  </span>
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 rounded-xl text-xs text-blue-800 dark:text-blue-300 space-y-1">
+                  <p className="font-semibold flex items-center gap-1.5">
+                    <Mail className="w-4 h-4 shrink-0" />
+                    <span>What happens next?</span>
+                  </p>
+                  <p className="opacity-90 leading-relaxed">
+                    Once administrators approve your request in the FIMS system, your Client Portal login credentials and live API keys will be automatically emailed to <strong>{successResult.email}</strong>.
+                  </p>
                 </div>
 
-                <div className="flex flex-col gap-2.5 pt-2">
-                  {successResult.invoice?.authorizationUrl ? (
-                    <Button
-                      onClick={() => (window.location.href = successResult.invoice.authorizationUrl)}
-                      className="w-full bg-[#013358] hover:bg-[#01264a] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white font-bold h-11 text-xs sm:text-sm rounded-xl shadow-xs"
-                    >
-                      Proceed to Complete Payment ({selectedTier})
-                      <ArrowRight className="w-4 h-4 ml-2" />
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <Link href="/portal/login" className="flex-1">
+                    <Button variant="outline" className="w-full text-xs">
+                      Go to Client Portal Sign In
                     </Button>
-                  ) : (
-                    <Button
-                      onClick={() => router.push('/portal/login')}
-                      className="w-full bg-[#013358] hover:bg-[#01264a] text-white font-bold h-11 text-xs sm:text-sm rounded-xl"
-                    >
-                      Sign In to Client Portal
+                  </Link>
+                  <Link href="/" className="flex-1">
+                    <Button className="w-full text-xs bg-[#013358] hover:bg-[#01254a] text-white">
+                      Return to Homepage
                     </Button>
-                  )}
-
-                  <Button
-                    variant="outline"
-                    onClick={() => router.push('/portal/login')}
-                    className="w-full text-xs text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 h-10 rounded-xl"
-                  >
-                    Go to Portal Dashboard (Pay Later)
-                  </Button>
+                  </Link>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Step 1: Tier Selection */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="block text-xs font-bold uppercase tracking-wider text-[#013358] dark:text-emerald-400">
-                1. Select Your Subscription Tier
-              </label>
-              <span className="text-[11px] text-slate-500 dark:text-slate-400">Monthly billing • Cancel anytime</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {PLANS.map((plan) => {
-                const isSelected = selectedTier === plan.id;
-                return (
-                  <div
-                    key={plan.id}
-                    onClick={() => setSelectedTier(plan.id)}
-                    className={`cursor-pointer rounded-2xl border p-5 transition-all relative ${
-                      isSelected
-                        ? 'border-[#013358] dark:border-emerald-500 ring-2 ring-[#013358]/20 dark:ring-emerald-500/20 bg-white dark:bg-[#0A1626] shadow-md'
-                        : 'border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-[#0A1626]/60 hover:border-slate-300 dark:hover:border-slate-700'
-                    }`}
-                  >
-                    {plan.highlight && (
-                      <span className="absolute -top-3 right-4 bg-emerald-600 text-white text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full tracking-wider shadow-xs">
-                        Most Popular
-                      </span>
-                    )}
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">{plan.name}</h3>
-                    <div className="mt-2 flex items-baseline gap-1">
-                      <span className="text-xl font-black text-[#013358] dark:text-emerald-400">{plan.price}</span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">{plan.period}</span>
-                    </div>
-                    <p className="text-[11px] text-slate-400 mt-0.5">{plan.usd}</p>
-                    <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs space-y-1.5">
-                      <div className="font-semibold text-slate-800 dark:text-slate-200">{plan.quota}</div>
-                      <div className="text-[11px] text-slate-500 dark:text-slate-400">Rate Limit: {plan.rateLimit}</div>
-                      {plan.features.map((f, i) => (
-                        <div key={i} className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                          <span>{f}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
           {/* Form */}
-          <div className="bg-white dark:bg-[#0A1626] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 sm:p-8 space-y-6">
-            <div>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-[#013358] dark:text-emerald-400">
-                2. Corporate Information & Admin Contact
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                All accounts are verified against Nigerian Corporate Affairs Commission (CAC) standards.
-              </p>
-            </div>
-
+          <form onSubmit={handleSubmit} className="space-y-8">
             {error && (
-              <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-xs text-red-700 dark:text-red-300 flex items-center gap-2.5">
-                <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+              <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/60 text-xs text-red-700 dark:text-red-300 flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
                 <span>{error}</span>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Company / Organization Name *</label>
+            {/* Section 1: KYB Organization Information */}
+            <div className="bg-white dark:bg-[#0A1626] p-6 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+              <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+                <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-700 dark:text-emerald-400">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                    1. Know Your Business (KYB) & Institution
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Legal business details required for compliance and verification.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Corporate / Legal Entity Name <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Apex AgriTech Ltd"
+                    placeholder="e.g. Apex Agricultural Technologies Ltd"
                     value={formData.organizationName}
                     onChange={(e) => setFormData({ ...formData, organizationName: e.target.value })}
-                    className="w-full h-10 px-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all"
+                    className="w-full h-10 px-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">CAC Registration (RC Number)</label>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    CAC Registration / RC Number <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
-                    placeholder="RC-1234567"
+                    required
+                    placeholder="e.g. RC 1234567"
                     value={formData.rcNumber}
                     onChange={(e) => setFormData({ ...formData, rcNumber: e.target.value })}
-                    className="w-full h-10 px-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all"
+                    className="w-full h-10 px-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Tax Identification Number (TIN)</label>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Tax Identification Number (TIN)
+                  </label>
                   <input
                     type="text"
-                    placeholder="e.g. 10293847-0001"
+                    placeholder="Optional / FIRS TIN"
                     value={formData.taxId}
                     onChange={(e) => setFormData({ ...formData, taxId: e.target.value })}
-                    className="w-full h-10 px-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all"
+                    className="w-full h-10 px-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Official Contact Person *</label>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Organization Type <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={formData.organizationType}
+                    onChange={(e) => setFormData({ ...formData, organizationType: e.target.value })}
+                    className="w-full h-10 px-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500"
+                  >
+                    {ORG_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Official Website
+                  </label>
+                  <div className="relative">
+                    <Globe className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                    <input
+                      type="url"
+                      placeholder="https://yourcompany.com"
+                      value={formData.website}
+                      onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                      className="w-full h-10 pl-9 pr-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Headquarters / Physical Office Address
+                  </label>
+                  <div className="relative">
+                    <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="e.g. Plot 420 Central Business District, Abuja, FCT"
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      className="w-full h-10 pl-9 pr-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 2: Contact Person & Delivery */}
+            <div className="bg-white dark:bg-[#0A1626] p-6 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+              <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+                <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 flex items-center justify-center text-blue-700 dark:text-blue-400">
+                  <User className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                    2. Designated Technical / Administrative Contact
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    The credentials and API tokens will be dispatched to this corporate email once approved.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Full Name <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Dr. Amina Bello"
+                    placeholder="e.g. Ibrahim Abubakar"
                     value={formData.contactName}
                     onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-                    className="w-full h-10 px-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all"
+                    className="w-full h-10 px-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Corporate Email (Login ID) *</label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="api@yourcompany.com"
-                    value={formData.contactEmail}
-                    onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
-                    className="w-full h-10 px-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all"
-                  />
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Designation / Role
+                  </label>
+                  <div className="relative">
+                    <Briefcase className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="e.g. Chief Technology Officer / Head of Compliance"
+                      value={formData.designation}
+                      onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
+                      className="w-full h-10 pl-9 pr-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Official Phone Number *</label>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="+234 803 000 0000"
-                    value={formData.contactPhone}
-                    onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
-                    className="w-full h-10 px-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all"
-                  />
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Official Corporate Email <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                    <input
+                      type="email"
+                      required
+                      placeholder="api-team@yourcompany.com"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full h-10 pl-9 pr-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-400">Login credentials will be sent to this inbox.</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Phone Number
+                  </label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                    <input
+                      type="tel"
+                      placeholder="+234 800 000 0000"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="w-full h-10 pl-9 pr-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Data Scopes & Technical Justification */}
+            <div className="bg-white dark:bg-[#0A1626] p-6 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+              <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
+                <div className="w-9 h-9 rounded-lg bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 flex items-center justify-center text-amber-700 dark:text-amber-400">
+                  <Fingerprint className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                    3. Data Scopes & Integration Purpose
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Detail your use case to help administrators make a clear decision on your access grant.
+                  </p>
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Portal Password (min. 8 characters) *</label>
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••••••"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full h-10 px-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all"
-                />
+              {/* Scopes Selection */}
+              <div className="space-y-3">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Requested Data Permissions / Scopes <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {DATA_SCOPES.map((scope) => {
+                    const isSelected = formData.requestedScopes.includes(scope.id);
+                    return (
+                      <div
+                        key={scope.id}
+                        onClick={() => toggleScope(scope.id)}
+                        className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-start gap-3 select-none ${
+                          isSelected
+                            ? 'bg-emerald-50/60 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700/70 shadow-sm'
+                            : 'bg-slate-50 dark:bg-[#071320] border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => {}}
+                          className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-900 dark:text-white">
+                              {scope.title}
+                            </span>
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                              {scope.id}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                            {scope.desc}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
+              {/* Reason / Intended Use */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Intended Use of Data *</label>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Detailed Reason & Use Case Justification <span className="text-red-500">*</span>
+                </label>
                 <textarea
                   required
-                  rows={3}
-                  placeholder="Describe your use case (e.g., assessing agricultural credit risk, input distribution planning, crop index insurance payouts)..."
+                  rows={4}
+                  placeholder="Explain how your organization will use the CCSA FIMS API (e.g. farmer credit assessment, identity verification for agricultural input distribution, remote crop yield monitoring, policy research)..."
                   value={formData.intendedUse}
                   onChange={(e) => setFormData({ ...formData, intendedUse: e.target.value })}
-                  className="w-full p-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10 transition-all"
+                  className="w-full p-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500"
                 />
+                <p className="text-[11px] text-slate-400">
+                  This justification will be evaluated directly by FIMS compliance officers prior to approval.
+                </p>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Already registered?{' '}
-                  <Link href="/portal/login" className="font-semibold text-[#013358] dark:text-emerald-400 hover:underline">
-                    Sign in to portal
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Estimated Monthly Query Volume
+                  </label>
+                  <select
+                    value={formData.expectedVolume}
+                    onChange={(e) => setFormData({ ...formData, expectedVolume: e.target.value })}
+                    className="w-full h-10 px-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500"
+                  >
+                    {VOLUMES.map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Target Integration Timeline
+                  </label>
+                  <select
+                    value={formData.integrationTimeline}
+                    onChange={(e) => setFormData({ ...formData, integrationTimeline: e.target.value })}
+                    className="w-full h-10 px-3 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#071320] text-slate-900 dark:text-white outline-none focus:border-[#013358] dark:focus:border-emerald-500"
+                  >
+                    {TIMELINES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 4: Compliance & Submission */}
+            <div className="bg-white dark:bg-[#0A1626] p-6 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="compliance"
+                  checked={formData.complianceAgreed}
+                  onChange={(e) => setFormData({ ...formData, complianceAgreed: e.target.checked })}
+                  className="mt-1 rounded text-emerald-600 focus:ring-emerald-500"
+                />
+                <label htmlFor="compliance" className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed cursor-pointer select-none">
+                  <strong className="text-slate-900 dark:text-white">Compliance & Data Privacy Declaration:</strong> I certify that our organization is a legally registered entity and agrees to handle all farmer and identity registry data in strict compliance with the Nigeria Data Protection Act (NDPA) and applicable regulations. Data accessed via this gateway will solely be utilized for the stated lawful purpose.
+                </label>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                <div className="text-xs text-slate-500 dark:text-slate-400 text-center sm:text-left">
+                  Already have access credentials?{' '}
+                  <Link href="/portal/login" className="text-[#013358] dark:text-emerald-400 font-semibold hover:underline">
+                    Sign In to Client Portal
                   </Link>
-                </p>
+                </div>
+
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full sm:w-auto bg-[#013358] hover:bg-[#01264a] dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white px-8 h-11 text-xs sm:text-sm font-bold rounded-xl shadow-xs transition-colors"
+                  className="w-full sm:w-auto px-8 h-11 bg-[#013358] hover:bg-[#01254a] text-white font-semibold text-xs rounded-xl shadow-md gap-2"
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Provisioning Account...
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Submitting Request...</span>
                     </>
                   ) : (
                     <>
-                      Register & Proceed to Payment
-                      <ArrowRight className="w-4 h-4 ml-2" />
+                      <span>Submit Access Application</span>
+                      <ArrowRight className="w-4 h-4" />
                     </>
                   )}
                 </Button>
               </div>
-            </form>
-          </div>
+            </div>
+          </form>
         </div>
       </main>
 
-      {/* Brand Visual Footer */}
       <PortalBrandFooter />
     </div>
   );

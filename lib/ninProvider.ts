@@ -56,7 +56,7 @@ function getProviderMessage(payload: any, fallback: string) {
 function classifyProviderFailure(message: string, status?: number) {
   const lower = message.toLowerCase();
 
-  if (message === 'norecord' || status === 404 || lower.includes('not found')) {
+  if (message === 'norecord' || status === 404 || status === 1404 || lower.includes('not found') || lower.includes('no record')) {
     return new NINProviderError('NIN not found', 'NIN_NOT_FOUND', 404);
   }
 
@@ -80,7 +80,8 @@ function classifyProviderFailure(message: string, status?: number) {
     return new NINProviderError('Too many NIN requests. Please try again later.', 'RATE_LIMITED', 429);
   }
 
-  return new NINProviderError(message, 'VALIDATION_FAILED', status && status >= 400 ? status : 400);
+  const validHttpStatus = status && status >= 400 && status <= 599 ? status : 400;
+  return new NINProviderError(message, 'VALIDATION_FAILED', validHttpStatus);
 }
 
 function isLikelyTLSFailure(error: unknown) {
@@ -213,8 +214,19 @@ export function toNINErrorPayload(error: unknown, fallback: string) {
   const err = error as Partial<NINProviderError> & { message?: string };
   const message = err?.message || fallback;
 
+  let httpStatus = 500;
+  if (err instanceof NINProviderError && typeof err.status === 'number') {
+    if (err.status >= 200 && err.status <= 599) {
+      httpStatus = err.status;
+    } else if (err.status === 1400 || err.status === 1404) {
+      httpStatus = 404;
+    } else {
+      httpStatus = 400;
+    }
+  }
+
   return {
-    status: err instanceof NINProviderError ? err.status : 500,
+    status: httpStatus,
     body: {
       success: false,
       error: message,

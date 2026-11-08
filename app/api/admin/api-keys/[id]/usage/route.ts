@@ -79,7 +79,10 @@ export async function GET(
 
   return NextResponse.json({
     data: {
-      key: apiKey,
+      key: {
+        ...apiKey,
+        requestCount: Number(apiKey.requestCount),
+      },
       stats: {
         totalRequests: Number(apiKey.requestCount),
         lastUsedAt: apiKey.lastUsedAt,

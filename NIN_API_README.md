@@ -16,14 +16,37 @@ This document outlines the API endpoint provided by FIMS to validate Nigerian Na
 | **Alternative Endpoint** | `/api/nin/verify` *(standardized camelCase format)* |
 | **Supported Methods** | `GET`, `POST` |
 | **Content-Type** | `application/json` |
-| **Authentication** | None required for internal office network / service calls |
+| **Authentication** | `X-API-Key: fims_live_...` or `Authorization: Bearer <token>` |
+| **Required Scope** | `nin:verify` |
+
+---
+
+## 🔑 Authentication & Access Control
+
+To access this API:
+1. Contact the FIMS Administrator to request an API key with the **`nin:verify`** scope.
+2. The administrator configures your rate limit (e.g. 30 requests/min) and monthly quota at `https://fims.cosmopolitan.edu.ng/api-keys`.
+3. Include your API token in all requests via either:
+   - Header: `X-API-Key: fims_live_YOUR_TOKEN`
+   - Header: `Authorization: Bearer fims_live_YOUR_TOKEN`
+*(Mobile agents can pass their Firebase Agent Bearer token).*
 
 ---
 
 ## 🚀 Quick Reference
 
-- **GET:** `https://fims.cosmopolitan.edu.ng/api/nin/lookup?nin=12345678901`
-- **POST:** `https://fims.cosmopolitan.edu.ng/api/nin/lookup` with body `{"nin": "12345678901"}`
+- **GET (cURL):**
+  ```bash
+  curl -X GET "https://fims.cosmopolitan.edu.ng/api/nin/lookup?nin=12345678901" \
+    -H "X-API-Key: fims_live_YOUR_TOKEN"
+  ```
+- **POST (cURL):**
+  ```bash
+  curl -X POST "https://fims.cosmopolitan.edu.ng/api/nin/lookup" \
+    -H "Content-Type: application/json" \
+    -H "X-API-Key: fims_live_YOUR_TOKEN" \
+    -d '{"nin": "12345678901"}'
+  ```
 
 ---
 
@@ -164,24 +187,29 @@ If your department prefers an endpoint that already normalizes keys to `camelCas
 ### cURL
 
 ```bash
-# Using GET
-curl -X GET "https://fims.cosmopolitan.edu.ng/api/nin/lookup?nin=12345678901"
+# Using GET with X-API-Key
+curl -X GET "https://fims.cosmopolitan.edu.ng/api/nin/lookup?nin=12345678901" \
+  -H "X-API-Key: fims_live_YOUR_TOKEN"
 
-# Using POST
+# Using POST with JSON body and Bearer token
 curl -X POST "https://fims.cosmopolitan.edu.ng/api/nin/lookup" \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer fims_live_YOUR_TOKEN" \
   -d '{"nin": "12345678901"}'
 ```
 
 ### JavaScript / TypeScript (Node.js / Browser)
 
 ```javascript
+const FIMS_API_KEY = 'fims_live_YOUR_TOKEN';
+
 async function fetchNINData(nin) {
   try {
     const response = await fetch(`https://fims.cosmopolitan.edu.ng/api/nin/lookup?nin=${encodeURIComponent(nin)}`, {
       method: 'GET',
       headers: {
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'X-API-Key': FIMS_API_KEY,
       }
     });
 
@@ -209,12 +237,18 @@ fetchNINData('12345678901')
 ```python
 import requests
 
+FIMS_API_KEY = "fims_live_YOUR_TOKEN"
+
 def lookup_nin(nin: str):
     url = "https://fims.cosmopolitan.edu.ng/api/nin/lookup"
     params = {"nin": nin}
+    headers = {
+        "X-API-Key": FIMS_API_KEY,
+        "Accept": "application/json"
+    }
     
     try:
-        response = requests.get(url, params=params, timeout=20)
+        response = requests.get(url, params=params, headers=headers, timeout=20)
         data = response.json()
         
         if response.status_code == 200 and data.get("success"):
@@ -241,13 +275,18 @@ if __name__ == "__main__":
 
 ```php
 <?php
-function lookupNIN($nin) {
+$fimsApiKey = "fims_live_YOUR_TOKEN";
+
+function lookupNIN($nin, $apiKey) {
     $url = "https://fims.cosmopolitan.edu.ng/api/nin/lookup?nin=" . urlencode($nin);
     
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 20);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json']);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Accept: application/json',
+        'X-API-Key: ' . $apiKey
+    ]);
     
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -262,6 +301,14 @@ function lookupNIN($nin) {
     $error = $result['message'] ?? $result['error'] ?? "NIN lookup error";
     throw new Exception("HTTP $httpCode: $error");
 }
+
+// Example Execution
+try {
+    $citizen = lookupNIN("12345678901", $fimsApiKey);
+    echo "Citizen: " . $citizen['firstname'] . " " . $citizen['surname'];
+} catch (Exception $e) {
+    echo "Error: " . $e->getMessage();
+}
 ```
 
 ---
@@ -271,8 +318,10 @@ function lookupNIN($nin) {
 | HTTP Status | Reason | Payload Example |
 | :--- | :--- | :--- |
 | **`400 Bad Request`** | Missing or malformed NIN / invalid JSON | `{"error": "NIN is required"}` |
+| **`401 Unauthorized`** | Missing, revoked, expired, or invalid API key | `{"error": "Unauthorized", "message": "Access to the NIN Validation API requires an authorized API Key (X-API-Key: fims_live_...)"}` |
+| **`403 Forbidden`** | Key lacks the required `nin:verify` scope | `{"error": "Forbidden", "message": "Your API key does not have the 'nin:verify' scope required for this endpoint."}` |
 | **`404 Not Found`** | NIN does not exist in the NIMC database | `{"success": false, "error": "NIN not found", "message": "NIN not found", "code": "NIN_NOT_FOUND"}` |
-| **`429 Too Many Requests`** | Provider rate limit reached | `{"success": false, "error": "Too many NIN requests...", "code": "RATE_LIMITED"}` |
+| **`429 Too Many Requests`** | API key rate limit or provider rate limit exceeded | `{"error": "Too Many Requests", "message": "Rate limit of 30 requests/minute exceeded. Please slow down."}` |
 | **`502 Bad Gateway`** | Upstream provider credentials or rejection | `{"success": false, "error": "NIN service authentication failed", "code": "AUTH_FAILED"}` |
 | **`503 Service Unavailable`** | Provider account suspended / not configured | `{"error": "NIN verification service unavailable"}` |
 

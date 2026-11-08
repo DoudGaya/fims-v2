@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import ProductionLogger from '@/lib/productionLogger';
 import { hasNINConfig, lookupNINFromProvider, toNINErrorPayload } from '@/lib/ninProvider';
+import { authorizeNINRequest } from '@/lib/ninAuth';
 
 function mapVerifyData(data: any, nin: string) {
   return {
@@ -22,7 +23,12 @@ function mapVerifyData(data: any, nin: string) {
   };
 }
 
-async function handleVerify(nin: string | null) {
+async function handleVerify(req: NextRequest, nin: string | null) {
+  const authResult = await authorizeNINRequest(req);
+  if (authResult instanceof NextResponse) {
+    return authResult;
+  }
+
   try {
     if (!nin) {
       return NextResponse.json({ error: 'NIN is required' }, { status: 400 });
@@ -61,7 +67,7 @@ async function handleVerify(nin: string | null) {
 }
 
 export async function GET(req: NextRequest) {
-  return handleVerify(req.nextUrl.searchParams.get('nin'));
+  return handleVerify(req, req.nextUrl.searchParams.get('nin'));
 }
 
 export async function POST(req: NextRequest) {
@@ -73,5 +79,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  return handleVerify(body.nin ?? null);
+  return handleVerify(req, body.nin ?? null);
 }

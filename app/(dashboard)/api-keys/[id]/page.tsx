@@ -51,6 +51,7 @@ const VALID_SCOPES = [
   { id: 'farms:read', label: 'Farms' },
   { id: 'clusters:read', label: 'Clusters' },
   { id: 'analytics:read', label: 'Analytics' },
+  { id: 'nin:verify', label: 'NIN Verification' },
 ];
 
 interface ApiKeyDetail {
@@ -80,10 +81,13 @@ interface UsageLog {
 }
 
 interface UsageData {
-  apiKey: { id: string; name: string; requestCount: number; lastUsedAt: string | null };
   logs: UsageLog[];
-  endpointBreakdown: Record<string, number>;
-  statusBreakdown: Record<string, number>;
+  stats?: {
+    totalRequests: number;
+    lastUsedAt: string | null;
+    endpointBreakdown?: Array<{ endpoint: string; count: number }>;
+    statusBreakdown?: Array<{ statusCode: number; count: number }>;
+  };
 }
 
 interface RotatedKey {
@@ -131,19 +135,30 @@ export default function ApiKeyDetailPage() {
         fetch(`/api/admin/api-keys/${id}/usage`),
       ]);
       if (!keyRes.ok) throw new Error('API key not found');
-      const keyData: ApiKeyDetail = await keyRes.json();
+      const keyJson = await keyRes.json();
+      const rawKey = keyJson.data ?? keyJson;
+      const keyData: ApiKeyDetail = {
+        ...rawKey,
+        requestCount: Number(rawKey.requestCount ?? 0),
+        scopes: Array.isArray(rawKey.scopes) ? rawKey.scopes : [],
+      };
       setApiKey(keyData);
       setEditForm({
-        name: keyData.name,
+        name: keyData.name || '',
         description: keyData.description ?? '',
         scopes: keyData.scopes,
-        rateLimit: keyData.rateLimit,
-        allowSensitiveFields: keyData.allowSensitiveFields,
-        isActive: keyData.isActive,
+        rateLimit: keyData.rateLimit ?? 100,
+        allowSensitiveFields: !!keyData.allowSensitiveFields,
+        isActive: !!keyData.isActive,
         expiresAt: keyData.expiresAt ? keyData.expiresAt.slice(0, 10) : '',
       });
       if (usageRes.ok) {
-        setUsage(await usageRes.json());
+        const usageJson = await usageRes.json();
+        const usagePayload = usageJson.data ?? usageJson;
+        setUsage({
+          logs: usagePayload.recentLogs ?? usagePayload.logs ?? [],
+          stats: usagePayload.stats,
+        });
       }
     } catch (e: any) {
       setError(e.message);
@@ -186,7 +201,13 @@ export default function ApiKeyDetailPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Failed to save');
-      setApiKey(json);
+      const updatedKey = json.data ?? json;
+      setApiKey(prev => (prev ? {
+        ...prev,
+        ...updatedKey,
+        requestCount: Number(updatedKey.requestCount ?? prev.requestCount ?? 0),
+        scopes: Array.isArray(updatedKey.scopes) ? updatedKey.scopes : prev.scopes,
+      } : updatedKey));
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (e: any) {
@@ -285,14 +306,14 @@ export default function ApiKeyDetailPage() {
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardContent className="pt-4">
                 <div className="text-2xl font-bold text-[#013358] dark:text-blue-300">
-                  {apiKey.requestCount.toLocaleString()}
+                  {(apiKey.requestCount ?? 0).toLocaleString()}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Total Requests</div>
               </CardContent>
             </Card>
             <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardContent className="pt-4">
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">{apiKey.rateLimit}</div>
+                <div className="text-2xl font-bold text-gray-900 dark:text-white">{apiKey.rateLimit ?? 100}</div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Req/min limit</div>
               </CardContent>
             </Card>
@@ -316,7 +337,7 @@ export default function ApiKeyDetailPage() {
               <CardDescription className="dark:text-gray-400">Last 50 API calls</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              {!usage || usage.logs.length === 0 ? (
+              {!usage || !usage.logs || usage.logs.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-gray-400">
                   <ClockIcon className="h-8 w-8 mb-2 opacity-40" />
                   <p className="text-sm">No requests logged yet.</p>
