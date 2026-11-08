@@ -30,8 +30,19 @@ async function handleVerify(req: NextRequest, nin: string | null) {
   }
 
   try {
-    if (!nin) {
+    const cleanNin = (nin ?? '').trim();
+    if (!cleanNin) {
       return NextResponse.json({ error: 'NIN is required' }, { status: 400 });
+    }
+
+    if (!/^\d{11}$/.test(cleanNin)) {
+      return NextResponse.json(
+        {
+          error: 'Invalid NIN format',
+          message: 'NIN must consist of exactly 11 numeric digits (0-9).',
+        },
+        { status: 422 }
+      );
     }
 
     if (!hasNINConfig()) {
@@ -44,15 +55,15 @@ async function handleVerify(req: NextRequest, nin: string | null) {
             isValid: true,
             firstName: 'Test',
             lastName: 'User',
-            nin: nin,
-            gender: 'MALE'
-          }
+            nin: cleanNin,
+            gender: 'MALE',
+          },
         });
       }
       return NextResponse.json({ error: 'NIN verification service unavailable' }, { status: 503 });
     }
 
-    const result = mapVerifyData(await lookupNINFromProvider(nin), nin);
+    const result = mapVerifyData(await lookupNINFromProvider(cleanNin), cleanNin);
 
     return NextResponse.json({
       success: true,

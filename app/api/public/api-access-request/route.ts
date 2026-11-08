@@ -1,9 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import redis from '@/lib/redis';
 import { sendApiAccessRequestNotification } from '@/lib/emailService';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
+
+async function checkPublicRateLimit(ip: string): Promise<boolean> {
+  if (!process.env.UPSTASH_REDIS_REST_URL) return true;
+  try {
+    const key = `ratelimit:public-request:${ip}`;
+    const count = await redis.incr(key);
+    if (count === 1) {
+      await redis.expire(key, 600); // 10 minutes window
+    }
+    return count <= 5;
+  } catch {
+    return true; // Fail open if Redis is unreachable
+  }
+}
 
 const VALID_SCOPES = [
   'farmers:read',
@@ -32,6 +47,15 @@ const requestSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || '127.0.0.1';
+  const allowed = await checkPublicRateLimit(ip);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please wait a few minutes before submitting another application.' },
+      { status: 429 }
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();

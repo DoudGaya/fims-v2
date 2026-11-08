@@ -28,15 +28,14 @@ export async function authorizeNINRequest(
 
   // 2. CCSA Mobile Agent (Firebase Auth token)
   if (authHeader.startsWith('Bearer ')) {
-    const token = authHeader.slice(7);
-    if (token === 'TEST_TOKEN_123' && process.env.NODE_ENV === 'development') {
-      return { authorized: true, identity: 'test-agent' };
-    }
-    try {
-      const decoded = await verifyFirebaseToken(token);
-      return { authorized: true, identity: `agent:${decoded.uid}` };
-    } catch {
-      // Fall through to other checks or rejection
+    const token = authHeader.slice(7).trim();
+    if (token) {
+      try {
+        const decoded = await verifyFirebaseToken(token);
+        return { authorized: true, identity: `agent:${decoded.uid}` };
+      } catch {
+        // Fall through to other checks or rejection
+      }
     }
   }
 
@@ -50,9 +49,9 @@ export async function authorizeNINRequest(
     // Session check failed or absent
   }
 
-  // 4. In development mode fallback for local debugging
-  if (process.env.NODE_ENV === 'development') {
-    return { authorized: true, identity: 'dev-local' };
+  // 4. Explicit local test bypass only when explicitly enabled in environment
+  if (process.env.NODE_ENV === 'development' && process.env.ALLOW_LOCAL_DEV_BYPASS === 'true') {
+    return { authorized: true, identity: 'dev-local-bypass' };
   }
 
   return NextResponse.json(
