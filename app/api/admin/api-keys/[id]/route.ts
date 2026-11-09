@@ -141,7 +141,7 @@ export async function PATCH(
   });
 }
 
-// ── DELETE /api/admin/api-keys/:id (soft revoke) ──────────────────────────────
+// ── DELETE /api/admin/api-keys/:id ─────────────────────────────────────────────
 
 export async function DELETE(
   req: NextRequest,
@@ -152,10 +152,63 @@ export async function DELETE(
   }
 
   const { id } = await params;
+  const url = new URL(req.url);
+  const isPermanent =
+    url.searchParams.get('permanent') === 'true' ||
+    url.searchParams.get('hard') === 'true';
 
-  const existing = await prisma.apiKey.findUnique({ where: { id } });
+  const existing = await prisma.apiKey.findUnique({
+    where: { id },
+    include: {
+      organization: {
+        include: {
+          apiKeys: true,
+          users: true,
+        },
+      },
+    },
+  });
+
   if (!existing) {
     return NextResponse.json({ error: 'Not Found' }, { status: 404 });
+  }
+
+  if (isPermanent) {
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete all usage logs for this API key
+      await tx.apiKeyUsageLog.deleteMany({ where: { apiKeyId: id } });
+
+      // 2. Delete the API key
+      await tx.apiKey.delete({ where: { id } });
+
+      // 3. If organization was created for this key and has no other keys, clean up org data
+      if (existing.organizationId && existing.organization) {
+        const remainingKeys = existing.organization.apiKeys.filter((k) => k.id !== id);
+        if (remainingKeys.length === 0) {
+          await tx.invoice.deleteMany({ where: { organizationId: existing.organizationId } });
+          await tx.subscription.deleteMany({ where: { organizationId: existing.organizationId } });
+          const userIds = existing.organization.users.map((u) => u.userId);
+          await tx.organizationUser.deleteMany({ where: { organizationId: existing.organizationId } });
+          await tx.organization.delete({ where: { id: existing.organizationId } });
+
+          // If client users have no other org memberships, delete them as well
+          for (const uid of userIds) {
+            const user = await tx.user.findUnique({
+              where: { id: uid },
+              include: { organizationMemberships: true },
+            });
+            if (user && user.role === 'client' && user.organizationMemberships.length === 0) {
+              await tx.user.delete({ where: { id: uid } });
+            }
+          }
+        }
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'API key access and associated demo data permanently deleted.',
+    });
   }
 
   // Soft-revoke: mark inactive, preserve usage logs
@@ -164,5 +217,8 @@ export async function DELETE(
     data: { isActive: false },
   });
 
-  return NextResponse.json({ message: 'API key revoked. Usage logs are preserved.' });
+  return NextResponse.json({
+    success: true,
+    message: 'API key revoked. Usage logs are preserved.',
+  });
 }

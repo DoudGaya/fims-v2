@@ -37,6 +37,20 @@ export async function DELETE(
       return NextResponse.json({ error: 'Key not found in your organization' }, { status: 404 });
     }
 
+    const url = new URL(req.url);
+    const isPermanent = url.searchParams.get('permanent') === 'true';
+
+    if (isPermanent) {
+      await prisma.$transaction([
+        prisma.apiKeyUsageLog.deleteMany({ where: { apiKeyId: id } }),
+        prisma.apiKey.delete({ where: { id } }),
+      ]);
+      return NextResponse.json({
+        success: true,
+        message: `API Key (${key.keyPrefix}) has been permanently deleted.`,
+      });
+    }
+
     // Mark inactive / revoked
     await prisma.apiKey.update({
       where: { id },

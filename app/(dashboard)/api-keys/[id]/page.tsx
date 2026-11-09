@@ -16,6 +16,7 @@ import {
   ChartBarIcon,
   ClockIcon,
   ShieldCheckIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 import {
   Card,
@@ -126,6 +127,10 @@ export default function ApiKeyDetailPage() {
   const [rotatedKey, setRotatedKey] = useState<RotatedKey | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Delete state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -229,6 +234,21 @@ export default function ApiKeyDetailPage() {
       alert(e.message);
     } finally {
       setRotating(false);
+    }
+  }
+
+  async function handleDeleteKey() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/api-keys/${id}?permanent=true`, { method: 'DELETE' });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error ?? 'Failed to delete key');
+      }
+      router.push('/api-keys');
+    } catch (e: any) {
+      alert(e.message);
+      setDeleting(false);
     }
   }
 
@@ -530,6 +550,30 @@ export default function ApiKeyDetailPage() {
               </form>
             </CardContent>
           </Card>
+
+          {/* Danger Zone */}
+          <Card className="border-red-200 dark:border-red-900/40 bg-red-50/20 dark:bg-red-950/10">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5">
+                <TrashIcon className="h-4 w-4" />
+                Danger Zone
+              </CardTitle>
+              <CardDescription className="text-xs text-red-700/80 dark:text-red-300/70">
+                Permanently delete this key, revoke all access, and cascade purge related usage logs.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                variant="destructive"
+                size="sm"
+                className="w-full gap-2 bg-red-600 hover:bg-red-700 text-white text-xs"
+                onClick={() => setShowDeleteModal(true)}
+              >
+                <TrashIcon className="h-3.5 w-3.5" />
+                Delete API Key Access
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -593,6 +637,40 @@ export default function ApiKeyDetailPage() {
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+      {/* Delete confirmation dialog */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent className="max-w-md dark:bg-gray-900 dark:border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+              <TrashIcon className="h-5 w-5" />
+              Permanently Delete API Key?
+            </DialogTitle>
+            <DialogDescription className="dark:text-gray-400">
+              Are you sure you want to delete <span className="font-semibold text-gray-900 dark:text-white">"{apiKey?.name}"</span>?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg border border-red-200 dark:border-red-700 bg-red-50 dark:bg-red-900/20 p-3 flex gap-2">
+            <ExclamationTriangleIcon className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-red-700 dark:text-red-300 space-y-1">
+              <p className="font-semibold">This operation cannot be reversed.</p>
+              <p>All recorded usage logs, telemetry, and access credentials for this key will be permanently expunged.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteModal(false)} disabled={deleting} className="dark:border-gray-600 dark:text-gray-300">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteKey}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700 text-white gap-2"
+            >
+              {deleting ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <TrashIcon className="h-4 w-4" />}
+              {deleting ? 'Deleting…' : 'Delete Key'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

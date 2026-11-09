@@ -129,6 +129,21 @@ export function ClientPortalDashboardContent() {
     }
   };
 
+  const handleDeleteKey = async (keyId: string) => {
+    if (!confirm('Are you sure you want to permanently delete this API key access? All access and usage history will be expunged.')) return;
+    try {
+      const res = await fetch(`/api/portal/keys/${keyId}?permanent=true`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchPortalData();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || 'Failed to delete key access');
+      }
+    } catch {
+      alert('Error deleting key access');
+    }
+  };
+
   const handleUpgradeCheckout = async (targetTier: string) => {
     setUpgradeLoading(true);
     setUpgradingTier(targetTier);
@@ -781,17 +796,16 @@ export function ClientPortalDashboardContent() {
                             {copiedKey === k.id ? 'Copied' : 'Copy Prefix'}
                           </Button>
                         )}
-                        {k.isActive && isAccountPaid && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleRevokeKey(k.id)}
-                            className="text-xs h-7 text-red-400 hover:bg-red-950/40"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 mr-1" />
-                            Revoke
-                          </Button>
-                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteKey(k.id)}
+                          className="text-xs h-7 text-red-400 hover:bg-red-950/40 hover:text-red-300"
+                          title="Permanently delete API key access"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 mr-1" />
+                          Delete Access
+                        </Button>
                       </div>
                     </div>
                   ))}

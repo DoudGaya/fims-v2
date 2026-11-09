@@ -164,3 +164,142 @@ export async function POST(req: NextRequest) {
     { status: 201 }
   );
 }
+
+// ── DELETE /api/admin/api-keys — Purge demo data or delete keys ──────────────
+
+export async function DELETE(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const perms = (session.user as any).permissions as string[] | undefined;
+  if (!perms?.includes(PERMISSIONS.SYSTEM_MANAGE_INTEGRATIONS)) {
+    return NextResponse.json(
+      { error: 'Forbidden: system.manage_integrations permission required.' },
+      { status: 403 }
+    );
+  }
+
+  let body: { keyIds?: string[]; purgeDemoData?: boolean } = {};
+  try {
+    body = await req.json();
+  } catch {
+    // allow query param fallback
+  }
+
+  const url = new URL(req.url);
+  const purgeDemo =
+    body.purgeDemoData === true ||
+    url.searchParams.get('demo') === 'true' ||
+    url.searchParams.get('purgeDemo') === 'true';
+
+  if (purgeDemo) {
+    // Identify all demo/test keys and test organizations created during testing
+    const demoKeys = await prisma.apiKey.findMany({
+      where: {
+        OR: [
+          { name: { contains: 'Nillar', mode: 'insensitive' } },
+          { name: { contains: 'Shopagric', mode: 'insensitive' } },
+          { name: { contains: 'AgroFin', mode: 'insensitive' } },
+          { name: { contains: 'REFAN', mode: 'insensitive' } },
+          { name: { equals: 'api-keys' } },
+          { description: { contains: 'testing', mode: 'insensitive' } },
+          { description: { contains: 'B2B onboarding', mode: 'insensitive' } },
+        ],
+      },
+      include: {
+        organization: {
+          include: {
+            users: true,
+          },
+        },
+      },
+    });
+
+    const keyIds = demoKeys.map((k) => k.id);
+    const orgIds = demoKeys
+      .map((k) => k.organizationId)
+      .filter(Boolean) as string[];
+
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Delete usage logs for demo keys
+      if (keyIds.length > 0) {
+        await tx.apiKeyUsageLog.deleteMany({
+          where: { apiKeyId: { in: keyIds } },
+        });
+
+        // 2. Delete demo API keys
+        await tx.apiKey.deleteMany({
+          where: { id: { in: keyIds } },
+        });
+      }
+
+      // 3. Clean up demo organizations and mock invoices
+      let deletedOrgsCount = 0;
+      if (orgIds.length > 0) {
+        await tx.invoice.deleteMany({
+          where: { organizationId: { in: orgIds } },
+        });
+
+        await tx.subscription.deleteMany({
+          where: { organizationId: { in: orgIds } },
+        });
+
+        const orgUsers = await tx.organizationUser.findMany({
+          where: { organizationId: { in: orgIds } },
+        });
+        const userIds = orgUsers.map((u) => u.userId);
+
+        await tx.organizationUser.deleteMany({
+          where: { organizationId: { in: orgIds } },
+        });
+
+        const deletedOrgs = await tx.organization.deleteMany({
+          where: { id: { in: orgIds } },
+        });
+        deletedOrgsCount = deletedOrgs.count;
+
+        // Clean up client users associated solely with these demo orgs
+        for (const uid of userIds) {
+          const user = await tx.user.findUnique({
+            where: { id: uid },
+            include: { organizationMemberships: true },
+          });
+          if (user && user.role === 'client' && user.organizationMemberships.length === 0) {
+            await tx.user.delete({ where: { id: uid } });
+          }
+        }
+      }
+
+      return { deletedKeysCount: keyIds.length, deletedOrgsCount };
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Demo data purged successfully. Removed ${result.deletedKeysCount} demo API key(s) and ${result.deletedOrgsCount} test organization(s).`,
+      deletedKeysCount: result.deletedKeysCount,
+      deletedOrgsCount: result.deletedOrgsCount,
+    });
+  }
+
+  if (body.keyIds && body.keyIds.length > 0) {
+    await prisma.$transaction(async (tx) => {
+      await tx.apiKeyUsageLog.deleteMany({
+        where: { apiKeyId: { in: body.keyIds } },
+      });
+      await tx.apiKey.deleteMany({
+        where: { id: { in: body.keyIds } },
+      });
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: `Successfully deleted ${body.keyIds.length} API key(s).`,
+    });
+  }
+
+  return NextResponse.json(
+    { error: 'Specify keyIds or purgeDemoData=true to delete API keys.' },
+    { status: 400 }
+  );
+}

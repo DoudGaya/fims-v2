@@ -17,6 +17,7 @@ import {
   InboxIcon,
   UserPlusIcon,
   BuildingOffice2Icon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 import {
   Card,
@@ -85,6 +86,7 @@ export default function ApiKeysPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [purgingDemo, setPurgingDemo] = useState(false);
 
   // Create dialog
   const [showCreate, setShowCreate] = useState(false);
@@ -211,6 +213,40 @@ export default function ApiKeysPage() {
     }
   }
 
+  async function handlePermanentDelete(id: string, name: string) {
+    if (!confirm(`Permanently DELETE API key "${name}"? This will delete all its usage logs and cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/admin/api-keys/${id}?permanent=true`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete API key');
+      }
+      await fetchKeys();
+    } catch (e: any) {
+      alert(e.message);
+    }
+  }
+
+  async function handlePurgeDemoData() {
+    if (!confirm('Are you sure you want to purge all demo data (Nillar, Shopagric, AgroFin, test keys, and mock invoices)? This cannot be undone.')) return;
+    setPurgingDemo(true);
+    try {
+      const res = await fetch('/api/admin/api-keys?demo=true', {
+        method: 'DELETE',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to purge demo data');
+      alert(`Purge complete: ${data.deletedKeysCount ?? 0} demo keys and ${data.deletedOrgsCount ?? 0} demo organizations removed.`);
+      await fetchKeys();
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setPurgingDemo(false);
+    }
+  }
+
   function copyToken(token: string) {
     navigator.clipboard.writeText(token);
     setCopied(true);
@@ -291,6 +327,17 @@ export default function ApiKeysPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={purgingDemo}
+            className="gap-2 border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
+            onClick={handlePurgeDemoData}
+            title="Clean up test & demo onboarding data, mock invoices, and sample API keys"
+          >
+            <TrashIcon className="h-4 w-4" />
+            {purgingDemo ? 'Purging…' : 'Purge Demo Data'}
+          </Button>
           <Link href="/requests/api-access-requests">
             <Button variant="outline" size="sm" className="gap-2">
               <InboxIcon className="h-4 w-4" />
@@ -436,6 +483,7 @@ export default function ApiKeysPage() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            title="Revoke Key"
                             className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                             onClick={() => handleRevoke(key.id, key.name)}
                           >
@@ -445,12 +493,22 @@ export default function ApiKeysPage() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            title="Activate Key"
                             className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20"
                             onClick={() => handleActivate(key.id)}
                           >
                             <CheckCircleIcon className="h-4 w-4" />
                           </Button>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="Permanently Delete API Key"
+                          className="h-8 w-8 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                          onClick={() => handlePermanentDelete(key.id, key.name)}
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
