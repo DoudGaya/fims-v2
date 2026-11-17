@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { usePermissions } from '@/components/PermissionProvider';
 import { PERMISSIONS } from '@/lib/permissions';
@@ -53,6 +53,8 @@ import {
 export default function HouseholdsDirectoryPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const agentId = searchParams.get('agentId') || '';
   const { hasPermission, loading: permissionsLoading } = usePermissions();
 
   const [households, setHouseholds] = useState<any[]>([]);
@@ -121,6 +123,7 @@ export default function HouseholdsDirectoryPage() {
       if (pueFilter === 'no') params.append('hasPue', 'false');
       if (networkFilter !== 'all') params.append('network', networkFilter);
       if (statusFilter !== 'all') params.append('status', statusFilter);
+      if (agentId) params.append('agentId', agentId);
 
       const res = await fetch(`/api/households?${params.toString()}`);
       if (!res.ok) {
@@ -138,7 +141,7 @@ export default function HouseholdsDirectoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, telcoFilter, pueFilter, networkFilter, statusFilter]);
+  }, [page, search, telcoFilter, pueFilter, networkFilter, statusFilter, agentId]);
 
   useEffect(() => {
     if (status === 'loading' || permissionsLoading) return;
@@ -174,6 +177,7 @@ export default function HouseholdsDirectoryPage() {
     if (pueFilter === 'no') params.append('hasPue', 'false');
     if (networkFilter !== 'all') params.append('network', networkFilter);
     if (statusFilter !== 'all') params.append('status', statusFilter);
+    if (agentId) params.append('agentId', agentId);
 
     window.open(`/api/households?${params.toString()}`, '_blank');
   };
@@ -314,6 +318,16 @@ export default function HouseholdsDirectoryPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Active agent filter notice */}
+      {agentId && (
+        <div className="flex items-center justify-between px-4 py-2.5 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 rounded-lg text-sm text-teal-900 dark:text-teal-200">
+          <span>Filtering households captured by Agent ID: <code className="font-mono font-semibold px-1.5 py-0.5 rounded bg-teal-100 dark:bg-teal-900/60">{agentId}</code></span>
+          <Link href="/households" className="underline font-medium hover:text-teal-700 dark:hover:text-white">
+            Clear Agent Filter
+          </Link>
+        </div>
+      )}
 
       {/* 3. Filter Bar */}
       <Card className="border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">

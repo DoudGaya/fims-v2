@@ -86,7 +86,6 @@ export default function ApiKeysPage() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [purgingDemo, setPurgingDemo] = useState(false);
 
   // Create dialog
   const [showCreate, setShowCreate] = useState(false);
@@ -229,24 +228,6 @@ export default function ApiKeysPage() {
     }
   }
 
-  async function handlePurgeDemoData() {
-    if (!confirm('Are you sure you want to purge all demo data (Nillar, Shopagric, AgroFin, test keys, and mock invoices)? This cannot be undone.')) return;
-    setPurgingDemo(true);
-    try {
-      const res = await fetch('/api/admin/api-keys?demo=true', {
-        method: 'DELETE',
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Failed to purge demo data');
-      alert(`Purge complete: ${data.deletedKeysCount ?? 0} demo keys and ${data.deletedOrgsCount ?? 0} demo organizations removed.`);
-      await fetchKeys();
-    } catch (e: any) {
-      alert(e.message);
-    } finally {
-      setPurgingDemo(false);
-    }
-  }
-
   function copyToken(token: string) {
     navigator.clipboard.writeText(token);
     setCopied(true);
@@ -327,17 +308,6 @@ export default function ApiKeysPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={purgingDemo}
-            className="gap-2 border-red-300 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30"
-            onClick={handlePurgeDemoData}
-            title="Clean up test & demo onboarding data, mock invoices, and sample API keys"
-          >
-            <TrashIcon className="h-4 w-4" />
-            {purgingDemo ? 'Purging…' : 'Purge Demo Data'}
-          </Button>
           <Link href="/requests/api-access-requests">
             <Button variant="outline" size="sm" className="gap-2">
               <InboxIcon className="h-4 w-4" />

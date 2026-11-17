@@ -92,8 +92,10 @@ interface Agent {
   lastLogin: string;
   createdAt: string;
   surveyCount: number;
+  householdCount?: number;
   _count: {
     farmers: number;
+    capturedHouseholds?: number;
   };
   agent: {
     state: string;
@@ -116,6 +118,7 @@ interface AnalyticsData {
   newApplications: number;
   interviewing: number;
   enrollmentCount: number;
+  householdAgentsCount?: number;
   householdCount?: number;
   correctionCount: number;
   surveyCount: number;
@@ -608,7 +611,9 @@ export default function AgentsClient() {
                 <div className="text-2xl font-bold text-teal-700 dark:text-teal-300">
                   {analyticsLoading ? '...' : analytics?.householdCount || 0}
                 </div>
-                <p className="text-[11px] text-[#94A3B8] dark:text-gray-500 mt-0.5">Intervention households</p>
+                <p className="text-[11px] text-[#94A3B8] dark:text-gray-500 mt-0.5">
+                  Intervention households{analytics?.householdAgentsCount ? ` (${analytics.householdAgentsCount} agents)` : ''}
+                </p>
               </div>
             </Card>
 
@@ -998,7 +1003,9 @@ export default function AgentsClient() {
                     {agent.role === 'household_agent' && (
                       <div className="flex flex-col gap-0.5">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-sm font-semibold text-teal-700 dark:text-teal-400">Intervention</span>
+                          <span className="text-sm font-semibold text-teal-700 dark:text-teal-400">
+                            {agent.householdCount ?? agent._count?.capturedHouseholds ?? 0}
+                          </span>
                           <span className="text-xs text-muted-foreground">households</span>
                         </div>
                         {agent.agent?.performanceRating != null && (

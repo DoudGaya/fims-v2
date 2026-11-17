@@ -158,7 +158,8 @@ export async function GET(req: NextRequest) {
             select: {
               farmers: {
                 where: farmersWhere
-              }
+              },
+              capturedHouseholds: true,
             }
           },
           agent: {
@@ -196,7 +197,11 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      const agentsWithPerf = agents.map(a => ({ ...a, surveyCount: surveyCountMap[a.id] ?? 0 }));
+      const agentsWithPerf = agents.map(a => ({
+        ...a,
+        surveyCount: surveyCountMap[a.id] ?? 0,
+        householdCount: a._count?.capturedHouseholds ?? 0,
+      }));
 
       return {
         agents: agentsWithPerf,

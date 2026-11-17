@@ -932,9 +932,16 @@ export default function AgentDetailsClient({ id }: { id: string }) {
                   View agribusiness leads &rarr;
                 </Link>
               ) : (
-                <Link href={`/farmers?agentId=${agent.id}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
-                  View all registered farmers &rarr;
-                </Link>
+                <div className="flex flex-col gap-1.5">
+                  <Link href={`/farmers?agentId=${agent.id}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                    View all registered farmers &rarr;
+                  </Link>
+                  {householdsCount > 0 && (
+                    <Link href={`/households?agentId=${agent.id}`} className="font-medium text-teal-600 dark:text-teal-400 hover:underline">
+                      View captured households ({householdsCount}) &rarr;
+                    </Link>
+                  )}
+                </div>
               )}
             </div>
           </div>

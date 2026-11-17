@@ -92,6 +92,10 @@ export async function GET(req: NextRequest) {
     if (telco && telco !== 'all') {
       where.telcoProviders = { has: telco.toUpperCase() };
     }
+    const agentId = sp.get('agentId') || sp.get('agent');
+    if (agentId && agentId !== 'all') {
+      where.agentId = agentId;
+    }
 
     // Export to CSV if requested
     if (isExport) {

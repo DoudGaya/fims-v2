@@ -108,19 +108,19 @@ export async function GET(req: NextRequest) {
     if ('error' in authResult) return authResult.error;
     const { user } = authResult;
 
-    const roleError = requireRole(user, 'household_agent', 'admin', 'manager');
+    const roleError = requireRole(user, 'household_agent', 'agent', 'field_agent', 'admin', 'manager');
     if (roleError) return roleError;
 
     const sp = req.nextUrl.searchParams;
     const page = Math.max(1, parseInt(sp.get('page') || '1'));
-    const limit = Math.min(100, Math.max(1, parseInt(sp.get('limit') || '50')));
+    const limit = Math.min(2000, Math.max(1, parseInt(sp.get('limit') || '500')));
     const skip = (page - 1) * limit;
     const search = sp.get('search') || sp.get('query') || '';
 
     const where: Prisma.HouseholdWhereInput = {};
 
     // Agent only sees their captured households unless admin/manager
-    if (user.role === 'household_agent' || user.role === 'agent') {
+    if (user.role === 'household_agent' || user.role === 'agent' || user.role === 'field_agent') {
       where.agentId = user.id;
     }
 
@@ -169,7 +169,7 @@ export async function POST(req: NextRequest) {
     if ('error' in authResult) return authResult.error;
     const { user } = authResult;
 
-    const roleError = requireRole(user, 'household_agent', 'admin', 'manager');
+    const roleError = requireRole(user, 'household_agent', 'agent', 'field_agent', 'admin', 'manager');
     if (roleError) return roleError;
 
     const body = await req.json();
