@@ -33,11 +33,32 @@ export async function GET() {
         // Execute queries sequentially in BATCHES
         
         // Batch 1: Core Counts (Fast)
-        const [totalFarmers, totalAgents, totalClusters, totalFarms] = await Promise.all([
+        const [
+          totalFarmers,
+          totalAgents,
+          totalClusters,
+          totalFarms,
+          totalHouseholds,
+          householdAggregates,
+          pueAdoptersCount,
+          recentHouseholds,
+          householdsByStateRaw,
+        ] = await Promise.all([
           prisma.farmer.count(),
-          prisma.user.count({ where: { role: 'agent' } }),
+          prisma.user.count({ where: { role: { in: ['agent', 'household_agent', 'field_agent', 'data_correction_agent', 'survey_agent', 'agri_business_agent'] } } }),
           prisma.cluster.count(),
           prisma.farm.count(),
+          prisma.household.count().catch(() => 0),
+          prisma.household.aggregate({
+            _sum: {
+              totalHouseholdMembers: true,
+              childrenCount: true,
+              commercialCustomersCount: true,
+            },
+          }).catch(() => ({ _sum: { totalHouseholdMembers: 0, childrenCount: 0, commercialCustomersCount: 0 } })),
+          prisma.household.count({ where: { hasPUE: true } }).catch(() => 0),
+          prisma.household.count({ where: { createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }).catch(() => 0),
+          prisma.household.groupBy({ by: ['state'], _count: { id: true } }).catch(() => []),
         ]);
 
         // Batch 2: Aggregations (Medium)
@@ -84,6 +105,11 @@ export async function GET() {
           totalAgents,
           totalClusters,
           totalFarms,
+          totalHouseholds,
+          householdAggregates,
+          pueAdoptersCount,
+          recentHouseholds,
+          householdsByStateRaw,
           farmAggregates,
           primaryCropGroups,
           secondaryCropsRaw,
@@ -95,8 +121,8 @@ export async function GET() {
           monthlyCounts
         };
       },
-      ['dashboard-analytics-v1'], // Cache key
-      { revalidate: 600, tags: ['dashboard'] } // Revalidate every 10 minutes
+      ['dashboard-analytics-v2'], // Cache key
+      { revalidate: 300, tags: ['dashboard'] } // Revalidate every 5 minutes
     );
 
     let dbData;
@@ -113,6 +139,11 @@ export async function GET() {
       totalAgents,
       totalClusters,
       totalFarms,
+      totalHouseholds,
+      householdAggregates,
+      pueAdoptersCount,
+      recentHouseholds,
+      householdsByStateRaw,
       farmAggregates,
       primaryCropGroups,
       secondaryCropsRaw,
@@ -264,10 +295,30 @@ export async function GET() {
         totalClusters,
         totalFarms,
         totalHectares,
+        totalHouseholds,
+        totalHouseholdMembers: householdAggregates?._sum?.totalHouseholdMembers || 0,
+        totalChildren: householdAggregates?._sum?.childrenCount || 0,
+        totalCommercialCustomers: householdAggregates?._sum?.commercialCustomersCount || 0,
+        pueAdopters: pueAdoptersCount,
         recentRegistrations,
+        recentHouseholds,
         goal: GOAL_FARMERS,
         progressPercentage: Math.round(progressPercentage * 100) / 100,
         remaining: GOAL_FARMERS - totalFarmers
+      },
+
+      // Household & community interventions
+      households: {
+        total: totalHouseholds,
+        totalMembers: householdAggregates?._sum?.totalHouseholdMembers || 0,
+        totalChildren: householdAggregates?._sum?.childrenCount || 0,
+        commercialCustomers: householdAggregates?._sum?.commercialCustomersCount || 0,
+        pueAdopters: pueAdoptersCount,
+        recent: recentHouseholds,
+        byState: (householdsByStateRaw || []).map((s: any) => ({
+          state: s.state,
+          count: s._count?.id || s._count || 0,
+        })),
       },
 
       // Geographic distribution
@@ -341,10 +392,27 @@ function getMockAnalytics(goal: number) {
       totalClusters: 85,
       totalFarms: 98000,
       totalHectares: 154000,
+      totalHouseholds: 893,
+      totalHouseholdMembers: 5420,
+      totalChildren: 3120,
+      totalCommercialCustomers: 140,
+      pueAdopters: 380,
       recentRegistrations: 4320,
+      recentHouseholds: 240,
       goal: goal,
       progressPercentage: (125430 / goal) * 100,
       remaining: goal - 125430
+    },
+    households: {
+      total: 893,
+      totalMembers: 5420,
+      totalChildren: 3120,
+      commercialCustomers: 140,
+      pueAdopters: 380,
+      recent: 240,
+      byState: [
+        { state: "Jigawa", count: 893 }
+      ]
     },
     geography: {
       byState: [

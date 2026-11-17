@@ -13,6 +13,8 @@ import {
   BuildingOfficeIcon,
   GlobeAltIcon,
   ArrowRightIcon,
+  HomeIcon,
+  BoltIcon,
 } from '@heroicons/react/24/outline';
 
 import {
@@ -30,6 +32,21 @@ type DashboardAnalytics = {
     totalAgents: number;
     totalClusters: number;
     totalHectares: number;
+    totalHouseholds?: number;
+    totalHouseholdMembers?: number;
+    totalChildren?: number;
+    totalCommercialCustomers?: number;
+    pueAdopters?: number;
+    recentHouseholds?: number;
+  };
+  households?: {
+    total: number;
+    totalMembers: number;
+    totalChildren: number;
+    commercialCustomers: number;
+    pueAdopters: number;
+    recent: number;
+    byState?: { state: string; count: number }[];
   };
   geography?: {
     byState?: { state: string; count: number }[];
@@ -161,26 +178,38 @@ export default function Dashboard() {
               value={formatNumber(overview.totalFarmers)}
               icon={UsersIcon}
               description="Registered farmers"
-              // trend="+12% from last month"
+              trendUp={true}
+            />
+            <StatsCard
+              title="Households"
+              value={formatNumber(overview.totalHouseholds || 0)}
+              icon={HomeIcon}
+              description={`${formatNumber(overview.totalHouseholdMembers || 0)} residents enrolled`}
               trendUp={true}
             />
             <StatsCard
               title="Agents"
               value={formatNumber(overview.totalAgents)}
               icon={UserGroupIcon}
-              description="Field agents"
+              description="Field & household agents"
+            />
+            <StatsCard
+              title="PUE Adopters"
+              value={formatNumber(overview.pueAdopters || 0)}
+              icon={BoltIcon}
+              description="Productive energy users"
             />
             <StatsCard
               title="Clusters"
               value={formatNumber(overview.totalClusters)}
               icon={BuildingOfficeIcon}
-              description="Clusters"
+              description="Farming clusters"
             />
             <StatsCard
-              title="Hectares"
+              title="Land Coverage"
               value={formatNumber(overview.totalHectares)}
               icon={GlobeAltIcon}
-              description="Land coverage"
+              description="Total hectares"
             />
           </div>
 
@@ -213,13 +242,80 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Household & Rural Interventions Spotlight */}
+      <section className="overflow-hidden rounded-lg border border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+        <div className="border-b border-[#E5E7EB] dark:border-gray-700 px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300">
+              <HomeIcon className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-[#1E293B] dark:text-gray-100 flex items-center gap-2">
+                Household Interventions &amp; Clean Energy
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-300">
+                  Active
+                </span>
+              </h3>
+              <p className="text-sm text-[#64748B] dark:text-gray-400">
+                Dwelling capture, resident tracking, and productive use of energy (PUE) adoption across rural communities.
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={() => router.push('/households')}
+            variant="outline"
+            size="sm"
+            className="border-teal-200 text-teal-800 hover:bg-teal-50 dark:border-teal-800 dark:text-teal-300 self-start sm:self-auto gap-1.5"
+          >
+            <span>View All Households</span>
+            <ArrowRightIcon className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-6 bg-[#F8FAFC]/60 dark:bg-gray-800/40">
+          <div className="rounded-lg border border-teal-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-2xs">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-gray-400">Enrolled Households</span>
+            <div className="text-2xl font-bold text-teal-700 dark:text-teal-300 mt-1">
+              {formatNumber(overview.totalHouseholds || 0)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">Verified dwelling slips</p>
+          </div>
+
+          <div className="rounded-lg border border-blue-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-2xs">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-gray-400">Community Residents</span>
+            <div className="text-2xl font-bold text-blue-700 dark:text-blue-300 mt-1">
+              {formatNumber(overview.totalHouseholdMembers || 0)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {formatNumber(overview.totalChildren || 0)} children registered
+            </p>
+          </div>
+
+          <div className="rounded-lg border border-amber-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-2xs">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-gray-400">PUE Adopters</span>
+            <div className="text-2xl font-bold text-amber-700 dark:text-amber-400 mt-1">
+              {formatNumber(overview.pueAdopters || 0)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">Productive clean power</p>
+          </div>
+
+          <div className="rounded-lg border border-indigo-100 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-2xs">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#64748B] dark:text-gray-400">Commercial Clients</span>
+            <div className="text-2xl font-bold text-indigo-700 dark:text-indigo-400 mt-1">
+              {formatNumber(overview.totalCommercialCustomers || 0)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">Local micro-enterprises</p>
+          </div>
+        </div>
+      </section>
+
       <div className="rounded-lg border border-[#DCEAF3] dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm dark:bg-card">
         <div className="border-b border-[#E5E7EB] px-6 py-4">
           <h3 className="text-lg font-bold text-[#1E293B] dark:text-gray-100">Quick Actions</h3>
           <p className="mt-1 text-sm text-[#64748B] dark:text-gray-400">Jump into the workflows used most often by FIMS teams.</p>
         </div>
         <div className="p-6">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <Button onClick={() => router.push('/agents/new')} className="justify-between">
               <span className="inline-flex items-center">
               <UserGroupIcon className="h-4 w-4 mr-2" />
@@ -231,6 +327,13 @@ export default function Dashboard() {
               <span className="inline-flex items-center">
               <UsersIcon className="h-4 w-4 mr-2" />
               View All Farmers
+              </span>
+              <ArrowRightIcon className="h-4 w-4" />
+            </Button>
+            <Button onClick={() => router.push('/households')} variant="outline" className="justify-between border-teal-200 hover:bg-teal-50 dark:border-teal-800 text-teal-800 dark:text-teal-300">
+              <span className="inline-flex items-center">
+              <HomeIcon className="h-4 w-4 mr-2 text-teal-600" />
+              Household Registry
               </span>
               <ArrowRightIcon className="h-4 w-4" />
             </Button>
