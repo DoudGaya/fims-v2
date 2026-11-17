@@ -74,6 +74,8 @@ export async function GET(
             id: true,
             firstName: true,
             lastName: true,
+            displayName: true,
+            phoneNumber: true,
             email: true,
             role: true,
           },

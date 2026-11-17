@@ -15,7 +15,7 @@ const checkPermission = (permissions: string[] | undefined, permission: string) 
   return permissions?.includes(permission) || false;
 };
 
-const MOBILE_AGENT_ROLES = ['agent', 'household_agent', 'data_correction_agent', 'survey_agent', 'agri_business_agent'] as const;
+const MOBILE_AGENT_ROLES = ['agent', 'field_agent', 'household_agent', 'data_correction_agent', 'survey_agent', 'agri_business_agent'] as const;
 
 const AGENT_TYPE_ROLE_MAP: Record<string, string> = {
   enrollment: 'agent',

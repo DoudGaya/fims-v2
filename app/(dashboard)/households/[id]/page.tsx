@@ -52,6 +52,8 @@ import {
   TrashIcon,
   DocumentTextIcon,
   PrinterIcon,
+  UserIcon,
+  ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
 
 export default function HouseholdDetailPage() {
@@ -690,9 +692,23 @@ export default function HouseholdDetailPage() {
               <CheckCircleIcon className="size-4 text-emerald-600" />
               <span>
                 Captured by Agent:{' '}
-                <strong className="text-gray-900">
-                  {household.agent ? `${household.agent.firstName} ${household.agent.lastName}` : household.agentId || 'Field Agent'}
-                </strong>
+                {household.agent ? (
+                  <Link
+                    href={`/agents/${household.agent.id}`}
+                    className="font-semibold text-[#013358] dark:text-blue-400 hover:underline inline-flex items-center gap-1 group"
+                  >
+                    <UserIcon className="size-3 opacity-60 group-hover:opacity-100" />
+                    {household.agent.firstName} {household.agent.lastName}
+                    {household.agent.phoneNumber && (
+                      <span className="text-muted-foreground font-normal ml-1">
+                        · {household.agent.phoneNumber}
+                      </span>
+                    )}
+                    <ArrowTopRightOnSquareIcon className="size-3 opacity-0 group-hover:opacity-60 transition-opacity" />
+                  </Link>
+                ) : (
+                  <strong className="text-gray-900">{household.agentId || 'Field Agent'}</strong>
+                )}
               </span>
             </div>
             <div>

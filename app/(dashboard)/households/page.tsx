@@ -414,13 +414,14 @@ export default function HouseholdsDirectoryPage() {
                 <TableHead className="font-semibold">Telco / Network</TableHead>
                 <TableHead className="font-semibold">Commercial & PUE</TableHead>
                 <TableHead className="font-semibold">Status</TableHead>
+                <TableHead className="font-semibold">Agent</TableHead>
                 <TableHead className="text-right font-semibold">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <ArrowPathIcon className="size-5 animate-spin text-[#013358]" />
                       <span className="text-xs font-medium text-gray-600">Loading household records…</span>
@@ -429,7 +430,7 @@ export default function HouseholdsDirectoryPage() {
                 </TableRow>
               ) : households.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12">
+                  <TableCell colSpan={9} className="text-center py-12">
                     <HomeIcon className="mx-auto size-10 text-gray-300 mb-2" />
                     <p className="text-sm font-medium text-gray-700">No households captured yet</p>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -564,6 +565,20 @@ export default function HouseholdsDirectoryPage() {
                       >
                         {h.interventionStatus}
                       </Badge>
+                    </TableCell>
+
+                    {/* Agent */}
+                    <TableCell>
+                      {h.agent ? (
+                        <Link
+                          href={`/agents/${h.agent.id}`}
+                          className="text-xs font-medium text-[#013358] dark:text-blue-400 hover:underline inline-flex items-center gap-0.5 group"
+                        >
+                          {h.agent.firstName} {h.agent.lastName}
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">Unknown</span>
+                      )}
                     </TableCell>
 
                     {/* Action */}

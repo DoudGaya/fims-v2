@@ -378,18 +378,24 @@ export default function AgentDetailsClient({ id }: { id: string }) {
             </div>
 
             {/* Role-specific summary quicklink */}
-            {isHouseholdAgent && householdsCount > 0 && (
+            {isHouseholdAgent ? (
               <div className="mt-3">
-                <Link href={`/households?agentId=${agent.id}`} className="text-sm text-teal-600 dark:text-teal-400 hover:underline">
-                  {householdsCount} household{householdsCount !== 1 ? 's' : ''} captured &rarr;
+                <Link href={`/households?agentId=${agent.id}`} className="text-sm font-medium text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-1">
+                  <span>{householdsCount} household{householdsCount !== 1 ? 's' : ''} captured</span> &rarr;
                 </Link>
               </div>
-            )}
-            {!isHouseholdAgent && farmersCount > 0 && (
-              <div className="mt-3">
-                <Link href={`/farmers?agentId=${agent.id}`} className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
-                  {farmersCount} farmer{farmersCount !== 1 ? 's' : ''} registered &rarr;
-                </Link>
+            ) : (
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                {farmersCount > 0 && (
+                  <Link href={`/farmers?agentId=${agent.id}`} className="text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1">
+                    <span>{farmersCount} farmer{farmersCount !== 1 ? 's' : ''} registered</span> &rarr;
+                  </Link>
+                )}
+                {householdsCount > 0 && (
+                  <Link href={`/households?agentId=${agent.id}`} className="text-sm font-medium text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-1">
+                    <span>{householdsCount} household{householdsCount !== 1 ? 's' : ''} captured</span> &rarr;
+                  </Link>
+                )}
               </div>
             )}
           </div>
@@ -863,6 +869,24 @@ export default function AgentDetailsClient({ id }: { id: string }) {
                       <dd>
                         <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                           {agriBusinessesCount}
+                        </div>
+                      </dd>
+                    </dl>
+                  </div>
+                </div>
+              ) : householdsCount > 0 && farmersCount === 0 ? (
+                <div className="flex items-center">
+                  <div className="shrink-0 bg-teal-600 rounded-md p-3">
+                    <HomeIcon className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="ml-4 w-0 flex-1">
+                    <dl>
+                      <dt className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Households Enrolled
+                      </dt>
+                      <dd>
+                        <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                          {householdsCount}
                         </div>
                       </dd>
                     </dl>
