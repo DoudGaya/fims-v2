@@ -68,6 +68,7 @@ export default function HouseholdsDirectoryPage() {
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [telcoFilter, setTelcoFilter] = useState('all');
   const [pueFilter, setPueFilter] = useState('all');
   const [networkFilter, setNetworkFilter] = useState('all');
@@ -75,6 +76,15 @@ export default function HouseholdsDirectoryPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+
+  // Debounce search input to avoid pounding the database on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   // Deletion request state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -117,7 +127,7 @@ export default function HouseholdsDirectoryPage() {
         page: page.toString(),
         limit: '20',
       });
-      if (search.trim()) params.append('search', search.trim());
+      if (debouncedSearch.trim()) params.append('search', debouncedSearch.trim());
       if (telcoFilter !== 'all') params.append('telco', telcoFilter);
       if (pueFilter === 'yes') params.append('hasPue', 'true');
       if (pueFilter === 'no') params.append('hasPue', 'false');
@@ -141,7 +151,7 @@ export default function HouseholdsDirectoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, telcoFilter, pueFilter, networkFilter, statusFilter, agentId]);
+  }, [page, debouncedSearch, telcoFilter, pueFilter, networkFilter, statusFilter, agentId]);
 
   useEffect(() => {
     if (status === 'loading' || permissionsLoading) return;
@@ -165,8 +175,8 @@ export default function HouseholdsDirectoryPage() {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setDebouncedSearch(search);
     setPage(1);
-    fetchHouseholds();
   };
 
   const handleExportCsv = () => {

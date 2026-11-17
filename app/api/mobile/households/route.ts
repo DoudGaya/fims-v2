@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 import { getMobileUser, requireRole } from '@/lib/mobileAuth';
 import { formatPollingUnit } from '@/lib/textUtils';
 import TermiiService from '@/lib/termiiService';
+import { getCached, cacheKey, invalidateByPrefix } from '@/lib/cache';
 
 const termiiService = new TermiiService();
 
@@ -134,25 +135,36 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    const [households, total] = await Promise.all([
-      prisma.household.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.household.count({ where }),
-    ]);
-
-    return NextResponse.json({
-      households,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
+    const key = cacheKey('mobile:households', {
+      userId: user.id,
+      page,
+      limit,
+      search,
     });
+
+    const result = await getCached(key, 60, async () => {
+      const [households, total] = await Promise.all([
+        prisma.household.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+        }),
+        prisma.household.count({ where }),
+      ]);
+
+      return {
+        households,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit),
+        },
+      };
+    });
+
+    return NextResponse.json(result);
   } catch (error: any) {
     console.error('Error fetching mobile households:', error);
     return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
@@ -332,6 +344,13 @@ export async function POST(req: NextRequest) {
           error: dbErr.message || 'Database error',
         });
       }
+    }
+
+    if (results.length > 0) {
+      Promise.all([
+        invalidateByPrefix('fims:v1:mobile:households'),
+        invalidateByPrefix('fims:v1:households'),
+      ]).catch(() => {});
     }
 
     return NextResponse.json({

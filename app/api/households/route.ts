@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { PERMISSIONS } from '@/lib/permissions';
 import { ROLE_PERMISSIONS } from '@/lib/rolePermissions';
+import { getCached, cacheKey, invalidateByPrefix } from '@/lib/cache';
 
 function checkHouseholdPermission(session: any, permission = PERMISSIONS.HOUSEHOLDS_READ): boolean {
   if (!session?.user) return false;
@@ -174,49 +175,75 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Standard paginated fetch + aggregates
-    const [households, total, allStats] = await Promise.all([
-      prisma.household.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          agent: {
-            select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true },
+    // High-performance cached KPI aggregate stats (5-minute TTL)
+    const globalStats = await getCached('fims:v1:households:global_stats', 300, async () => {
+      const [allStats, pueCount] = await Promise.all([
+        prisma.household.aggregate({
+          _sum: {
+            totalHouseholdMembers: true,
+            childrenCount: true,
+            commercialCustomersCount: true,
           },
-        },
-      }),
-      prisma.household.count({ where }),
-      prisma.household.aggregate({
-        _sum: {
-          totalHouseholdMembers: true,
-          childrenCount: true,
-          commercialCustomersCount: true,
-        },
-        _count: {
-          id: true,
-        },
-      }),
-    ]);
+          _count: {
+            id: true,
+          },
+        }),
+        prisma.household.count({ where: { hasPUE: true } }),
+      ]);
 
-    const pueCount = await prisma.household.count({ where: { hasPUE: true } });
-
-    return NextResponse.json({
-      households,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
-      },
-      stats: {
+      return {
         totalHouseholds: allStats._count.id || 0,
         totalMembers: allStats._sum.totalHouseholdMembers || 0,
         totalChildren: allStats._sum.childrenCount || 0,
         totalCommercialCustomers: allStats._sum.commercialCustomersCount || 0,
         pueAdopters: pueCount,
+      };
+    });
+
+    // High-performance cached paginated list (60-second TTL)
+    const listKey = cacheKey('households:list', {
+      page,
+      limit,
+      search,
+      state,
+      lga,
+      ward,
+      telco,
+      network,
+      hasPue,
+      pueType,
+      status,
+      agentId,
+    });
+
+    const listResult = await getCached(listKey, 60, async () => {
+      const [households, total] = await Promise.all([
+        prisma.household.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' },
+          include: {
+            agent: {
+              select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true },
+            },
+          },
+        }),
+        prisma.household.count({ where }),
+      ]);
+
+      return { households, total };
+    });
+
+    return NextResponse.json({
+      households: listResult.households,
+      pagination: {
+        page,
+        limit,
+        total: listResult.total,
+        pages: Math.ceil(listResult.total / limit),
       },
+      stats: globalStats,
     });
   } catch (error: any) {
     console.error('Error fetching admin households:', error);
