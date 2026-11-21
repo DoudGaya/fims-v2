@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyFirebaseToken } from './firebase-admin';
 import prisma from './prisma';
+import { getCached, cacheKey } from './cache';
 
 export interface MobileUser {
   id: string;
@@ -49,21 +50,24 @@ export async function getMobileUser(req: NextRequest): Promise<AuthSuccess | Aut
     }
   }
 
-  const user = await prisma.user.findFirst({
-    where: {
-      OR: [
-        { firebaseUid },
-        ...(email ? [{ email }] : []),
-      ],
-    },
-    select: {
-      id: true,
-      email: true,
-      role: true,
-      isActive: true,
-      firstName: true,
-      lastName: true,
-    },
+  const authCacheKey = cacheKey('mobile:auth:user', { uid: firebaseUid, email: email || '' });
+  const user = await getCached<MobileUser | null>(authCacheKey, 120, async () => {
+    return prisma.user.findFirst({
+      where: {
+        OR: [
+          { firebaseUid },
+          ...(email ? [{ email }] : []),
+        ],
+      },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        isActive: true,
+        firstName: true,
+        lastName: true,
+      },
+    });
   });
 
   if (!user) {

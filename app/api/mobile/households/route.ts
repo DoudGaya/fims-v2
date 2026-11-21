@@ -350,6 +350,7 @@ export async function POST(req: NextRequest) {
       Promise.all([
         invalidateByPrefix('fims:v1:mobile:households'),
         invalidateByPrefix('fims:v1:households'),
+        invalidateByPrefix('fims:v1:dashboard'),
       ]).catch(() => {});
     }
 

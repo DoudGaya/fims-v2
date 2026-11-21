@@ -4,6 +4,7 @@ import prisma from '@/lib/prisma';
 import { getMobileUser, requireRole } from '@/lib/mobileAuth';
 import { farmerSchema } from '@/lib/validation';
 import TermiiService from '@/lib/termiiService';
+import { invalidateByPrefix } from '@/lib/cache';
 
 const termiiService = new TermiiService();
 
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
   if ('error' in authResult) return authResult.error;
   const { user } = authResult;
 
-  const roleError = requireRole(user, 'agent', 'data_correction_agent', 'survey_agent', 'admin');
+  const roleError = requireRole(user, 'agent', 'household_agent', 'field_agent', 'data_correction_agent', 'survey_agent', 'admin', 'manager');
   if (roleError) return roleError;
 
   const sp = req.nextUrl.searchParams;
@@ -200,6 +201,11 @@ export async function POST(req: NextRequest) {
       console.error('Failed to send farmer enrollment SMS notification:', err);
     });
   }
+
+  Promise.all([
+    invalidateByPrefix('fims:v1:farmers'),
+    invalidateByPrefix('fims:v1:dashboard'),
+  ]).catch(() => {});
 
   return NextResponse.json(newFarmer, { status: 201 });
 }

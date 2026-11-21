@@ -9,6 +9,8 @@ export const dynamic = 'force-dynamic';
 
 const MOBILE_AGENT_ROLES = [
   'agent',
+  'household_agent',
+  'field_agent',
   'data_correction_agent',
   'survey_agent',
   'agri_business_agent',
