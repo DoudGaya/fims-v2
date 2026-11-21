@@ -7,6 +7,13 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { ROLE_PERMISSIONS } from '@/lib/rolePermissions';
 import { getCached, cacheKey, invalidateByPrefix } from '@/lib/cache';
 
+// All scalar columns except the heavy base64 photo fields
+const HOUSEHOLD_LIST_SELECT = Object.fromEntries(
+  Object.keys(Prisma.HouseholdScalarFieldEnum)
+    .filter((k) => k !== 'houseFrontPhotoUrl' && k !== 'headPhotoUrl')
+    .map((k) => [k, true])
+) as Prisma.HouseholdSelect;
+
 function checkHouseholdPermission(session: any, permission = PERMISSIONS.HOUSEHOLDS_READ): boolean {
   if (!session?.user) return false;
   const user = session.user as any;
@@ -223,7 +230,9 @@ export async function GET(req: NextRequest) {
           skip,
           take: limit,
           orderBy: { createdAt: 'desc' },
-          include: {
+          // Never ship base64 photos in list payloads (loaded on the detail page only)
+          select: {
+            ...HOUSEHOLD_LIST_SELECT,
             agent: {
               select: { id: true, firstName: true, lastName: true, email: true, phoneNumber: true },
             },

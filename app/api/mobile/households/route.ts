@@ -9,6 +9,12 @@ import { getCached, cacheKey, invalidateByPrefix } from '@/lib/cache';
 
 const termiiService = new TermiiService();
 
+const HOUSEHOLD_LIST_SELECT = Object.fromEntries(
+  Object.keys(Prisma.HouseholdScalarFieldEnum)
+    .filter((k) => k !== 'houseFrontPhotoUrl' && k !== 'headPhotoUrl')
+    .map((k) => [k, true])
+) as Prisma.HouseholdSelect;
+
 // Helper to synthesize traceable house number
 function generateSyntheticHouseNumber(state: string, lga: string, ward: string, pu: string, seq: number): string {
   const clean = (s: string) => s.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 3) || 'LOC';
@@ -149,6 +155,8 @@ export async function GET(req: NextRequest) {
           skip,
           take: limit,
           orderBy: { createdAt: 'desc' },
+          // Exclude heavy base64 photos from list payloads; fetched per-record via /[id]
+          select: HOUSEHOLD_LIST_SELECT,
         }),
         prisma.household.count({ where }),
       ]);
